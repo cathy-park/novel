@@ -322,6 +322,31 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-indent: 12px; 
 }
 
+
+.episode-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.episode-main {
+  flex: 1;
+  min-width: 0;
+}
+.delete-ep-btn {
+  opacity: 0;
+  color: var(--c-muted);
+  transition: opacity 0.2s, color 0.2s;
+  padding: 4px;
+}
+.episode-row:hover .delete-ep-btn {
+  opacity: 1;
+}
+.delete-ep-btn:hover {
+  color: #FF4B4B;
+  background: rgba(255, 75, 75, 0.1);
+  border-radius: 4px;
+}
+
 </style>
 </head>
 <body>
@@ -846,8 +871,8 @@ function renderEpisodeList() {
     const row = document.createElement('div');
     row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
     row.draggable = isChap;
-    row.innerHTML = `<span class="drag">⋮⋮</span><div class="episode-main" style="flex:1;"><strong>${escapeHtml(dispTitle)}</strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
-                    (isChap ? `<button class="icon-btn" style="color:#FF4B4B; margin-left:8px;" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')">🗑️</button>` : '');
+    row.innerHTML = `<span class="drag" style="letter-spacing: -3px; opacity: 0.4; font-size: 16px; margin-right: 8px;">⋮⋮</span><div class="episode-main" style="flex:1;"><strong>${escapeHtml(dispTitle)}</strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
+                    (isChap ? `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '');
     row.querySelector('.episode-main').onclick = ()=>selectEpisode(ep.id);
     if(ep.type==='chapter') {
       row.ondragstart = ()=>{ draggedId=ep.id; row.classList.add('dragging'); };
