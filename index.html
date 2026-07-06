@@ -96,11 +96,14 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .book-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 22px 18px; background: var(--cover-color, var(--c-accent)); color: var(--cover-text, #fff); }
 .book-placeholder strong { position: relative; z-index: 1; font-size: 21px; line-height: 1.35; letter-spacing: -.045em; word-break: keep-all; }
-.cover-status-chip { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; background: rgba(23,20,31,0.6); backdrop-filter: blur(4px); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
 .cover-edit { position: absolute; z-index: 2; inset: auto 12px 12px 12px; min-height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(23,20,31,.78); backdrop-filter: blur(6px); color: #fff; font-size: 10px; font-weight: 800; opacity: 0; transition: .18s; }
 .book-cover:hover .cover-edit { opacity: 1; }
 .project-book-info { padding: 10px 8px 0; }
-.project-book h2 { font-size: 15px; font-weight: 700; letter-spacing: -.035em; margin: 0 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--c-ink); }
+.title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; min-width: 0; }
+.title-badge { flex-shrink: 0; display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .01em; }
+.title-badge.serializing { background: var(--c-accent-bg); color: var(--c-accent-dk); border: 1px solid #C8BEFF; }
+.title-badge.completed { background: var(--c-success-bg); color: var(--c-success); border: 1px solid #CDEADF; }
+.project-book h2 { font-size: 15px; font-weight: 700; letter-spacing: -.035em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--c-ink); min-width: 0; }
 .book-meta { display: flex; gap: 9px; align-items: center; color: var(--c-muted); font-size: 10px; }
 .project-book-actions { display: flex; gap: 6px; margin-top: 11px; align-items: center; }
 .project-book-actions .primary { flex: 1; min-height: 32px; font-size: 11px; }
@@ -382,15 +385,38 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 <div id="versionModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">버전 기록</span><h2>이전 본문으로 돌아가기</h2></div><button class="icon-btn" data-close="versionModal">×</button></div>
 <div id="versionList" class="version-list"></div></div></div>
 
-<div id="coverModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">책 표지</span><h2>표지를 꾸며볼까요?</h2></div><button class="icon-btn" data-close="coverModal">×</button></div>
-<div class="cover-modal-layout"><div id="coverPreview" class="cover-preview"></div>
-<div class="cover-settings"><div style="display:grid;gap:8px;">
-<div style="font-size:12px;font-weight:700;">단색 표지</div><div id="coverColors" class="cover-colors"></div>
-<div class="cover-custom-row"><input id="coverCustomColor" type="color" value="#6B5CE7"/><span id="coverColorValue">#6B5CE7</span></div>
-</div><div style="display:grid;gap:8px;"><div style="font-size:12px;font-weight:700;">표지 이미지</div>
-<div class="cover-image-actions"><button id="uploadCoverBtn" class="primary" type="button">업로드</button><button id="removeCoverImageBtn" class="ghost border" type="button">지우기</button></div>
-</div></div></div>
-<div class="modal-actions"><button class="secondary" data-close="coverModal" type="button">완료</button></div></div></div>
+<div id="coverModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <div><span class="kicker">책 표지</span><h2>표지를 꾸며볼까요?</h2></div>
+      <button class="icon-btn" data-close="coverModal">×</button>
+    </div>
+    <div class="cover-modal-layout">
+      <div id="coverPreview" class="cover-preview"></div>
+      <div class="cover-settings">
+        <div style="display:grid;gap:10px;">
+          <div style="font-size:12px;font-weight:800;color:var(--c-sub);">단색 표지</div>
+          <div id="coverColors" class="cover-colors"></div>
+          <div class="cover-custom-row">
+            <input id="coverCustomColor" type="color" value="#6B5CE7"/>
+            <span id="coverColorValue" style="font-size:11px;color:var(--c-sub);">#6B5CE7</span>
+          </div>
+        </div>
+        <div style="display:grid;gap:10px;margin-top:20px;">
+          <div style="font-size:12px;font-weight:800;color:var(--c-sub);">표지 이미지</div>
+          <div class="cover-image-actions">
+            <button id="uploadCoverBtn" class="primary" type="button" style="flex:1;">📁 이미지 업로드</button>
+            <button id="removeCoverImageBtn" class="ghost border" type="button">지우기</button>
+          </div>
+          <p style="font-size:11px;color:var(--c-muted);margin:0;line-height:1.5;">JPG, PNG, WEBP 이미지를 업로드하면 표지에 적용됩니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" data-close="coverModal" type="button">완료</button>
+    </div>
+  </div>
+</div>
 
 <div id="importModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">백업 불러오기</span><h2>데이터를 가져올 방식을 선택하세요.</h2></div><button class="icon-btn" data-close="importModal">×</button></div>
 <p style="font-size:13px;color:var(--c-body);line-height:1.6;">가져올 파일에 총 <strong id="importProjectCount">0</strong>개의 작품이 있습니다.<br>기존 데이터를 덮어쓸지, 추가할지 선택해주세요.</p>
@@ -486,22 +512,26 @@ function renderLibrary() {
   $('#projectGrid').innerHTML = projects.length ? projects.map(p=>{
     const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0);
     const cover = p.cover ? `<img src="${p.cover}" alt="표지"/>` : coverPlaceholderMarkup(p);
-    const statusChip = `<span class="cover-status-chip">${p.status==='serializing'?'연재 중':'완결'}</span>`;
+    const badgeCls = p.status === 'serializing' ? 'serializing' : 'completed';
+    const badgeLabel = p.status === 'serializing' ? '연재 중' : '완결';
     return `<article class="project-book">
       <div class="book-stage">
-        <button class="book-cover" data-book-cover="${p.id}">${statusChip}${cover}<span class="cover-edit">표지 꾸미기</span></button>
+        <button class="book-cover" data-book-cover="${p.id}">${cover}<span class="cover-edit">🎨 표지 꾸미기</span></button>
       </div>
       <div class="project-book-info">
-        <h2 title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h2>
+        <div class="title-row">
+          <span class="title-badge ${badgeCls}">${badgeLabel}</span>
+          <h2 title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h2>
+        </div>
         <div class="book-meta"><span><strong>${p.episodes.length}</strong> 회차</span><span><strong>${total.toLocaleString()}</strong>자</span></div>
         <div class="project-book-actions">
           <button class="primary" data-open-project="${p.id}">집필</button>
           <div style="position:relative;">
             <button class="kebab-btn" data-kebab="${p.id}">···</button>
             <div class="kebab-menu" id="kebab-${p.id}">
-              <button data-kebab-cover="${p.id}">표지 꾸미기</button>
-              <button data-rename-project="${p.id}">제목 변경</button>
-              <button class="danger-item" data-delete-project="${p.id}">삭제</button>
+              <button data-kebab-cover="${p.id}">🎨 표지 꾸미기</button>
+              <button data-rename-project="${p.id}">✏️ 제목 변경</button>
+              <button class="danger-item" data-delete-project="${p.id}">🗑 삭제</button>
             </div>
           </div>
         </div>
