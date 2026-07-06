@@ -4,6 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>야니의 소설창고 — 소설 집필 워크스페이스</title>
+<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -264,6 +268,14 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   .mode-split .plan-pane { display: none; } /* Only tabs on mobile */
   .plan-drawer { width: 100%; border-left: 0; }
 }
+
+.EasyMDEContainer .editor-toolbar { display: none !important; }
+.EasyMDEContainer .CodeMirror { border: none !important; background: transparent !important; color: var(--c-ink) !important; font-family: inherit !important; font-size: 15px !important; line-height: 1.8 !important; padding: 0 !important; height: auto !important; min-height: 60vh !important; box-shadow: none !important; border-radius: 0 !important; }
+.EasyMDEContainer .CodeMirror-scroll { min-height: 60vh; cursor: text; }
+.EasyMDEContainer .editor-statusbar { display: none !important; }
+.markdown-body p { margin-bottom: 1em; line-height: 1.8; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 800; }
+.markdown-body hr { border: 0; border-top: 1px dashed var(--c-line-mid); margin: 2em 0; }
 </style>
 </head>
 <body>
@@ -469,6 +481,7 @@ const DEFAULT_COVER_COLOR = '#6B5CE7';
 const COVER_COLORS = ['#17141F','#6B5CE7','#6D9DF6','#5CB6C9','#46A57F','#F39AB9','#F5B86C','#B4A5FF','#8C91A5','#E4E6ED'];
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+let mde = null;
 let saveTimer, toastTimer, draggedId = null, libraryFilter = 'serializing', coverTargetProjectId = null;
 let importTempData = null;
 
@@ -795,13 +808,26 @@ function renderEpisodeList() {
 function renderEpisode() {
   const ep = currentEpisode(); if(!ep) return;
   $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeStatus').value = ep.status; $('#episodeBreadcrumb').textContent = ep.title;
-  $('#planEditor').value = ep.plan||''; $('#bodyEditor').value = ep.body||'';
+  $('#planEditor').value = ep.plan||'';
+  if(!mde) {
+    mde = new EasyMDE({ 
+      element: $('#bodyEditor'), 
+      spellChecker: false, status: false, toolbar: false, 
+      placeholder: "첫 문장을 시작하세요..."
+    });
+    mde.codemirror.on("change", () => {
+      const ep = currentEpisode();
+      ep.body = mde.value();
+      maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS();
+    });
+  }
+  if (mde.value() !== (ep.body||'')) mde.value(ep.body||'');
   updateBodyStats(); renderEpisodeList(); restoreEditorScroll();
 }
 function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId=id; touchProject(); queueSaveFS(); showEditor(); renderEpisode(); }
-function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.status=$('#episodeStatus').value; ep.plan=$('#planEditor').value; ep.body=$('#bodyEditor').value; }
+function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.status=$('#episodeStatus').value; ep.plan=$('#planEditor').value; ep.body=mde?mde.value():$('#bodyEditor').value; }
 function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
-function updateBodyStats() { const s=stats($('#bodyEditor').value); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
+function updateBodyStats() { const s=stats(mde?mde.value():$('#bodyEditor').value); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
 function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) queueSaveFS(); restoreEditorScroll(); }
 function addEpisode() { persistEditor(); const p=currentProject(), chCount = p.episodes.filter(e=>e.type==='chapter').length; const ep=defaultEpisode('chapter', chCount+1); p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisode(); showToast('회차를 추가했어요.'); }
 
@@ -817,7 +843,7 @@ function toggleFocusMode() {
   isFocusMode = !isFocusMode;
   $('#workspaceView').classList.toggle('focus-mode', isFocusMode);
   restoreEditorScroll();
-  if(isFocusMode) $('#bodyEditor').focus();
+  if(isFocusMode) { if(mde) mde.codemirror.focus(); else $('#bodyEditor').focus(); }
 }
 
 function maybeVersion(ep, force=false) {
@@ -978,7 +1004,7 @@ $('#episodeTitle').oninput = () => { currentEpisode().title=$('#episodeTitle').v
 $('#episodeType').onchange = () => { currentEpisode().type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); touchProject(); renderEpisodeList(); queueSaveFS(); };
 $('#episodeStatus').onchange = () => { currentEpisode().status=$('#episodeStatus').value; touchProject(); renderEpisodeList(); queueSaveFS(); };
 $('#planEditor').oninput = () => { currentEpisode().plan=$('#planEditor').value; touchProject(); queueSaveFS(); };
-$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=$('#bodyEditor').value; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
+$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=mde?mde.value():$('#bodyEditor').value; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#closeDrawerBtn').onclick = togglePlanDrawer;
@@ -1050,7 +1076,7 @@ $('#openManuscriptBtn').onclick = () => {
   const eps = orderedEpisodes().filter(e=>cleanText(e.body));
   $('#manuscriptTitle').textContent = currentProject().title;
   $('#manuscriptMeta').textContent = `총 ${eps.reduce((s,e)=>s+stats(e.body).withSpaces,0).toLocaleString()}자 · ${eps.length}회차`;
-  $('#manuscriptContent').innerHTML = eps.map(e=>`<article class="manuscript-ep"><h2>${escapeHtml(e.title)}</h2><p>${escapeHtml(e.body)}</p></article>`).join('');
+  $('#manuscriptContent').innerHTML = eps.map(e=>`<article class="manuscript-ep"><h2>${escapeHtml(e.title)}</h2><div class="markdown-body">${marked.parse(e.body||'')}</div></article>`).join('');
 };
 $('#backFromManuscript').onclick = showEditor;
 $('#copyManuscriptFull').onclick = () => copyText(orderedEpisodes().filter(e=>cleanText(e.body)).map(e=>cleanText(e.body)).join('\n\n\n'), '전체 본문을 복사했어요.');
