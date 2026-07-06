@@ -104,8 +104,15 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .book-meta { display: flex; gap: 9px; align-items: center; color: var(--c-muted); font-size: 10px; }
 .project-book-actions { display: flex; gap: 6px; margin-top: 11px; align-items: center; }
 .project-book-actions .primary { flex: 1; min-height: 32px; font-size: 11px; }
-.kebab-btn { width: 32px; height: 32px; border: 0; background: transparent; border-radius: 6px; color: var(--c-sub); display: grid; place-items: center; }
+.kebab-btn { width: 32px; height: 32px; border: 0; background: transparent; border-radius: 6px; color: var(--c-sub); display: grid; place-items: center; position: relative; }
 .kebab-btn:hover { background: var(--c-surface-3); }
+/* Kebab dropdown */
+.kebab-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 4px; background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--shadow-sm); z-index: 30; display: none; flex-direction: column; min-width: 110px; padding: 4px; }
+.kebab-menu.show { display: flex; }
+.kebab-menu button { text-align: left; background: transparent; border: 0; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--c-ink); border-radius: 4px; width: 100%; }
+.kebab-menu button:hover { background: var(--c-surface-3); }
+.kebab-menu .danger-item { color: var(--c-danger); }
+.kebab-menu .danger-item:hover { background: var(--c-danger-bg); }
 .empty-state { grid-column: 1/-1; padding: 72px 24px; border: 1px dashed var(--c-line-mid); border-radius: var(--r-lg); text-align: center; background: rgba(255,255,255,.6); }
 .empty-state strong { display: block; font-size: 17px; margin-bottom: 8px; }
 .empty-state p { color: var(--c-sub); font-size: 13px; margin: 0; }
@@ -487,13 +494,25 @@ function renderLibrary() {
       <div class="project-book-info">
         <h2 title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h2>
         <div class="book-meta"><span><strong>${p.episodes.length}</strong> 회차</span><span><strong>${total.toLocaleString()}</strong>자</span></div>
-        <div class="project-book-actions"><button class="primary" data-open-project="${p.id}">집필</button><button class="kebab-btn" data-delete-project="${p.id}" title="삭제">···</button></div>
+        <div class="project-book-actions">
+          <button class="primary" data-open-project="${p.id}">집필</button>
+          <div class="kebab-btn" data-kebab="${p.id}" style="cursor:pointer;display:grid;place-items:center;">···
+            <div class="kebab-menu" id="kebab-${p.id}">
+              <button data-cover-project="${p.id}">표지 꾸미기</button>
+              <button data-rename-project="${p.id}">제목 변경</button>
+              <button class="danger-item" data-delete-project="${p.id}">삭제</button>
+            </div>
+          </div>
+        </div>
       </div>
     </article>`;
   }).join('') : `<div class="empty-state"><strong>작품이 없어요.</strong></div>`;
   $$('[data-open-project]').forEach(b=>b.onclick=()=>openProject(b.dataset.openProject));
-  $$('[data-delete-project]').forEach(b=>b.onclick=()=>{if(confirm('작품을 삭제할까요?')) { state.projects=state.projects.filter(x=>x.id!==b.dataset.deleteProject); if(state.currentProjectId===b.dataset.deleteProject) state.currentProjectId=null; saveState(); renderLibrary(); }});
-  $$('[data-cover-project]').forEach(b=>b.onclick=()=>openCoverSettings(b.dataset.coverProject));
+  $$('[data-kebab]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); const m=b.querySelector('.kebab-menu'); $$('.kebab-menu.show').forEach(x=>{ if(x!==m) x.classList.remove('show'); }); m.classList.toggle('show'); });
+  $$('[data-cover-project]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); $$('.kebab-menu').forEach(m=>m.classList.remove('show')); openCoverSettings(b.dataset.coverProject); });
+  $$('[data-rename-project]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); $$('.kebab-menu').forEach(m=>m.classList.remove('show')); const p=state.projects.find(x=>x.id===b.dataset.renameProject); if(!p) return; const nt=prompt('새 작품 제목을 입력하세요.', p.title); if(nt&&nt.trim()) { p.title=nt.trim(); touchProject(); saveState(); renderLibrary(); } });
+  $$('[data-delete-project]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); $$('.kebab-menu').forEach(m=>m.classList.remove('show')); if(confirm(`'${state.projects.find(x=>x.id===b.dataset.deleteProject)?.title||'이 작품'}'을 삭제할까요?\n삭제한 작품은 복구할 수 없습니다.`)) { state.projects=state.projects.filter(x=>x.id!==b.dataset.deleteProject); if(state.currentProjectId===b.dataset.deleteProject) state.currentProjectId=null; saveState(); renderLibrary(); }});
+  window.addEventListener('click', ()=>$$('.kebab-menu').forEach(m=>m.classList.remove('show')), {once:true});
 }
 function showLibrary() { persistEditor(); saveState(false); $('#workspaceView').classList.add('hidden'); $('#libraryView').classList.remove('hidden'); renderLibrary(); }
 function openProject(id) { state.currentProjectId=id; const p=currentProject(); if(!p.selectedEpisodeId&&p.episodes[0]) p.selectedEpisodeId=p.episodes[0].id; saveState(false); $('#libraryView').classList.add('hidden'); $('#workspaceView').classList.remove('hidden'); showEditor(); renderWorkspace(); }
@@ -624,6 +643,55 @@ function handleImport(mode) {
     showToast('저장 용량 초과로 불러올 수 없어요.');
   }
 }
+
+// Cover Settings
+function openCoverSettings(projectId) {
+  coverTargetProjectId = projectId;
+  const p = state.projects.find(x=>x.id===projectId); if(!p) return;
+  // Render preview
+  const preview = $('#coverPreview');
+  if(p.cover) { preview.innerHTML = `<img src="${p.cover}" alt="표지"/>`; }
+  else { preview.innerHTML = coverPlaceholderMarkup(p); }
+  // Color swatches
+  $('#coverColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${p.coverColor===c?'active':''}" data-cover-color="${c}" style="background:${c}"></button>`).join('');
+  $('#coverCustomColor').value = p.coverColor || DEFAULT_COVER_COLOR;
+  $('#coverColorValue').textContent = p.coverColor || DEFAULT_COVER_COLOR;
+  $$('#coverColors [data-cover-color]').forEach(b=>b.onclick=()=>{
+    const c=b.dataset.coverColor; p.coverColor=c; p.cover='';
+    $$('#coverColors [data-cover-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+    $('#coverCustomColor').value=c; $('#coverColorValue').textContent=c;
+    $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
+    touchProject(); queueSave(); renderLibrary();
+  });
+  openModal('coverModal');
+}
+$('#coverCustomColor').oninput = () => {
+  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  const c = $('#coverCustomColor').value; p.coverColor=c; p.cover='';
+  $('#coverColorValue').textContent=c;
+  $$('#coverColors [data-cover-color]').forEach(x=>x.classList.remove('active'));
+  $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
+  touchProject(); queueSave(); renderLibrary();
+};
+$('#uploadCoverBtn').onclick = () => $('#coverInput').click();
+$('#coverInput').onchange = () => {
+  const file = $('#coverInput').files?.[0]; if(!file) return;
+  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    p.cover = reader.result;
+    $('#coverPreview').innerHTML = `<img src="${p.cover}" alt="표지"/>`;
+    touchProject(); saveState(); renderLibrary();
+  };
+  reader.readAsDataURL(file);
+};
+$('#removeCoverImageBtn').onclick = () => {
+  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  p.cover='';
+  $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
+  touchProject(); saveState(); renderLibrary();
+  showToast('표지 이미지를 지웠어요.');
+};
 
 // Drawer & Plan
 function renderProjectPlan() {
