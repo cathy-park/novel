@@ -590,12 +590,19 @@ async function loadProjectFromDir(projDirHandle) {
     
     try {
       const bodyDir = await projDirHandle.getDirectoryHandle('본문');
+      const epMap = new Map();
       for await (const [name, handle] of bodyDir.entries()) {
         if (name.endsWith('.json')) {
           const f = await handle.getFile();
-          p.episodes.push(JSON.parse(await f.text()));
+          const ep = JSON.parse(await f.text());
+          // 중복 방어: 가장 최신 데이터를 유지
+          if (!epMap.has(ep.id) || (epMap.get(ep.id).updatedAt || 0) < (ep.updatedAt || 0)) {
+            epMap.set(ep.id, ep);
+          }
         }
       }
+      p.episodes = Array.from(epMap.values());
+      
       p.episodes.sort((a,b) => {
         // 프롤로그 우선, 그 다음 id나 날짜, 혹은 이름기반 정렬.
         // 현재는 생성된 순서를 알기 어려울 수 있으나 일단 id 문자열 비교로 임시 정렬
@@ -661,16 +668,26 @@ async function saveProjectFS(p) {
   await w1.write(JSON.stringify(meta, null, 2));
   await w1.close();
   
-  // 에피소드(본문) 저장
+  // 에피소드(본문) 저장 및 자동 청소(Cleanup)
   const bodyDir = await projDir.getDirectoryHandle('본문', { create: true });
+  const targetFiles = new Set();
+  
   for (let i = 0; i < p.episodes.length; i++) {
     const ep = p.episodes[i];
     const prefix = String(i+1).padStart(3, '0');
     const epName = `${prefix}_${safeName(ep.title) || '무제'}_${ep.id}.json`;
+    targetFiles.add(epName);
     const epFile = await bodyDir.getFileHandle(epName, { create: true });
     const w2 = await epFile.createWritable();
     await w2.write(JSON.stringify(ep, null, 2));
     await w2.close();
+  }
+  
+  // 파편화된 과거 파일들 삭제 (중복 증식 방지)
+  for await (const [name, handle] of bodyDir.entries()) {
+    if (name.endsWith('.json') && !targetFiles.has(name)) {
+      await bodyDir.removeEntry(name);
+    }
   }
 }
 
