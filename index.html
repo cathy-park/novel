@@ -750,7 +750,7 @@ function renderLibrary() {
     const badgeLabel = p.status === 'serializing' ? '연재 중' : '완결';
     return `<article class="project-book">
       <div class="book-stage">
-        <button class="book-cover" data-book-cover="${p.id}">${cover}<span class="cover-edit">🎨 표지 꾸미기</span></button>
+        <button class="book-cover" data-open-project="${p.id}">${cover}<span class="cover-edit">📖 집필하기</span></button>
       </div>
       <div class="project-book-info">
         <div class="title-row">
@@ -759,7 +759,7 @@ function renderLibrary() {
         </div>
         <div class="book-meta"><span><strong>${p.episodes.length}</strong> 회차</span><span><strong>${total.toLocaleString()}</strong>자</span></div>
         <div class="project-book-actions">
-          <button class="primary" data-open-project="${p.id}">집필</button>
+          <button class="secondary border" data-book-cover="${p.id}" style="width:100%;">🎨 표지 꾸미기</button>
           <div style="position:relative;">
             <button class="kebab-btn" data-kebab="${p.id}">···</button>
             <div class="kebab-menu" id="kebab-${p.id}">
@@ -838,11 +838,16 @@ function renderWorkspace() {
 function renderEpisodeList() {
   const p = currentProject(), eps = orderedEpisodes(p);
   $('#episodeList').innerHTML = '';
+  let chapterIdx = 1;
   eps.forEach(ep=>{
+    const isChap = ep.type==='chapter';
+    const dispTitle = isChap ? `${chapterIdx++}화 | ${ep.title.replace(/^\d+화\s*\|\s*/, '')}` : ep.title;
+    
     const row = document.createElement('div');
     row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
-    row.draggable = ep.type==='chapter';
-    row.innerHTML = `<span class="drag">⋮⋮</span><div class="episode-main"><strong>${escapeHtml(ep.title)}</strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>`;
+    row.draggable = isChap;
+    row.innerHTML = `<span class="drag">⋮⋮</span><div class="episode-main" style="flex:1;"><strong>${escapeHtml(dispTitle)}</strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
+                    (isChap ? `<button class="icon-btn" style="color:#FF4B4B; margin-left:8px;" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')">🗑️</button>` : '');
     row.querySelector('.episode-main').onclick = ()=>selectEpisode(ep.id);
     if(ep.type==='chapter') {
       row.ondragstart = ()=>{ draggedId=ep.id; row.classList.add('dragging'); };
@@ -897,6 +902,37 @@ function renderEpisode() {
   }
   updateBodyStats(); renderEpisodeList(); restoreEditorScroll();
 }
+
+// --- Episode Management ---
+async function deleteEpisode(epId) {
+  if(!confirm('정말 이 회차를 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다)')) return;
+  const p = currentProject(); if(!p) return;
+  const idx = p.episodes.findIndex(e=>e.id===epId);
+  if(idx===-1) return;
+  const ep = p.episodes[idx];
+  
+  // 상태에서 삭제
+  p.episodes.splice(idx, 1);
+  if(p.selectedEpisodeId === epId) p.selectedEpisodeId = p.episodes[0]?.id || null;
+  
+  // FS에서 삭제
+  try {
+    if(rootHandle) {
+      const pHandle = await rootHandle.getDirectoryHandle(p.id, {create:false});
+      const cHandle = await pHandle.getDirectoryHandle('본문', {create:false});
+      for await (const [name, handle] of cHandle.entries()) {
+        if(name.includes(epId)) {
+          await cHandle.removeEntry(name);
+        }
+      }
+    }
+  } catch(e) { console.warn('FS Delete failed', e); }
+  
+  touchProject();
+  queueSaveFS();
+  renderWorkspace();
+}
+
 function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId=id; touchProject(); queueSaveFS(); showEditor(); renderEpisode(); }
 function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.status=$('#episodeStatus').value; ep.plan=$('#planEditor').value; ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; }
 function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
