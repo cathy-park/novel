@@ -268,15 +268,15 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   .plan-drawer { width: 100%; border-left: 0; }
 }
 
-.ql-toolbar.ql-snow { border: none; border-bottom: 1px solid var(--c-line); font-family: 'Pretendard', sans-serif; padding: 12px 24px; background: var(--c-surface-1); position: sticky; top: 0; z-index: 10; }
-.ql-container.ql-snow { border: none; font-family: 'Pretendard', sans-serif; font-size: 15px; background: transparent; height: auto; min-height: calc(100vh - 200px); }
-.ql-editor { line-height: 1.8; padding: 24px; color: var(--c-ink); min-height: 100%; overflow-y: visible; }
+.ql-toolbar.ql-snow { border: none; border-bottom: 1px solid var(--c-line); font-family: 'Pretendard', sans-serif; padding: 12px 24px; background: var(--c-surface-1); flex-shrink: 0; }
+.ql-container.ql-snow { border: none; font-family: 'Pretendard', sans-serif; font-size: 15px; background: transparent; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ql-editor { line-height: 1.8; padding: 24px 40px 120px 40px; color: var(--c-ink); flex: 1; overflow-y: auto; height: 100%; }
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
 .ql-editor p { margin-bottom: 0.8em; }
 .ql-editor strong { font-weight: 700; color: var(--c-primary); }
 .manuscript-ep .ql-editor { padding: 0; }
-.body-editor-wrap { display: flex; flex-direction: column; flex: 1; overflow: auto; }
-#bodyEditor { flex: 1; height: 100%; overflow-y: visible; }
+.body-editor-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; background: var(--c-bg); }
+#bodyEditor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .ql-dialogue { color: #5B4DB8 !important; font-weight: 600 !important; background: rgba(200,190,255,0.15); border-radius: 4px; }
 </style>
 </head>
@@ -1329,6 +1329,16 @@ window.addEventListener('keydown', e=>{
   if(e.key==='Escape') { if(isFocusMode) toggleFocusMode(); else $$('.modal-overlay').forEach(m=>m.classList.add('hidden')); }
 });
 window.addEventListener('beforeunload', ()=> { persistEditor(); queueSaveFS(); });
+
+
+$('#manualSaveBtn').onclick = () => {
+  if (quill) {
+    const ep = currentEpisode();
+    if(ep) ep.body = quill.root.innerHTML;
+  }
+  forceSaveAllFS();
+  showToast('수동으로 저장했습니다.');
+};
 
 // Init
 initApp();
