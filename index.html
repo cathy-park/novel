@@ -268,7 +268,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   .plan-drawer { width: 100%; border-left: 0; }
 }
 
-.ql-toolbar.ql-snow { border: none; border-bottom: 1px solid var(--c-line); font-family: 'Pretendard', sans-serif; padding: 12px 24px; background: var(--c-surface-1); flex-shrink: 0; }
+.ql-toolbar.ql-snow { border: none; border-bottom: 1px solid var(--c-line); font-family: 'Pretendard', sans-serif; padding: 12px 24px; background: var(--c-bg); flex-shrink: 0; z-index: 10; position: relative; }
 .ql-container.ql-snow { border: none; font-family: 'Pretendard', sans-serif; font-size: 15px; background: transparent; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .ql-editor { line-height: 1.8; padding: 24px 40px 120px 40px; color: var(--c-ink); flex: 1; overflow-y: auto; height: 100%; }
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
@@ -278,6 +278,21 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .body-editor-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; background: var(--c-bg); }
 #bodyEditor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .ql-dialogue { color: #5B4DB8 !important; font-weight: 600 !important; background: rgba(200,190,255,0.15); border-radius: 4px; }
+
+.ql-editor blockquote {
+  background: var(--c-surface-2);
+  border-left: none !important;
+  border-radius: 12px 12px 12px 0;
+  padding: 16px 20px;
+  margin: 20px 0;
+  color: var(--c-ink);
+  font-size: 14px;
+  line-height: 1.7;
+  font-style: normal;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.ql-snow .ql-picker.ql-header { width: 110px; }
+
 </style>
 </head>
 <body>
@@ -872,7 +887,7 @@ function renderEpisode() {
       modules: {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
-          ['bold', 'italic', 'underline', 'strike'],
+          ['bold', 'italic', 'underline', 'strike', 'blockquote'],
           ['clean']
         ]
       }
