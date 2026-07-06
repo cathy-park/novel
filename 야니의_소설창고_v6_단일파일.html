@@ -489,16 +489,17 @@ function renderLibrary() {
     const statusChip = `<span class="cover-status-chip">${p.status==='serializing'?'연재 중':'완결'}</span>`;
     return `<article class="project-book">
       <div class="book-stage">
-        <button class="book-cover" data-cover-project="${p.id}">${statusChip}${cover}<span class="cover-edit">표지 꾸미기</span></button>
+        <button class="book-cover" data-book-cover="${p.id}">${statusChip}${cover}<span class="cover-edit">표지 꾸미기</span></button>
       </div>
       <div class="project-book-info">
         <h2 title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h2>
         <div class="book-meta"><span><strong>${p.episodes.length}</strong> 회차</span><span><strong>${total.toLocaleString()}</strong>자</span></div>
         <div class="project-book-actions">
           <button class="primary" data-open-project="${p.id}">집필</button>
-          <div class="kebab-btn" data-kebab="${p.id}" style="cursor:pointer;display:grid;place-items:center;">···
+          <div style="position:relative;">
+            <button class="kebab-btn" data-kebab="${p.id}">···</button>
             <div class="kebab-menu" id="kebab-${p.id}">
-              <button data-cover-project="${p.id}">표지 꾸미기</button>
+              <button data-kebab-cover="${p.id}">표지 꾸미기</button>
               <button data-rename-project="${p.id}">제목 변경</button>
               <button class="danger-item" data-delete-project="${p.id}">삭제</button>
             </div>
@@ -507,12 +508,31 @@ function renderLibrary() {
       </div>
     </article>`;
   }).join('') : `<div class="empty-state"><strong>작품이 없어요.</strong></div>`;
-  $$('[data-open-project]').forEach(b=>b.onclick=()=>openProject(b.dataset.openProject));
-  $$('[data-kebab]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); const m=b.querySelector('.kebab-menu'); $$('.kebab-menu.show').forEach(x=>{ if(x!==m) x.classList.remove('show'); }); m.classList.toggle('show'); });
-  $$('[data-cover-project]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); $$('.kebab-menu').forEach(m=>m.classList.remove('show')); openCoverSettings(b.dataset.coverProject); });
-  $$('[data-rename-project]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); $$('.kebab-menu').forEach(m=>m.classList.remove('show')); const p=state.projects.find(x=>x.id===b.dataset.renameProject); if(!p) return; const nt=prompt('새 작품 제목을 입력하세요.', p.title); if(nt&&nt.trim()) { p.title=nt.trim(); touchProject(); saveState(); renderLibrary(); } });
-  $$('[data-delete-project]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); $$('.kebab-menu').forEach(m=>m.classList.remove('show')); if(confirm(`'${state.projects.find(x=>x.id===b.dataset.deleteProject)?.title||'이 작품'}'을 삭제할까요?\n삭제한 작품은 복구할 수 없습니다.`)) { state.projects=state.projects.filter(x=>x.id!==b.dataset.deleteProject); if(state.currentProjectId===b.dataset.deleteProject) state.currentProjectId=null; saveState(); renderLibrary(); }});
-  window.addEventListener('click', ()=>$$('.kebab-menu').forEach(m=>m.classList.remove('show')), {once:true});
+  $$('[data-open-project]').forEach(b => b.onclick = () => openProject(b.dataset.openProject));
+  $$('[data-book-cover]').forEach(b => b.onclick = (e) => { e.stopPropagation(); openCoverSettings(b.dataset.bookCover); });
+  $$('[data-kebab]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const menu = document.getElementById('kebab-' + b.dataset.kebab);
+    $$('.kebab-menu.show').forEach(m => { if(m !== menu) m.classList.remove('show'); });
+    menu.classList.toggle('show');
+  });
+  $$('[data-kebab-cover]').forEach(b => b.onclick = (e) => { e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show')); openCoverSettings(b.dataset.kebabCover); });
+  $$('[data-rename-project]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show'));
+    const proj = state.projects.find(x => x.id === b.dataset.renameProject); if(!proj) return;
+    const nt = prompt('새 작품 제목을 입력하세요.', proj.title);
+    if(nt && nt.trim()) { proj.title = nt.trim(); touchProject(); saveState(); renderLibrary(); }
+  });
+  $$('[data-delete-project]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show'));
+    const proj = state.projects.find(x => x.id === b.dataset.deleteProject);
+    if(confirm((proj ? proj.title : '이 작품') + '을(를) 삭제할까요?\n삭제한 작품은 복구할 수 없습니다.')) {
+      state.projects = state.projects.filter(x => x.id !== b.dataset.deleteProject);
+      if(state.currentProjectId === b.dataset.deleteProject) state.currentProjectId = null;
+      saveState(); renderLibrary();
+    }
+  });
+  setTimeout(() => window.addEventListener('click', () => $$('.kebab-menu').forEach(m => m.classList.remove('show')), {once: true}), 0);
 }
 function showLibrary() { persistEditor(); saveState(false); $('#workspaceView').classList.add('hidden'); $('#libraryView').classList.remove('hidden'); renderLibrary(); }
 function openProject(id) { state.currentProjectId=id; const p=currentProject(); if(!p.selectedEpisodeId&&p.episodes[0]) p.selectedEpisodeId=p.episodes[0].id; saveState(false); $('#libraryView').classList.add('hidden'); $('#workspaceView').classList.remove('hidden'); showEditor(); renderWorkspace(); }
