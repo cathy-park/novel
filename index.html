@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>야니의 소설창고 — 소설 집필 워크스페이스</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <meta name="description" content="야니의 소설창고 — 장편소설 집필 워크스페이스 (v6)" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2717%27 fill=%27%23C8BEFF%27/%3E%3Cpath d=%27M14 17c8-2 14 0 18 5v27c-4-5-10-7-18-5V17Zm36 0c-8-2-14 0-18 5v27c4-5 10-7 18-5V17Z%27 fill=%27none%27 stroke=%27%2317141F%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3Cpath d=%27m40 13 7 7-12 12-8 2 2-8 11-13Z%27 fill=%27%23fff%27 stroke=%27%2317141F%27 stroke-width=%273%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E" />
 <style>
@@ -427,15 +428,15 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 
 <div id="planImportModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">기획 가져오기</span><h2>마크다운이나 PDF에서 가져오기</h2></div><button class="icon-btn" data-close="planImportModal">×</button></div>
 <div style="display:grid;gap:16px;">
-  <div style="font-size:13px;color:var(--c-body);line-height:1.5;">PDF 파일이나 마크다운 텍스트를 불러오면,<br>제목(#)을 기준으로 자동으로 쪼개어 항목으로 추가합니다.</div>
+  <div style="font-size:13px;color:var(--c-body);line-height:1.5;">PDF/Word 파일이나 마크다운 텍스트를 불러오면,<br>제목(또는 번호 매기기)을 기준으로 자동으로 쪼개어 추가합니다.</div>
   <textarea id="planImportText" class="input" style="height:140px;resize:none;" placeholder="여기에 마크다운 텍스트를 붙여넣으세요..."></textarea>
   <div style="display:flex;align-items:center;gap:12px;">
-    <button id="uploadPlanPdfBtn" class="secondary" type="button">📄 PDF 파일 선택</button>
+    <button id="uploadPlanPdfBtn" class="secondary" type="button">📄 PDF / Word 파일 선택</button>
     <span id="planImportFileName" style="font-size:12px;color:var(--c-muted);">선택된 파일 없음</span>
   </div>
 </div>
 <div class="modal-actions"><button class="ghost" data-close="planImportModal">취소</button><button id="executePlanImportBtn" class="primary">항목으로 변환</button></div></div></div>
-<input id="planImportFileInput" type="file" accept="application/pdf,.md,.txt" hidden />
+<input id="planImportFileInput" type="file" accept="application/pdf,.md,.txt,.docx" hidden />
 <input id="coverInput" type="file" accept="image/*" hidden />
 <input id="importInput" type="file" accept="application/json" hidden />
 <div id="toast" class="toast" role="status"></div>
@@ -898,6 +899,7 @@ $('#uploadPlanPdfBtn').onclick = () => $('#planImportFileInput').click();
 $('#planImportFileInput').onchange = async () => {
   const file = $('#planImportFileInput').files?.[0]; if(!file) return;
   $('#planImportFileName').textContent = file.name;
+  
   if(file.type==='application/pdf') {
     $('#planImportText').value = 'PDF를 분석하는 중...';
     try {
@@ -909,12 +911,26 @@ $('#planImportFileInput').onchange = async () => {
       for(let i=1; i<=pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + '\n\n';
+        let lastY, text = '';
+        for (let item of textContent.items) {
+          if (lastY !== item.transform[5] && text !== '') { text += '\n'; }
+          text += item.str;
+          lastY = item.transform[5];
+        }
+        fullText += text + '\n\n';
       }
       $('#planImportText').value = fullText;
     } catch(e) {
       console.error(e); $('#planImportText').value = 'PDF 분석 실패: ' + e.message;
+    }
+  } else if(file.name.endsWith('.docx')) {
+    $('#planImportText').value = 'Word 문서를 분석하는 중...';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+      $('#planImportText').value = result.value;
+    } catch(e) {
+      console.error(e); $('#planImportText').value = 'Word 분석 실패: ' + e.message;
     }
   } else {
     const reader = new FileReader();
@@ -926,26 +942,40 @@ $('#executePlanImportBtn').onclick = () => {
   const text = $('#planImportText').value;
   if(!text.trim()) return showToast('가져올 텍스트가 없습니다.');
   
-  // 마크다운 헤더(#) 단위로 텍스트 분할
   const lines = text.split('\n');
   const sections = [];
   let currentTitle = '기본 정보';
   let currentBody = [];
   
+  const isHeader = (line) => {
+    const trimmed = line.trim();
+    if(trimmed.length === 0 || trimmed.length > 50) return false;
+    if(/^#+\s+(.*)/.test(trimmed)) return trimmed.replace(/^#+\s+/, '');
+    if(/^\[(.*)\]$/.test(trimmed)) return trimmed.replace(/^\[|\]$/g, '');
+    const numMatch = trimmed.match(/^(?:제\s*\d+\s*[장부]\s*)?(?:\d+[\.\)]|[IVX]+[\.\)])\s+(.+)$/);
+    if(numMatch) return numMatch[1];
+    const keywords = ['등장인물', '시놉시스', '줄거리', '세계관', '플롯', '로그라인', '주제', '기획의도', '배경', '캐릭터'];
+    if(keywords.some(k => trimmed === k || trimmed === k+':')) return trimmed.replace(/:$/, '');
+    return false;
+  };
+  
   for(const line of lines) {
-    const match = line.match(/^#+\s+(.*)/);
-    if(match) {
-      if(currentBody.length > 0 || currentTitle !== '기본 정보') {
-        sections.push(defaultPlanSection(currentTitle, currentBody.join('\n').trim()));
+    const headerTitle = isHeader(line);
+    if(headerTitle) {
+      const bodyText = currentBody.join('\n').trim();
+      if(bodyText.length > 0 || currentTitle !== '기본 정보') {
+        sections.push(defaultPlanSection(currentTitle, bodyText));
       }
-      currentTitle = match[1];
+      currentTitle = headerTitle;
       currentBody = [];
     } else {
       currentBody.push(line);
     }
   }
-  if(currentBody.length > 0) {
-    sections.push(defaultPlanSection(currentTitle, currentBody.join('\n').trim()));
+  
+  const lastBodyText = currentBody.join('\n').trim();
+  if(lastBodyText.length > 0 || currentTitle !== '기본 정보') {
+    sections.push(defaultPlanSection(currentTitle, lastBodyText));
   }
   
   const validSections = sections.filter(s => s.body.trim() !== '');
