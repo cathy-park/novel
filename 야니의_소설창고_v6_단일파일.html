@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>야니의 소설창고 — 소설 집필 워크스페이스</title>
+<meta name="description" content="야니의 소설창고 — 장편소설 집필 워크스페이스 (v6)" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2717%27 fill=%27%23C8BEFF%27/%3E%3Cpath d=%27M14 17c8-2 14 0 18 5v27c-4-5-10-7-18-5V17Zm36 0c-8-2-14 0-18 5v27c4-5 10-7 18-5V17Z%27 fill=%27none%27 stroke=%27%2317141F%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3Cpath d=%27m40 13 7 7-12 12-8 2 2-8 11-13Z%27 fill=%27%23fff%27 stroke=%27%2317141F%27 stroke-width=%273%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E" />
+<style>
+:root{
+  --c-bg: #F8F8FB;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #FCFCFE;
+  --c-surface-3: #F2F3F7;
+  --c-line: #E4E6ED;
+  --c-line-mid: #D4D7E0;
+  --c-ink: #17141F;
+  --c-body: #454650;
+  --c-sub: #686A76;
+  --c-muted: #858793;
+  --c-accent: #6B5CE7;
+  --c-accent-dk: #5949D1;
+  --c-accent-lt: #ECE8FF;
+  --c-accent-bg: #F5F3FF;
+  --c-success: #258265;
+  --c-success-bg: #EAF7F2;
+  --c-warning: #B46A20;
+  --c-warning-bg: #FFF5E8;
+  --c-danger: #C94F68;
+  --c-danger-bg: #FFF0F3;
+  --c-brand-grad: linear-gradient(135deg, #BFEAFF 0%, #C8BEFF 52%, #FFD7E8 100%);
+  --shadow-xs: 0 1px 2px rgba(23,20,31,.04);
+  --shadow-sm: 0 4px 12px rgba(23,20,31,.06);
+  --shadow-md: 0 12px 36px rgba(23,20,31,.09);
+  --shadow-lg: 0 24px 72px rgba(23,20,31,.16);
+  --shadow-book: -4px 10px 24px rgba(23,20,31,.13), inset 4px 0 rgba(255,255,255,.15);
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+  --font: Pretendard,"Apple SD Gothic Neo",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --sidebar: 240px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100vh; overflow: hidden; background: var(--c-bg); color: var(--c-ink); font-family: var(--font); }
+button, input, textarea, select { font-family: inherit; }
+button { cursor: pointer; }
+textarea { resize: none; }
+.hidden { display: none !important; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgba(107,92,231,.22); outline-offset: 2px; }
+::selection { background: #DDD6FF; color: var(--c-ink); }
+mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 2px; }
+
+/* Shared */
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { position: relative; width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: var(--c-brand-grad); color: var(--c-ink); box-shadow: var(--shadow-xs); overflow: hidden; }
+.brand-mark::after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(23,20,31,.08); border-radius: inherit; pointer-events: none; }
+.brand-mark svg { width: 27px; height: 27px; position: relative; z-index: 1; }
+.brand-name { font-size: 19px; font-weight: 800; letter-spacing: -.04em; }
+.kicker { display: block; color: var(--c-accent); font-size: 11px; font-weight: 800; letter-spacing: .05em; margin-bottom: 7px; }
+.primary, .secondary, .ghost, .danger { min-height: 38px; border-radius: var(--r-md); padding: 0 14px; border: 1px solid transparent; font-weight: 700; font-size: 12px; transition: .16s; }
+.primary { background: var(--c-ink); color: #fff; box-shadow: var(--shadow-xs); }
+.primary:hover { background: #282431; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.secondary { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-line); }
+.secondary:hover { background: var(--c-surface-3); border-color: var(--c-line-mid); }
+.ghost { background: transparent; color: var(--c-sub); border-color: transparent; }
+.ghost:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.ghost.border { border-color: var(--c-line); }
+.danger { background: var(--c-surface); color: var(--c-danger); border-color: #F3CCD5; }
+.danger:hover { background: var(--c-danger-bg); border-color: #EFB6C3; }
+.icon-btn { width: 32px; height: 32px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--c-sub); font-size: 19px; display: grid; place-items: center; transition: .16s; }
+.icon-btn:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; border: 1px solid transparent; }
+.chip.serializing { background: var(--c-accent-bg); color: var(--c-accent-dk); border-color: #C8BEFF; }
+.chip.completed { background: var(--c-success-bg); color: var(--c-success); border-color: #CDEADF; }
+.toast { position: fixed; right: 24px; bottom: 24px; z-index: 100; transform: translateY(18px); opacity: 0; pointer-events: none; background: var(--c-ink); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: var(--shadow-md); font-size: 12px; font-weight: 700; transition: .2s; }
+.toast.show { opacity: 1; transform: none; }
+
+/* Library */
+.library-shell { height: 100vh; overflow-y: auto; background: linear-gradient(180deg,#fff 0,#fff 78px,var(--c-bg) 78px); }
+.library-top { height: 78px; border-bottom: 1px solid var(--c-line); background: rgba(255,255,255,.9); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: space-between; padding: 0 max(28px,calc((100vw - 1180px)/2)); position: sticky; top: 0; z-index: 8; }
+.library-main { max-width: 1180px; margin: 0 auto; padding: 62px 28px 90px; }
+.library-filters { display: flex; gap: 8px; margin-bottom: 30px; }
+.filter-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--c-line); background: #fff; color: var(--c-sub); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; box-shadow: var(--shadow-xs); transition: .16s; }
+.filter-btn:hover { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent-dk); }
+.filter-btn span { display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 6px; border-radius: 999px; background: var(--c-surface-3); font-size: 10px; }
+.filter-btn.active { border-color: var(--c-ink); background: var(--c-ink); color: #fff; }
+.filter-btn.active span { background: rgba(255,255,255,.14); color: #fff; }
+.project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 36px 28px; align-items: start; }
+.project-book { min-width: 0; position: relative; }
+.book-stage { position: relative; padding: 0 8px 14px; }
+.book-cover { position: relative; z-index: 1; width: 100%; aspect-ratio: 2/3; border: 1px solid rgba(23,20,31,.08); border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--c-brand-grad); box-shadow: var(--shadow-book); color: #fff; text-align: left; padding: 0; transition: .2s; cursor: pointer; display: block; }
+.book-cover:hover { transform: translateY(-5px) rotate(-.35deg); box-shadow: -6px 18px 40px rgba(23,20,31,.18), inset 4px 0 rgba(255,255,255,.15); }
+.book-cover::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 1px; background: currentColor; opacity: .12; z-index: 1; pointer-events: none; }
+.book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.book-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 22px 18px; background: var(--cover-color, var(--c-accent)); color: var(--cover-text, #fff); }
+.book-placeholder strong { position: relative; z-index: 1; font-size: 21px; line-height: 1.35; letter-spacing: -.045em; word-break: keep-all; }
+.cover-status-chip { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; background: rgba(23,20,31,0.6); backdrop-filter: blur(4px); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+.cover-edit { position: absolute; z-index: 2; inset: auto 12px 12px 12px; min-height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(23,20,31,.78); backdrop-filter: blur(6px); color: #fff; font-size: 10px; font-weight: 800; opacity: 0; transition: .18s; }
+.book-cover:hover .cover-edit { opacity: 1; }
+.project-book-info { padding: 10px 8px 0; }
+.project-book h2 { font-size: 15px; font-weight: 700; letter-spacing: -.035em; margin: 0 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--c-ink); }
+.book-meta { display: flex; gap: 9px; align-items: center; color: var(--c-muted); font-size: 10px; }
+.project-book-actions { display: flex; gap: 6px; margin-top: 11px; align-items: center; }
+.project-book-actions .primary { flex: 1; min-height: 32px; font-size: 11px; }
+.kebab-btn { width: 32px; height: 32px; border: 0; background: transparent; border-radius: 6px; color: var(--c-sub); display: grid; place-items: center; }
+.kebab-btn:hover { background: var(--c-surface-3); }
+.empty-state { grid-column: 1/-1; padding: 72px 24px; border: 1px dashed var(--c-line-mid); border-radius: var(--r-lg); text-align: center; background: rgba(255,255,255,.6); }
+.empty-state strong { display: block; font-size: 17px; margin-bottom: 8px; }
+.empty-state p { color: var(--c-sub); font-size: 13px; margin: 0; }
+
+/* Workspace Shell & Editor */
+.workspace-shell { display: grid; grid-template-columns: var(--sidebar) 1fr; height: 100vh; overflow: hidden; }
+.workspace-shell.focus-mode { grid-template-columns: 0 1fr; }
+.sidebar { background: var(--c-surface-2); border-right: 1px solid var(--c-line); display: flex; flex-direction: column; padding: 20px 17px; gap: 10px; overflow-y: auto; overflow-x: hidden; }
+.workspace-shell.focus-mode .sidebar { display: none; }
+.sidebar-brand { display: flex; align-items: center; justify-content: space-between; padding: 0 3px 10px; }
+.library-back { border: 0; background: transparent; color: var(--c-sub); font-size: 12px; font-weight: 700; padding: 8px; border-radius: 8px; }
+.library-back:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.project-summary { padding: 15px; border: 1px solid var(--c-line); background: #fff; border-radius: var(--r-md); box-shadow: var(--shadow-xs); }
+.project-summary label { display: block; color: var(--c-muted); font-size: 10px; margin-bottom: 7px; }
+.project-title-input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 15px; font-weight: 800; color: var(--c-ink); letter-spacing: -.04em; padding: 0; }
+.project-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.project-stats { color: var(--c-muted); font-size: 10px; }
+.project-status { border: 1px solid var(--c-line); border-radius: 8px; background: var(--c-surface-3); color: var(--c-sub); padding: 6px 27px 6px 8px; font-size: 10px; font-weight: 700; outline: 0; }
+.nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 11px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--c-sub); text-align: left; font-size: 12px; font-weight: 700; }
+.nav-item:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.section-title { display: flex; align-items: center; justify-content: space-between; padding: 11px 4px 4px; color: var(--c-sub); font-size: 11px; font-weight: 800; }
+.episode-list { flex: 1; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 2px; }
+.episode-row { display: grid; grid-template-columns: 25px minmax(0,1fr); gap: 7px; align-items: center; padding: 9px 7px; border: 1px solid transparent; border-radius: 9px; color: var(--c-sub); user-select: none; }
+.episode-row:hover { background: var(--c-surface-3); }
+.episode-row.active { background: var(--c-accent-bg); border-color: var(--c-accent-lt); color: var(--c-ink); }
+.episode-row.dragging { opacity: .4; }
+.drag { color: var(--c-muted); cursor: grab; text-align: center; }
+.episode-row[draggable="false"] .drag { cursor: default; opacity: 0.3; }
+.episode-main { min-width: 0; cursor: pointer; }
+.episode-main strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 700; }
+.episode-main span { display: block; margin-top: 3px; color: var(--c-muted); font-size: 9px; }
+.sidebar-foot { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--c-line); flex: 0 0 auto; }
+.sidebar-foot button { width: 100%; font-size: 11px; min-height: 32px; }
+
+.workspace { display: flex; flex-direction: column; height: 100vh; min-height: 0; overflow: hidden; background: var(--c-surface); position: relative; }
+.topbar { flex: 0 0 48px; border-bottom: 1px solid var(--c-line); background: var(--c-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+.workspace-shell.focus-mode .topbar { display: none; }
+.breadcrumb { display: flex; gap: 8px; align-items: center; min-width: 0; color: var(--c-sub); font-size: 12px; }
+.breadcrumb span, .breadcrumb strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slash { color: var(--c-line-mid); }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.save-status { color: var(--c-muted); font-size: 11px; margin-right: 8px; }
+
+#editorView { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.episode-header { flex: 0 0 auto; display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 24px 36px 16px; border-bottom: 1px solid var(--c-line); background: #fff; }
+.workspace-shell.focus-mode .episode-header { padding: 40px 0 16px; max-width: 680px; width: 100%; margin: 0 auto; border-bottom: none; }
+.workspace-shell.focus-mode .episode-meta-row, .workspace-shell.focus-mode .view-tabs { display: none; }
+.episode-title-wrap { flex: 1; min-width: 0; }
+.episode-title { width: 100%; border: 0; outline: 0; background: transparent; color: var(--c-ink); font-size: 32px; font-weight: 800; letter-spacing: -.055em; padding: 0 0 5px; }
+.episode-meta-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.episode-sub { display: flex; gap: 7px; }
+.episode-sub select { border: 1px solid var(--c-line); border-radius: 6px; background: var(--c-surface-3); color: var(--c-sub); padding: 5px 24px 5px 8px; font-size: 11px; font-weight: 700; outline: 0; }
+.view-tabs { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--c-line); border-radius: 10px; background: var(--c-surface-3); }
+.view-tab { border: 0; border-radius: 7px; background: transparent; color: var(--c-sub); padding: 7px 12px; font-size: 11px; font-weight: 800; transition: .15s; }
+.view-tab.active { background: #fff; color: var(--c-ink); box-shadow: var(--shadow-xs); }
+
+.editor-columns { flex: 1; min-height: 0; display: grid; overflow: hidden; }
+.mode-plan { grid-template-columns: 1fr; } .mode-plan .body-pane { display: none; }
+.mode-body { grid-template-columns: 1fr; } .mode-body .plan-pane { display: none; }
+.mode-split { grid-template-columns: minmax(320px, 0.8fr) minmax(480px, 1.2fr); }
+.mode-split .plan-pane { border-right: 1px solid var(--c-line); background: var(--c-bg); }
+
+.pane { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 24px 36px 0; }
+.workspace-shell.focus-mode .pane { padding: 0; }
+.plan-editor, .body-editor { flex: 1; min-height: 0; width: 100%; max-width: 680px; margin: 0 auto; border: 0; outline: 0; background: transparent; resize: none; overflow-y: auto; padding-bottom: 60px; }
+.plan-editor { font-size: 15px; line-height: 1.9; color: var(--c-ink); }
+.body-editor { font-size: 17px; line-height: 2.1; color: var(--c-body); letter-spacing: -0.01em; }
+.plan-editor::placeholder, .body-editor::placeholder { color: var(--c-line-mid); }
+.editor-bottom-bar { flex: 0 0 auto; width: 100%; max-width: 680px; margin: 0 auto; padding: 12px 0 24px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to top, var(--c-surface) 70%, transparent); }
+.mode-split .plan-pane .plan-editor { max-width: none; }
+.workspace-shell.focus-mode .editor-bottom-bar { justify-content: flex-end; }
+.workspace-shell.focus-mode .dropdown-container { display: none; }
+
+/* Plan Drawer */
+.plan-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 440px; background: var(--c-surface); border-left: 1px solid var(--c-line); box-shadow: var(--shadow-lg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 40; display: flex; flex-direction: column; }
+.plan-drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--c-line); }
+.drawer-head h2 { font-size: 17px; margin: 0; font-weight: 800; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.plan-accordion { border: 1px solid var(--c-line); border-radius: var(--r-lg); background: #fff; box-shadow: var(--shadow-xs); }
+.plan-accordion-head { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; }
+.accordion-toggle { width: 28px; height: 28px; border: 1px solid var(--c-line); border-radius: 6px; background: var(--c-surface-3); color: var(--c-sub); display: grid; place-items: center; font-size: 16px; transition: .18s; }
+.plan-accordion.open .accordion-toggle { transform: rotate(90deg); }
+.plan-section-title { width: 100%; border: 0; outline: 0; background: transparent; font-size: 14px; font-weight: 800; padding: 4px; color: var(--c-ink); }
+.plan-accordion-body { display: none; padding: 0 12px 12px; }
+.plan-accordion.open .plan-accordion-body { display: block; }
+.plan-section-body { width: 100%; border: 1px solid var(--c-line); border-radius: 8px; background: var(--c-bg); color: var(--c-body); padding: 12px; font-size: 14px; line-height: 1.8; outline: 0; resize: none; overflow: hidden; }
+.plan-section-body:focus { background: #fff; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(107,92,231,.12); }
+.plan-empty { text-align: center; padding: 40px 20px; border: 1px dashed var(--c-line-mid); border-radius: var(--r-md); color: var(--c-sub); font-size: 13px; }
+
+/* Dropdown */
+.dropdown-container { position: relative; display: inline-block; }
+.copy-group { display: flex; align-items: center; }
+.copy-group .primary { border-radius: var(--r-md) 0 0 var(--r-md); padding: 0 12px; height: 32px; font-size: 11px; }
+.copy-group .dropdown-toggle { border-radius: 0 var(--r-md) var(--r-md) 0; padding: 0 8px; height: 32px; border-left: 1px solid rgba(255,255,255,0.2); }
+.dropdown-menu { position: absolute; bottom: calc(100% + 4px); left: 0; width: 160px; background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--shadow-sm); z-index: 50; display: none; flex-direction: column; padding: 4px; }
+.dropdown-menu.show { display: flex; }
+.dropdown-item { text-align: left; background: transparent; border: 0; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--c-ink); border-radius: 4px; }
+.dropdown-item:hover { background: var(--c-surface-3); }
+
+/* Modals & Others */
+.modal-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: start center; padding-top: 8vh; background: rgba(23,20,31,.24); backdrop-filter: blur(8px); }
+.modal { width: min(640px, calc(100vw - 32px)); max-height: 82vh; overflow-y: auto; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); padding: 24px; }
+.modal-head { display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; }
+.modal-head h2 { font-size: 22px; margin: 0; letter-spacing: -.04em; }
+.modal-field { display: grid; gap: 8px; margin-top: 16px; }
+.modal-field span { font-size: 11px; font-weight: 800; color: var(--c-sub); }
+.input { height: 44px; padding: 0 14px; border: 1px solid var(--c-line); border-radius: 10px; background: var(--c-surface-3); color: var(--c-ink); font-size: 14px; outline: 0; }
+.input:focus { background: #fff; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(107,92,231,.12); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.search-results { display: grid; gap: 8px; margin-top: 12px; }
+.search-result { border: 1px solid var(--c-line); border-radius: 8px; background: #fff; padding: 12px; text-align: left; }
+.search-result:hover { background: var(--c-accent-bg); border-color: #C8BEFF; }
+.search-result strong { display: block; font-size: 12px; margin-bottom: 4px; }
+.search-result span { display: block; color: var(--c-sub); font-size: 11px; line-height: 1.6; }
+.version-list { display: grid; gap: 8px; }
+.version-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--c-line); border-radius: 8px; }
+.version-item strong { display: block; font-size: 12px; }
+.version-item span { display: block; color: var(--c-muted); font-size: 11px; margin-top: 4px; }
+.cover-modal-layout { display: grid; grid-template-columns: 180px 1fr; gap: 24px; align-items: start; }
+.cover-preview { width: 180px; aspect-ratio: 2/3; border: 1px solid var(--c-line); border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--c-surface-3); box-shadow: var(--shadow-book); }
+.cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cover-settings { display: grid; gap: 20px; }
+.cover-colors { display: flex; flex-wrap: wrap; gap: 8px; }
+.cover-color-swatch { width: 32px; height: 32px; border: 2px solid #fff; border-radius: 8px; box-shadow: 0 0 0 1px var(--c-line); padding: 0; }
+.cover-color-swatch.active { box-shadow: 0 0 0 2px var(--c-accent); }
+.cover-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cover-custom-row input[type=color] { width: 40px; height: 36px; border: 1px solid var(--c-line); border-radius: 8px; background: #fff; padding: 2px; }
+.cover-custom-row span { color: var(--c-sub); font-size: 11px; }
+.cover-image-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.content-view { height: 100vh; overflow-y: auto; padding: 40px 24px 80px; background: var(--c-bg); display: none; }
+.content-view.active { display: block; }
+.manuscript { max-width: 880px; margin: 0 auto; background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); padding: 70px 80px; }
+.manuscript-ep { margin-bottom: 60px; padding-bottom: 60px; border-bottom: 1px solid var(--c-line); }
+.manuscript-ep:last-child { margin: 0; padding: 0; border: 0; }
+.manuscript-ep h2 { font-size: 26px; margin: 0 0 30px; letter-spacing: -.04em; }
+.manuscript-ep p { white-space: pre-wrap; font-size: 17px; line-height: 2.1; color: var(--c-body); margin: 0; }
+
+@media(max-width:760px) {
+  .workspace-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; } /* Mobile might need a drawer approach later, not in scope */
+  .mode-split { grid-template-columns: 1fr; }
+  .mode-split .plan-pane { display: none; } /* Only tabs on mobile */
+  .plan-drawer { width: 100%; border-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="libraryView" class="library-shell">
+  <header class="library-top">
+    <div class="brand"><div class="brand-mark"><svg viewBox="0 0 32 32"><path d="M4.5 7.5c4.6-1.2 8.4 0 11.5 3.2v14.8c-3.1-3.2-6.9-4.4-11.5-3.2V7.5Zm23 0c-4.6-1.2-8.4 0-11.5 3.2v14.8c3.1-3.2 6.9-4.4 11.5-3.2V7.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="m21.5 4.5 4.2 4.2-7.2 7.2-4.8 1.2 1.2-4.8 6.6-7.8Z" fill="#fff" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></div><div class="brand-name">야니의 소설창고</div></div>
+    <button id="newProjectBtn" class="primary" type="button">＋ 새 작품</button>
+  </header>
+  <main class="library-main">
+    <div class="library-filters"><button class="filter-btn active" data-filter="serializing" type="button">연재 중 <span id="serializingCount">0</span></button><button class="filter-btn" data-filter="completed" type="button">완결 <span id="completedCount">0</span></button></div>
+    <div id="projectGrid" class="project-grid"></div>
+  </main>
+</div>
+
+<div id="workspaceView" class="workspace-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand"><div class="brand-name" style="font-size:16px;">야니의 소설창고</div></div><button id="backLibraryBtn" class="library-back" type="button">← 서재</button></div>
+    <div class="project-summary">
+      <label>작품명</label><input id="projectTitle" class="project-title-input" />
+      <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
+    </div>
+    <div class="section-title"><span>원고</span><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div>
+    <div id="episodeList" class="episode-list"></div>
+    <div class="sidebar-foot">
+      <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
+      <button id="openSearchBtn" class="ghost border" type="button">⌘ K · 전체 검색</button>
+      <div style="display:flex;gap:6px;">
+        <button id="exportBackupBtn" class="ghost border" style="flex:1;">백업 내보내기</button>
+        <button id="importBackupBtn" class="ghost border" style="flex:1;">불러오기</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb"><span id="projectBreadcrumb"></span><span class="slash">/</span><strong id="episodeBreadcrumb"></strong></div>
+      <div class="top-actions">
+        <span id="saveStatus" class="save-status">저장됨</span>
+        <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
+        <button id="versionBtn" class="ghost" type="button">버전 기록</button>
+        <button id="toggleFocusBtn" class="ghost" type="button" title="집중 모드 (⌘.)">집중 ⌘.</button>
+      </div>
+    </header>
+
+    <section id="editorView">
+      <div class="episode-header">
+        <div class="episode-title-wrap">
+          <input id="episodeTitle" class="episode-title" aria-label="회차 제목" />
+          <div class="episode-meta-row">
+            <div class="episode-sub">
+              <select id="episodeType"><option value="prologue">프롤로그</option><option value="chapter">본편</option><option value="epilogue">에필로그</option></select>
+              <select id="episodeStatus"><option value="idea">아이디어</option><option value="planned">기획 완료</option><option value="writing">집필 중</option><option value="draft">초고 완료</option><option value="revising">수정 중</option><option value="done">완료</option></select>
+            </div>
+            <div class="view-tabs"><button class="view-tab" data-mode="plan" type="button">기획</button><button class="view-tab" data-mode="body" type="button">본문</button><button class="view-tab active" data-mode="split" type="button">분할</button></div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="editorColumns" class="editor-columns mode-split">
+        <section class="pane plan-pane">
+          <textarea id="planEditor" class="plan-editor" spellcheck="false" placeholder="이번 화 기획이나 메모를 자유롭게 적으세요."></textarea>
+        </section>
+        <section class="pane body-pane">
+          <textarea id="bodyEditor" class="body-editor" spellcheck="false" placeholder="첫 문장을 시작하세요."></textarea>
+          <div class="editor-bottom-bar">
+            <div class="dropdown-container">
+              <div class="copy-group">
+                <button id="quickCopyBodyBtn" class="primary" type="button">📋 본문 복사</button>
+                <button id="copyDropdownToggle" class="primary dropdown-toggle" type="button">▾</button>
+              </div>
+              <div id="copyDropdownMenu" class="dropdown-menu">
+                <button class="dropdown-item" data-copy="body">본문만</button>
+                <button class="dropdown-item" data-copy="title-body">제목 + 본문</button>
+                <button class="dropdown-item" data-copy="plan">기획만</button>
+                <button class="dropdown-item" data-copy="plan-body">기획 + 본문</button>
+              </div>
+            </div>
+            <div class="project-stats" id="bodyStats">0자 · 0매</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- 전체 원고 보기 (동일 메인 내에서 전환) -->
+    <section id="manuscriptView" class="content-view">
+      <div style="max-width:880px; margin:0 auto 20px; display:flex; justify-content:space-between; align-items:center;">
+        <div><h1 id="manuscriptTitle" style="margin:0;font-size:24px;"></h1><p id="manuscriptMeta" style="margin:4px 0 0;color:var(--c-sub);font-size:12px;"></p></div>
+        <div style="display:flex; gap:8px;">
+          <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
+          <button id="copyManuscriptFull" class="primary" type="button">전체 본문 복사</button>
+        </div>
+      </div>
+      <div id="manuscriptContent" class="manuscript"></div>
+    </section>
+  </main>
+
+  <aside id="planDrawer" class="plan-drawer">
+    <div class="drawer-head">
+      <h2>작품 기획</h2>
+      <div>
+        <button id="copyAllPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px;">전체 복사</button>
+        <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px;">＋ 항목</button>
+        <button id="closeDrawerBtn" class="icon-btn" type="button" style="display:inline-flex;margin-left:8px;">×</button>
+      </div>
+    </div>
+    <div id="projectPlanList" class="drawer-body"></div>
+  </aside>
+</div>
+
+<div id="newProjectModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">새 작품</span><h2>새 이야기를 시작해요.</h2></div><button class="icon-btn" data-close="newProjectModal">×</button></div>
+<label class="modal-field"><span>작품 제목</span><input id="newProjectTitle" class="input" placeholder="제목 없는 작품" /></label>
+<label class="modal-field"><span>작품 상태</span><select id="newProjectStatus" class="input"><option value="serializing">연재 중</option><option value="completed">완결</option></select></label>
+<label class="modal-field"><span>표지 컬러</span><div id="newProjectColors" class="cover-colors" style="margin-top:4px;"></div></label>
+<div class="modal-actions"><button class="ghost" data-close="newProjectModal">취소</button><button id="createProjectBtn" class="primary">작품 만들기</button></div></div></div>
+
+<div id="searchModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">전체 검색</span><h2>현재 작품에서 찾기</h2></div><button class="icon-btn" data-close="searchModal">×</button></div>
+<input id="searchInput" class="input" style="width:100%" placeholder="인물, 단서, 문장을 검색하세요" autocomplete="off"/>
+<div id="searchSummary" style="color:var(--c-muted);font-size:11px;margin:12px 2px;">검색어를 입력하세요.</div>
+<div id="searchResults" class="search-results"></div></div></div>
+
+<div id="versionModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">버전 기록</span><h2>이전 본문으로 돌아가기</h2></div><button class="icon-btn" data-close="versionModal">×</button></div>
+<div id="versionList" class="version-list"></div></div></div>
+
+<div id="coverModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">책 표지</span><h2>표지를 꾸며볼까요?</h2></div><button class="icon-btn" data-close="coverModal">×</button></div>
+<div class="cover-modal-layout"><div id="coverPreview" class="cover-preview"></div>
+<div class="cover-settings"><div style="display:grid;gap:8px;">
+<div style="font-size:12px;font-weight:700;">단색 표지</div><div id="coverColors" class="cover-colors"></div>
+<div class="cover-custom-row"><input id="coverCustomColor" type="color" value="#6B5CE7"/><span id="coverColorValue">#6B5CE7</span></div>
+</div><div style="display:grid;gap:8px;"><div style="font-size:12px;font-weight:700;">표지 이미지</div>
+<div class="cover-image-actions"><button id="uploadCoverBtn" class="primary" type="button">업로드</button><button id="removeCoverImageBtn" class="ghost border" type="button">지우기</button></div>
+</div></div></div>
+<div class="modal-actions"><button class="secondary" data-close="coverModal" type="button">완료</button></div></div></div>
+
+<div id="importModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">백업 불러오기</span><h2>데이터를 가져올 방식을 선택하세요.</h2></div><button class="icon-btn" data-close="importModal">×</button></div>
+<p style="font-size:13px;color:var(--c-body);line-height:1.6;">가져올 파일에 총 <strong id="importProjectCount">0</strong>개의 작품이 있습니다.<br>기존 데이터를 덮어쓸지, 추가할지 선택해주세요.</p>
+<div class="modal-actions"><button id="importReplaceBtn" class="danger">전체 교체 (기존 삭제)</button><button id="importAddBtn" class="primary">기존 데이터에 추가</button></div></div></div>
+
+<input id="coverInput" type="file" accept="image/*" hidden />
+<input id="importInput" type="file" accept="application/json" hidden />
+<div id="toast" class="toast" role="status"></div>
+
+<script>
+const STORAGE_KEY = 'munjang-novel-writer-v3';
+const VERSION_LIMIT = 12, VERSION_INTERVAL = 5*60*1000;
+const DEFAULT_COVER_COLOR = '#6B5CE7';
+const COVER_COLORS = ['#17141F','#6B5CE7','#6D9DF6','#5CB6C9','#46A57F','#F39AB9','#F5B86C','#B4A5FF','#8C91A5','#E4E6ED'];
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+let saveTimer, toastTimer, draggedId = null, libraryFilter = 'serializing', coverTargetProjectId = null;
+let importTempData = null;
+
+// UI Ephemeral State
+let isFocusMode = false;
+let isPlanDrawerOpen = false;
+let episodeScrollState = new Map();
+
+function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
+function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: type==='prologue'?'프롤로그':type==='epilogue'?'에필로그':`${index||1}화｜제목 없는 회차`, status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now() }; }
+function defaultPlanSection(title='새 기획 항목', body='') { return { id: uid('plan'), title, body, open: true }; }
+function normalizeProject(p) { p.cover=p.cover||''; p.coverColor=p.coverColor||DEFAULT_COVER_COLOR; p.planSections=p.planSections||[]; p.planSections=p.planSections.map(x=>({id:x.id||uid('plan'),title:x.title||'제목 없는 항목',body:x.body||'',open:x.open!==false})); return p; }
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed.projects)) { parsed.projects.forEach(normalizeProject); return parsed; } }
+  } catch(e) { console.warn('Load failed', e); }
+  // Fresh state
+  const p = {id:uid('project'),title:'신이 있는 교실',status:'serializing',cover:'',coverColor:DEFAULT_COVER_COLOR,updatedAt:Date.now(),selectedEpisodeId:null,viewMode:'split',planSections:[defaultPlanSection('작품 핵심','권력을 가진 교사가...')],episodes:[]};
+  const ep = defaultEpisode('prologue'); p.episodes.push(ep); p.selectedEpisodeId = ep.id;
+  return { schemaVersion: 6, currentProjectId: p.id, projects: [p] };
+}
+let state = loadState();
+
+function saveState(show=true) {
+  try {
+    const str = JSON.stringify(state);
+    localStorage.setItem(STORAGE_KEY, str);
+    if(show&&$('#saveStatus')) $('#saveStatus').textContent = `저장됨 · ${new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}`;
+  } catch(e) {
+    if(show&&$('#saveStatus')) $('#saveStatus').textContent = '저장 실패 (용량 부족)';
+    showToast('저장 용량이 부족합니다. 백업 후 브라우저 데이터를 정리하세요.');
+  }
+}
+function queueSave() { if($('#saveStatus')) $('#saveStatus').textContent='저장 중…'; clearTimeout(saveTimer); saveTimer = setTimeout(()=>saveState(), 450); }
+function currentProject() { return state.projects.find(p=>p.id===state.currentProjectId) || state.projects[0]; }
+function currentEpisode() { const p=currentProject(); return p?.episodes.find(e=>e.id===p.selectedEpisodeId) || p?.episodes[0]; }
+function touchProject() { const p=currentProject(); if(p) p.updatedAt = Date.now(); }
+function cleanText(t='') { return String(t).replace(/\r\n/g,'\n').replace(/[\t\u00A0]+/g,' ').replace(/[ ]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim(); }
+function stats(t='') { const text=String(t), withSpaces=Array.from(text).length; return { withSpaces, manuscript: Math.ceil(withSpaces/200) }; }
+function escapeHtml(v='') { return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c])); }
+function showToast(msg) { clearTimeout(toastTimer); $('#toast').textContent=msg; $('#toast').classList.add('show'); toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2100); }
+function openModal(id) { $('#'+id).classList.remove('hidden'); } function closeModal(id) { $('#'+id).classList.add('hidden'); }
+
+// Scroll State Management
+function saveEditorScroll() {
+  const ep = currentEpisode(); if(!ep) return;
+  const body = $('#bodyEditor');
+  episodeScrollState.set(ep.id, { plan: $('#planEditor').scrollTop, body: body.scrollTop, start: body.selectionStart, end: body.selectionEnd });
+}
+function restoreEditorScroll() {
+  const ep = currentEpisode(); if(!ep) return;
+  const st = episodeScrollState.get(ep.id) || { plan: 0, body: 0, start: 0, end: 0 };
+  requestAnimationFrame(() => {
+    $('#planEditor').scrollTop = st.plan;
+    const body = $('#bodyEditor');
+    body.scrollTop = st.body;
+    body.setSelectionRange(st.start, st.end);
+  });
+}
+
+function autosizePlanSection(el, min=230) { el.style.height='auto'; el.style.height=`${Math.max(min, el.scrollHeight+24)}px`; }
+
+// Cover
+function coverTextColor(hex) { const v=String(hex||'').trim().slice(1); const r=parseInt(v.slice(0,2),16),g=parseInt(v.slice(2,4),16),b=parseInt(v.slice(4,6),16); return (0.2126*r+0.7152*g+0.0722*b)/255 > 0.67 ? '#17141F' : '#FFFFFF'; }
+function coverPlaceholderMarkup(p) {
+  const c = p.coverColor || DEFAULT_COVER_COLOR, t = coverTextColor(c);
+  return `<span class="book-placeholder" style="--cover-color:${c};--cover-text:${t}"><strong>${escapeHtml(p.title)}</strong></span>`;
+}
+
+// Library
+function renderLibrary() {
+  $('#serializingCount').textContent = state.projects.filter(p=>p.status==='serializing').length;
+  $('#completedCount').textContent = state.projects.filter(p=>p.status==='completed').length;
+  $$('.filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===libraryFilter));
+  const projects = state.projects.filter(p=>p.status===libraryFilter).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  $('#projectGrid').innerHTML = projects.length ? projects.map(p=>{
+    const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0);
+    const cover = p.cover ? `<img src="${p.cover}" alt="표지"/>` : coverPlaceholderMarkup(p);
+    const statusChip = `<span class="cover-status-chip">${p.status==='serializing'?'연재 중':'완결'}</span>`;
+    return `<article class="project-book">
+      <div class="book-stage">
+        <button class="book-cover" data-cover-project="${p.id}">${statusChip}${cover}<span class="cover-edit">표지 꾸미기</span></button>
+      </div>
+      <div class="project-book-info">
+        <h2 title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h2>
+        <div class="book-meta"><span><strong>${p.episodes.length}</strong> 회차</span><span><strong>${total.toLocaleString()}</strong>자</span></div>
+        <div class="project-book-actions"><button class="primary" data-open-project="${p.id}">집필</button><button class="kebab-btn" data-delete-project="${p.id}" title="삭제">···</button></div>
+      </div>
+    </article>`;
+  }).join('') : `<div class="empty-state"><strong>작품이 없어요.</strong></div>`;
+  $$('[data-open-project]').forEach(b=>b.onclick=()=>openProject(b.dataset.openProject));
+  $$('[data-delete-project]').forEach(b=>b.onclick=()=>{if(confirm('작품을 삭제할까요?')) { state.projects=state.projects.filter(x=>x.id!==b.dataset.deleteProject); if(state.currentProjectId===b.dataset.deleteProject) state.currentProjectId=null; saveState(); renderLibrary(); }});
+  $$('[data-cover-project]').forEach(b=>b.onclick=()=>openCoverSettings(b.dataset.coverProject));
+}
+function showLibrary() { persistEditor(); saveState(false); $('#workspaceView').classList.add('hidden'); $('#libraryView').classList.remove('hidden'); renderLibrary(); }
+function openProject(id) { state.currentProjectId=id; const p=currentProject(); if(!p.selectedEpisodeId&&p.episodes[0]) p.selectedEpisodeId=p.episodes[0].id; saveState(false); $('#libraryView').classList.add('hidden'); $('#workspaceView').classList.remove('hidden'); showEditor(); renderWorkspace(); }
+
+// Order Logic
+function orderedEpisodes(p=currentProject()) {
+  const pr = p.episodes.filter(e=>e.type==='prologue');
+  const ch = p.episodes.filter(e=>e.type==='chapter');
+  const ep = p.episodes.filter(e=>e.type==='epilogue');
+  return [...pr, ...ch, ...ep];
+}
+function reorderEpisode(targetId) {
+  if(!draggedId || draggedId===targetId) return;
+  const p = currentProject();
+  const dragged = p.episodes.find(e=>e.id===draggedId);
+  const target = p.episodes.find(e=>e.id===targetId);
+  if(!dragged || !target || dragged.type!=='chapter' || target.type!=='chapter') { draggedId=null; return; }
+  
+  const ch = p.episodes.filter(e=>e.type==='chapter');
+  const fIdx = ch.findIndex(e=>e.id===draggedId);
+  const tIdx = ch.findIndex(e=>e.id===targetId);
+  const [m] = ch.splice(fIdx, 1);
+  ch.splice(tIdx, 0, m);
+  
+  p.episodes = [...p.episodes.filter(e=>e.type==='prologue'), ...ch, ...p.episodes.filter(e=>e.type==='epilogue')];
+  touchProject(); saveState(); renderEpisodeList(); draggedId=null;
+}
+
+// Workspace
+function renderWorkspace() {
+  const p = currentProject(); if(!p) return showLibrary();
+  $('#projectTitle').value = p.title; $('#projectStatus').value = p.status; $('#projectBreadcrumb').textContent = p.title;
+  setViewMode(p.viewMode||'split', false);
+  renderEpisodeList(); renderEpisode(); updateProjectStats();
+}
+function renderEpisodeList() {
+  const p = currentProject(), eps = orderedEpisodes(p);
+  $('#episodeList').innerHTML = '';
+  eps.forEach(ep=>{
+    const row = document.createElement('div');
+    row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
+    row.draggable = ep.type==='chapter';
+    row.innerHTML = `<span class="drag">⋮⋮</span><div class="episode-main"><strong>${escapeHtml(ep.title)}</strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>`;
+    row.querySelector('.episode-main').onclick = ()=>selectEpisode(ep.id);
+    if(ep.type==='chapter') {
+      row.ondragstart = ()=>{ draggedId=ep.id; row.classList.add('dragging'); };
+      row.ondragover = e=>e.preventDefault();
+      row.ondrop = e=>{ e.preventDefault(); reorderEpisode(ep.id); };
+      row.ondragend = ()=>row.classList.remove('dragging');
+    }
+    $('#episodeList').appendChild(row);
+  });
+  requestAnimationFrame(()=>{ const el = $('.episode-row.active'); if(el) el.scrollIntoView({block:'nearest'}); });
+}
+function renderEpisode() {
+  const ep = currentEpisode(); if(!ep) return;
+  $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeStatus').value = ep.status; $('#episodeBreadcrumb').textContent = ep.title;
+  $('#planEditor').value = ep.plan||''; $('#bodyEditor').value = ep.body||'';
+  updateBodyStats(); renderEpisodeList(); restoreEditorScroll();
+}
+function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId=id; touchProject(); saveState(false); showEditor(); renderEpisode(); }
+function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.status=$('#episodeStatus').value; ep.plan=$('#planEditor').value; ep.body=$('#bodyEditor').value; }
+function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
+function updateBodyStats() { const s=stats($('#bodyEditor').value); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
+function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) saveState(false); restoreEditorScroll(); }
+function addEpisode() { persistEditor(); const p=currentProject(), chCount = p.episodes.filter(e=>e.type==='chapter').length; const ep=defaultEpisode('chapter', chCount+1); p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); saveState(); showEditor(); renderEpisode(); showToast('회차를 추가했어요.'); }
+
+function togglePlanDrawer() {
+  saveEditorScroll();
+  isPlanDrawerOpen = !isPlanDrawerOpen;
+  $('#planDrawer').classList.toggle('open', isPlanDrawerOpen);
+  if(isPlanDrawerOpen) renderProjectPlan();
+  restoreEditorScroll();
+}
+function toggleFocusMode() {
+  saveEditorScroll();
+  isFocusMode = !isFocusMode;
+  $('#workspaceView').classList.toggle('focus-mode', isFocusMode);
+  restoreEditorScroll();
+  if(isFocusMode) $('#bodyEditor').focus();
+}
+
+function maybeVersion(ep, force=false) {
+  const now = Date.now();
+  if(!force && now-(ep.lastVersionAt||0) < VERSION_INTERVAL) return;
+  if(!cleanText(ep.body)) return;
+  ep.versions = ep.versions || [];
+  if(ep.versions[0]?.body === ep.body) return;
+  ep.versions.unshift({ id: uid('ver'), createdAt: now, body: ep.body });
+  ep.versions = ep.versions.slice(0, VERSION_LIMIT);
+  ep.lastVersionAt = now;
+}
+
+// Export / Import
+function exportBackup() {
+  persistEditor(); saveState(false);
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `야니의_소설창고_backup_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function remapImportedProject(project) {
+  const episodeIdMap = new Map();
+  const episodes = (project.episodes||[]).map(ep => {
+    const newId = uid('ep'); episodeIdMap.set(ep.id, newId);
+    return { ...ep, id: newId, versions: (ep.versions||[]).map(v=>({ ...v, id: uid('ver') })) };
+  });
+  return {
+    ...project,
+    id: uid('project'),
+    selectedEpisodeId: episodeIdMap.get(project.selectedEpisodeId) || episodes[0]?.id || null,
+    planSections: (project.planSections||[]).map(sec=>({ ...sec, id: uid('plan') })),
+    episodes
+  };
+}
+function handleImport(mode) {
+  if(!importTempData || !importTempData.projects) return;
+  try {
+    let newState = mode === 'replace' ? importTempData : { ...state, projects: [...state.projects, ...importTempData.projects.map(remapImportedProject)] };
+    const str = JSON.stringify(newState);
+    localStorage.setItem(STORAGE_KEY, str);
+    state = newState;
+    closeModal('importModal');
+    if($('#libraryView').classList.contains('hidden')) { renderWorkspace(); } else { renderLibrary(); }
+    showToast(mode==='replace'?'데이터를 교체했어요.':'데이터를 추가했어요.');
+  } catch(e) {
+    showToast('저장 용량 초과로 불러올 수 없어요.');
+  }
+}
+
+// Drawer & Plan
+function renderProjectPlan() {
+  const p = currentProject(), list = $('#projectPlanList'), sections = p.planSections||[];
+  if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
+  list.innerHTML = sections.map(x=>`<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
+    <div class="plan-accordion-head"><button class="accordion-toggle" data-tgl="${x.id}">›</button><input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/><button class="icon-btn" style="width:28px;height:28px;" data-del="${x.id}">×</button></div>
+    <div class="plan-accordion-body"><textarea class="plan-section-body" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea></div>
+  </article>`).join('');
+  $$('[data-tgl]').forEach(b=>b.onclick=()=>{ const s=sections.find(x=>x.id===b.dataset.tgl); s.open=!s.open; touchProject(); queueSave(); renderProjectPlan(); });
+  $$('[data-ttl]').forEach(i=>i.oninput=()=>{ sections.find(x=>x.id===i.dataset.ttl).title=i.value; touchProject(); queueSave(); });
+  $$('[data-bdy]').forEach(t=>{ t.oninput=()=>{ sections.find(x=>x.id===t.dataset.bdy).body=t.value; touchProject(); autosizePlanSection(t); queueSave(); }; requestAnimationFrame(()=>autosizePlanSection(t)); });
+  $$('[data-del]').forEach(b=>b.onclick=()=>{ if(confirm('항목을 삭제할까요?')){ p.planSections=p.planSections.filter(x=>x.id!==b.dataset.del); touchProject(); saveState(); renderProjectPlan(); }});
+}
+
+// Copy Logic
+function buildEpisodeText(ep, mode) {
+  const t=cleanText(ep.title), p=cleanText(ep.plan), b=cleanText(ep.body);
+  if(mode==='body') return b; if(mode==='plan') return p; if(mode==='plan-body') return `[기획]\n${p}\n\n[본문]\n${t}\n\n${b}`.trim(); return `${t}\n\n${b}`.trim();
+}
+async function copyText(text, msg) {
+  try { await navigator.clipboard.writeText(text); } catch(e) { const a=document.createElement('textarea'); a.value=text; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); }
+  showToast(msg);
+}
+
+// Bindings
+$('#newProjectBtn').onclick = () => { $('#newProjectColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${c===DEFAULT_COVER_COLOR?'active':''}" data-new-color="${c}" style="background:${c}"></button>`).join(''); $$('[data-new-color]').forEach(b=>b.onclick=()=>{$$('[data-new-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');}); openModal('newProjectModal'); setTimeout(()=>$('#newProjectTitle').focus(),30); };
+$('#createProjectBtn').onclick = () => {
+  const p = { id:uid('project'), title:$('#newProjectTitle').value.trim()||'제목 없는 작품', status:$('#newProjectStatus').value, cover:'', coverColor: $('.cover-color-swatch.active')?.dataset.newColor||DEFAULT_COVER_COLOR, updatedAt:Date.now(), selectedEpisodeId:null, viewMode:'split', planSections:[], episodes:[] };
+  const ep = defaultEpisode('prologue'); p.episodes.push(ep); p.selectedEpisodeId = ep.id;
+  state.projects.unshift(p); closeModal('newProjectModal'); $('#newProjectTitle').value=''; openProject(p.id); showToast('새 작품을 만들었어요.');
+};
+$('#backLibraryBtn').onclick = showLibrary;
+$$('.filter-btn').forEach(b=>b.onclick=()=>{ libraryFilter=b.dataset.filter; renderLibrary(); });
+
+// Editor bindings
+$('#projectTitle').oninput = () => { const p=currentProject(); p.title=$('#projectTitle').value||'제목 없는 작품'; $('#projectBreadcrumb').textContent=p.title; touchProject(); queueSave(); };
+$('#projectStatus').onchange = () => { currentProject().status=$('#projectStatus').value; touchProject(); queueSave(); };
+$('#addEpisodeBtn').onclick = addEpisode;
+$('#episodeTitle').oninput = () => { currentEpisode().title=$('#episodeTitle').value; $('#episodeBreadcrumb').textContent=$('#episodeTitle').value||'제목 없는 회차'; touchProject(); renderEpisodeList(); queueSave(); };
+$('#episodeType').onchange = () => { currentEpisode().type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); touchProject(); renderEpisodeList(); queueSave(); };
+$('#episodeStatus').onchange = () => { currentEpisode().status=$('#episodeStatus').value; touchProject(); renderEpisodeList(); queueSave(); };
+$('#planEditor').oninput = () => { currentEpisode().plan=$('#planEditor').value; touchProject(); queueSave(); };
+$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=$('#bodyEditor').value; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSave(); };
+$$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
+$('#toggleDrawerBtn').onclick = togglePlanDrawer;
+$('#closeDrawerBtn').onclick = togglePlanDrawer;
+$('#addPlanSectionBtn').onclick = () => { currentProject().planSections.push(defaultPlanSection()); touchProject(); saveState(); renderProjectPlan(); };
+$('#copyAllPlanBtn').onclick = () => { const txt = (currentProject().planSections||[]).map(x=>`${cleanText(x.title)}\n\n${cleanText(x.body)}`).join('\n\n\n'); copyText(txt, '전체 기획을 복사했어요.'); };
+$('#toggleFocusBtn').onclick = toggleFocusMode;
+
+// Dropdown
+$('#quickCopyBodyBtn').onclick = () => copyText(cleanText(currentEpisode().body), '본문만 복사했어요.');
+$('#copyDropdownToggle').onclick = (e) => { e.stopPropagation(); $('#copyDropdownMenu').classList.toggle('show'); };
+$$('[data-copy]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); copyText(buildEpisodeText(currentEpisode(), b.dataset.copy), '선택한 내용을 복사했어요.'); $('#copyDropdownMenu').classList.remove('show'); });
+window.addEventListener('click', (e) => { if(!e.target.closest('.dropdown-container')) $('#copyDropdownMenu')?.classList.remove('show'); });
+
+// Search
+$('#openSearchBtn').onclick = () => { openModal('searchModal'); $('#searchInput').focus(); };
+$('#searchInput').oninput = () => {
+  const q = $('#searchInput').value.trim().toLowerCase();
+  if(!q) { $('#searchResults').innerHTML=''; return; }
+  const res = [], p = currentProject();
+  p.episodes.forEach(ep=>[{type:'본문',t:ep.body||''},{type:'기획',t:ep.plan||''}].forEach(src=>{
+    let pos=0; const lower = src.t.toLowerCase();
+    while((pos=lower.indexOf(q,pos))!==-1 && res.length<15) {
+      const snip = src.t.slice(Math.max(0,pos-30), Math.min(src.t.length, pos+q.length+30));
+      const marked = escapeHtml(snip).replace(new RegExp(escapeHtml(q), 'gi'), '<mark>$&</mark>');
+      res.push({ kind:'ep', ep, type:src.type, html: marked }); pos+=q.length;
+    }
+  }));
+  (p.planSections||[]).forEach(sec=>{
+    const txt = `${sec.title} ${sec.body}`, lower = txt.toLowerCase(); let pos=0;
+    while((pos=lower.indexOf(q,pos))!==-1 && res.length<20) {
+      const snip = txt.slice(Math.max(0,pos-30), Math.min(txt.length, pos+q.length+30));
+      const marked = escapeHtml(snip).replace(new RegExp(escapeHtml(q), 'gi'), '<mark>$&</mark>');
+      res.push({ kind:'plan', sec, type:'작품 기획', html: marked }); pos+=q.length;
+    }
+  });
+  $('#searchResults').innerHTML = res.map((r,i)=>`<button class="search-result" data-sr="${i}"><strong>${escapeHtml(r.kind==='ep'?r.ep.title:r.sec.title)} · ${r.type}</strong><span>${r.html}</span></button>`).join('');
+  $$('[data-sr]').forEach(b=>b.onclick=()=>{
+    const r=res[Number(b.dataset.sr)]; closeModal('searchModal');
+    if(r.kind==='plan') {
+      if(!isPlanDrawerOpen) togglePlanDrawer();
+      r.sec.open = true; renderProjectPlan();
+      setTimeout(()=>{$(`[data-plan-sec="${r.sec.id}"]`)?.scrollIntoView({behavior:'smooth'});}, 100);
+    } else {
+      selectEpisode(r.ep.id); setViewMode(r.type==='본문'?'body':'plan');
+    }
+  });
+};
+
+// Versions
+$('#versionBtn').onclick = () => {
+  persistEditor(); const ep=currentEpisode(); maybeVersion(ep, true); saveState(false);
+  $('#versionList').innerHTML = (ep.versions||[]).map(v=>{
+    const prev = escapeHtml(cleanText(v.body).slice(0,60));
+    return `<div class="version-item"><div><strong>${new Date(v.createdAt).toLocaleString('ko-KR')}</strong><span>${stats(v.body).withSpaces.toLocaleString()}자 · ${prev}...</span></div><button class="ghost border" data-ver="${v.id}">복원</button></div>`;
+  }).join('');
+  $$('[data-ver]').forEach(b=>b.onclick=()=>{
+    const ep=currentEpisode(); maybeVersion(ep, true); // Backup current right before restore
+    ep.body = ep.versions.find(x=>x.id===b.dataset.ver).body;
+    saveState(); closeModal('versionModal'); renderEpisode(); showToast('이전 버전으로 복원했어요.');
+  });
+  openModal('versionModal');
+};
+
+// Manuscript
+function showEditor() { $('#manuscriptView').classList.remove('active'); $('#editorView').classList.remove('hidden'); }
+$('#openManuscriptBtn').onclick = () => {
+  persistEditor(); saveState(false);
+  $('#editorView').classList.add('hidden'); $('#manuscriptView').classList.add('active');
+  const eps = orderedEpisodes().filter(e=>cleanText(e.body));
+  $('#manuscriptTitle').textContent = currentProject().title;
+  $('#manuscriptMeta').textContent = `총 ${eps.reduce((s,e)=>s+stats(e.body).withSpaces,0).toLocaleString()}자 · ${eps.length}회차`;
+  $('#manuscriptContent').innerHTML = eps.map(e=>`<article class="manuscript-ep"><h2>${escapeHtml(e.title)}</h2><p>${escapeHtml(e.body)}</p></article>`).join('');
+};
+$('#backFromManuscript').onclick = showEditor;
+$('#copyManuscriptFull').onclick = () => copyText(orderedEpisodes().filter(e=>cleanText(e.body)).map(e=>cleanText(e.body)).join('\n\n\n'), '전체 본문을 복사했어요.');
+
+// Export/Import
+$('#exportBackupBtn').onclick = exportBackup;
+$('#importBackupBtn').onclick = () => { $('#importInput').value=''; $('#importInput').click(); };
+$('#importInput').onchange = () => {
+  const file = $('#importInput').files?.[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { const data = JSON.parse(reader.result); if(Array.isArray(data.projects)) { importTempData = data; $('#importProjectCount').textContent = data.projects.length; openModal('importModal'); } else throw new Error(); }
+    catch(e) { showToast('잘못된 백업 파일입니다.'); }
+  };
+  reader.readAsText(file);
+};
+$('#importReplaceBtn').onclick = () => handleImport('replace');
+$('#importAddBtn').onclick = () => handleImport('add');
+
+// Global Keys & Modals
+$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
+$$('.modal-overlay').forEach(m=>m.onclick=e=>{if(e.target===m)m.classList.add('hidden')});
+window.addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='.') { e.preventDefault(); toggleFocusMode(); }
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k' && !$('#workspaceView').classList.contains('hidden')) { e.preventDefault(); $('#openSearchBtn').click(); }
+  if(e.key==='Escape') { if(isFocusMode) toggleFocusMode(); else $$('.modal-overlay').forEach(m=>m.classList.add('hidden')); }
+});
+window.addEventListener('beforeunload', ()=> { persistEditor(); saveState(false); });
+
+// Init
+renderLibrary();
+</script>
+</body>
+</html>
