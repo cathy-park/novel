@@ -812,10 +812,7 @@ function renderWorkspace() {
   renderEpisodeList(); renderEpisode(); updateProjectStats();
 }
 
-  
-  // 커서 복구
-  if(sel) quill.setSelection(sel, 'silent');
-}
+
 
 function renderEpisodeList() {
   const p = currentProject(), eps = orderedEpisodes(p);
@@ -837,10 +834,7 @@ function renderEpisodeList() {
   requestAnimationFrame(()=>{ const el = $('.episode-row.active'); if(el) el.scrollIntoView({block:'nearest'}); });
 }
 
-  
-  // 커서 복구
-  if(sel) quill.setSelection(sel, 'silent');
-}
+
 
 function renderEpisode() {
   const ep = currentEpisode(); if(!ep) return;
