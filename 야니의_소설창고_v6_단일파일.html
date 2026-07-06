@@ -464,7 +464,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 <div style="display:grid;gap:16px;">
   <div style="font-size:13px;color:var(--c-body);line-height:1.5;"><strong>[원본 그대로 첨부]</strong> PDF 파일의 내용을 쪼개지 않고, 기획 목록에 원본 뷰어로 열 수 있도록 파일째로 첨부합니다.</div>
   <div style="display:flex;align-items:center;gap:12px;">
-    <button id="attachPdfRawBtn" class="primary border" style="background:#fff;" type="button">📎 PDF 원본 첨부하기</button>
+    <button id="attachPdfRawBtn" class="secondary" style="width:100%;height:44px;font-size:14px;" type="button">📎 PDF 원본 첨부하기</button>
   </div>
 </div>
 <div class="modal-actions" style="margin-top:24px;"><button class="ghost" data-close="planImportModal">취소</button><button id="executePlanImportBtn" class="primary">입력된 텍스트 항목으로 변환</button></div></div></div>
@@ -966,10 +966,16 @@ async function openAttachedPdf(filename) {
 function renderProjectPlan() {
   const p = currentProject(), list = $('#projectPlanList'), sections = p.planSections||[];
   if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
-  list.innerHTML = sections.map(x=>`<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
+  list.innerHTML = sections.map(x=> {
+    const isPdf = x.type === 'pdf_attachment';
+    const bodyContent = isPdf
+      ? `<div style="padding:16px;text-align:center;"><button class="secondary" data-open-pdf="${x.id}" data-filename="${escapeHtml(x.pdfName)}" style="width:100%;">📄 PDF 문서 열기</button><p style="margin:8px 0 0;font-size:11px;color:var(--c-muted);word-break:break-all;">${escapeHtml(x.pdfName)}</p></div>`
+      : `<textarea class="plan-section-body" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea>`;
+    return `<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
     <div class="plan-accordion-head"><button class="accordion-toggle" data-tgl="${x.id}">›</button><input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/><button class="icon-btn" style="width:28px;height:28px;" data-del="${x.id}">×</button></div>
-    <div class="plan-accordion-body"><textarea class="plan-section-body" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea></div>
-  </article>`).join('');
+    <div class="plan-accordion-body">${bodyContent}</div>
+  </article>`;
+  }).join('');
   $$('[data-tgl]').forEach(b=>b.onclick=()=>{ const s=sections.find(x=>x.id===b.dataset.tgl); s.open=!s.open; touchProject(); queueSaveFS(); renderProjectPlan(); });
   $$('[data-ttl]').forEach(i=>i.oninput=()=>{ sections.find(x=>x.id===i.dataset.ttl).title=i.value; touchProject(); queueSaveFS(); });
   $$('[data-bdy]').forEach(t=>{ t.oninput=()=>{ sections.find(x=>x.id===t.dataset.bdy).body=t.value; touchProject(); autosizePlanSection(t); queueSaveFS(); }; requestAnimationFrame(()=>autosizePlanSection(t)); });
