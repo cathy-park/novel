@@ -301,6 +301,19 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .workspace-shell.focus-mode .ql-toolbar.ql-snow { display: none !important; }
 .workspace-shell.focus-mode .ql-editor { padding-top: 80px; }
 
+
+/* 잔여 색상 및 배경 찌꺼기 강제 무력화 */
+.ql-editor span[style*="color"], .ql-editor [style*="background"], .ql-editor .ql-dialogue { 
+  color: inherit !important; 
+  background: transparent !important; 
+  font-weight: inherit !important; 
+}
+/* 문단 구분 확실하게 */
+.ql-editor p { 
+  margin-bottom: 1.6em !important; 
+  text-indent: 12px; 
+}
+
 </style>
 </head>
 <body>
