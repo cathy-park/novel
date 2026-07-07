@@ -573,6 +573,7 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 let quill = null; let dialogTimer = null;
 let saveTimer, toastTimer, draggedId = null, libraryFilter = 'serializing', coverTargetProjectId = null;
 let importTempData = null;
+let state = { schemaVersion: 6, currentProjectId: null, projects: [] };
 
 // UI Ephemeral State
 let isFocusMode = false;
