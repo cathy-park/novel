@@ -2087,7 +2087,7 @@ function exportPODPdf() {
 <meta charset="utf-8">
 <title>${escapeHtml(p.title)} - 출판용 원고</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></script>
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
 <style>
   @page {
     size: A5;
@@ -2156,7 +2156,7 @@ function exportPODPdf() {
       }
     }
     window.Paged.registerHandlers(PrintHandler);
-  <\/script>
+  </${'script'}>
 </body>
 </html>`;
 
