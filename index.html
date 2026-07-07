@@ -340,11 +340,19 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   border-bottom-left-radius: 0 !important;
   padding: 14px 18px !important;
   margin: 20px 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   font-size: 0.96em !important;
   line-height: 1.9 !important;
   color: #505050 !important;
   font-style: normal !important;
   text-indent: 0 !important;
+}
+/* 복사/붙여넣기 등으로 내부 스팬(span)에 스타일이 꼬여도 하나로 강제 고정 */
+.ql-editor p.n-record *,
+.ql-editor .n-record *,
+.n-record * {
+  font-family: inherit !important;
+  font-size: inherit !important;
 }
 
 /* ⑥ 상태창 / 선택지 (n-status) */
