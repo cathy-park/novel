@@ -993,11 +993,43 @@ if ('serviceWorker' in navigator) {
     for(let registration of registrations) { registration.unregister(); }
   });
   if (window.caches) {
+    sb.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        currentUser = session.user;
+        $('#loginView').classList.add('hidden');
+        $('#appView').classList.remove('hidden');
+        if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && !isAppInitialized) {
+          isAppInitialized = true;
+          loadStateSupabase().then(() => {
+            renderLibrary();
+            if (state.projects.length === 0) showToast('새 프로젝트를 만들어보세요!');
+          });
+        }
+      } else {
+        currentUser = null;
+        $('#loginView').classList.remove('hidden');
+        $('#appView').classList.add('hidden');
+      }
+    });
+
+    // Supabase 세션 초기화 지연 방지 (안전 장치)
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session && !isAppInitialized) {
+        currentUser = session.user;
+        $('#loginView').classList.add('hidden');
+        $('#appView').classList.remove('hidden');
+        isAppInitialized = true;
+        loadStateSupabase().then(() => {
+          renderLibrary();
+        });
+      }
+    });
     caches.keys().then(function(names) {
       for (let name of names) { caches.delete(name); }
     });
   }
 }
+
 
 const VERSION_LIMIT = 12, VERSION_INTERVAL = 5*60*1000;
 const DEFAULT_COVER_COLOR = '#6B5CE7';
@@ -1008,6 +1040,7 @@ let quill = null; let dialogTimer = null;
 let saveTimer, toastTimer, draggedId = null, libraryFilter = 'serializing', coverTargetProjectId = null;
 let importTempData = null;
 let state = { schemaVersion: 6, currentProjectId: null, projects: [] };
+let isAppInitialized = false;
 
 // UI Ephemeral State
 let isFocusMode = false;
@@ -2197,85 +2230,64 @@ $('#addBeatSheetBtn').onclick = () => {
 $('#copyAllPlanBtn').onclick = () => { const txt = (currentProject().planSections||[]).map(x=>`${cleanText(x.title)}\n\n${cleanText(x.body)}`).join('\n\n\n'); copyText(txt, '전체 기획을 복사했어요.'); };
 
 
-// Dropdown & Markdown Copy
-function deltaToMarkdown(delta) {
-  let lines = [];
-  let currentLineInline = [];
-  
-  delta.ops.forEach(op => {
-    if (typeof op.insert === 'string') {
-      const parts = op.insert.split('\n');
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i]) {
-          let text = parts[i];
-          const attrs = op.attributes || {};
-          if (attrs.bold) text = `**${text}**`;
-          if (attrs.italic) text = `*${text}*`;
-          if (attrs.strike) text = `~~${text}~~`;
-          if (attrs.ui) text = `\`${text}\``;
-          currentLineInline.push(text);
-        }
-        
-        if (i < parts.length - 1) { // block boundary
-          const blockAttrs = op.attributes || {};
-          let blockType = 'normal';
-          if (blockAttrs.narrative) blockType = blockAttrs.narrative;
-          else if (blockAttrs.blockquote) blockType = 'record';
-          else if (blockAttrs.header) blockType = 'header' + blockAttrs.header;
-          lines.push({ text: currentLineInline.join(''), type: blockType });
-          currentLineInline = [];
-        }
-      }
-    }
-  });
-  
-  if (currentLineInline.length > 0) {
-    lines.push({ text: currentLineInline.join(''), type: 'normal' });
-  }
-  
-  let markdown = '';
-  let inLog = false;
-  
-  lines.forEach((line, idx) => {
-    if (line.type === 'log') {
-      if (!inLog) { markdown += '```log\n'; inLog = true; }
-      markdown += line.text + '\n';
-    } else {
-      if (inLog) { markdown += '```\n\n'; inLog = false; }
-      
-      const prevType = idx > 0 ? lines[idx-1].type : null;
-      let str = line.text;
-      
-      if (['msg', 'sys', 'alert', 'record'].includes(line.type)) {
-        if (prevType !== line.type) {
-          if (line.type === 'msg') markdown += '> [메시지]\n';
-          if (line.type === 'sys') markdown += '> [시스템]\n';
-          if (line.type === 'alert') markdown += '> [알림]\n';
-        }
-        markdown += `> ${str}\n`;
-        if (idx === lines.length - 1 || lines[idx+1].type !== line.type) {
-          markdown += '\n';
-        }
-      } else {
-        if (line.type.startsWith('header')) {
-          const level = parseInt(line.type.replace('header', ''));
-          str = `${'#'.repeat(level)} ${str}`;
-        }
-        markdown += str + '\n\n';
-      }
-    }
-  });
-  
-  if (inLog) markdown += '```\n\n';
-  return markdown.trimEnd(); // 연속된 줄바꿈 보존을 위해 과도한 정규식 제거
-}
-
 function getMarkdownForEpisode(ep) {
   if (!ep.body || ep.body.trim() === '' || ep.body === '<p><br></p>') return '';
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = ep.body;
-  const tempQuill = new Quill(tempDiv);
-  return `## ${ep.title}\n\n` + deltaToMarkdown(tempQuill.getContents());
+  
+  let html = ep.body;
+  const norm = (s) => s.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+  if (ep.title) {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const titleNorm = norm(ep.title);
+    
+    // 헤딩 또는 첫 단락 중복 제목 제거
+    const headings = tempDiv.querySelectorAll('h1, h2');
+    let hasTitle = false;
+    if (headings.length > 0 && norm(headings[0].textContent) === norm(ep.title)) {
+      headings[0].remove();
+      hasTitle = true;
+    }
+    if (!hasTitle) {
+      const firstP = tempDiv.querySelector('p');
+      if (firstP && norm(firstP.textContent) === norm(ep.title)) firstP.remove();
+    }
+    html = tempDiv.innerHTML;
+  }
+  
+  let md = html;
+  
+  // 인라인 스타일
+  md = md.replace(/<strong>(.*?)<\/strong>/g, '**$1**');
+  md = md.replace(/<em>(.*?)<\/em>/g, '*$1*');
+  md = md.replace(/<s>(.*?)<\/s>/g, '~~$1~~');
+  md = md.replace(/<u>(.*?)<\/u>/g, '$1'); // MD는 밑줄 비표준
+  md = md.replace(/<span class="n-ui"[^>]*>(.*?)<\/span>/g, '`$1`');
+  
+  // 서사 블록
+  md = md.replace(/<p class="n-msg"[^>]*>(.*?)<\/p>/g, '> [메시지] $1\n\n');
+  md = md.replace(/<p class="n-sys"[^>]*>(.*?)<\/p>/g, '> [시스템] $1\n\n');
+  md = md.replace(/<p class="n-alert"[^>]*>(.*?)<\/p>/g, '> [알림] $1\n\n');
+  md = md.replace(/<p class="n-record"[^>]*>(.*?)<\/p>/g, '> [기록] $1\n\n');
+  md = md.replace(/<p class="n-status"[^>]*>(.*?)<\/p>/g, '> [상태창] $1\n\n');
+  md = md.replace(/<p class="n-log"[^>]*>(.*?)<\/p>/g, '```log\n$1\n```\n\n');
+  
+  // 헤더
+  md = md.replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n');
+  md = md.replace(/<h2>(.*?)<\/h2>/g, '## $1\n\n');
+  md = md.replace(/<h3>(.*?)<\/h3>/g, '### $1\n\n');
+  
+  // 일반 단락
+  md = md.replace(/<p><br><\/p>/g, '\n\n');
+  md = md.replace(/<p[^>]*>(.*?)<\/p>/g, '$1\n\n');
+  
+  // 남은 태그 제거 및 엔티티 복원
+  md = md.replace(/<[^>]+>/g, '');
+  md = md.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  
+  // 연속된 개행 정리
+  md = md.replace(/\n{3,}/g, '\n\n');
+  
+  return `## ${ep.title}\n\n` + md.trim();
 }
 
 function buildEpisodeText(ep, mode) {
@@ -2432,6 +2444,8 @@ function processEpisodeBody(html, epTitle) {
   if (epTitle) {
     const norm = (s) => s.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
     const titleNorm = norm(epTitle);
+    
+    // 1. 헤딩 태그 검사
     const headings = div.querySelectorAll('h1, h2');
     if (headings.length > 0) {
       const firstH = headings[0];
@@ -2444,6 +2458,20 @@ function processEpisodeBody(html, epTitle) {
       }
       if (isFirstMeaningful && norm(firstH.textContent) === titleNorm) {
         hasTitle = true;
+        firstH.remove(); // 제목을 본문에서 아예 제거! (중복 방지)
+      }
+    }
+    
+    // 2. 만약 헤딩이 아니더라도 첫 번째 단락(p)이 제목과 똑같다면 제거
+    if (!hasTitle && els.length > 0) {
+      for (const cur of els) {
+        if (cur.textContent.trim() !== '') {
+          if (norm(cur.textContent) === titleNorm) {
+            hasTitle = true;
+            cur.remove(); // 첫 번째 단락이 제목이면 제거
+          }
+          break; // 첫 의미있는 요소만 검사
+        }
       }
     }
   }
@@ -2455,13 +2483,23 @@ async function exportPODPdf() {
   const p = currentProject();
   if(!p) return;
   
+  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  if (eps.length === 0) return showToast('출판할 본문이 없습니다.');
+  
+  // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('팝업 차단을 해제하고 다시 시도해주세요.');
+    return;
+  }
+  win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
+
   if (p.episodes.some(e => e.body === undefined)) {
     showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
     await ensureProjectBodiesLoaded(p);
   }
   
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if(eps.length === 0) return showToast('출판할 본문이 없습니다.');
+  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
   
   showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
   
@@ -2612,7 +2650,7 @@ async function exportPODPdf() {
   </div>
 `;
 
-  eps.forEach((ep, i) => {
+  loadedEps.forEach((ep, i) => {
     const processed = processEpisodeBody(ep.body, ep.title);
     html += `
   <div class="chapter">
@@ -2634,13 +2672,9 @@ async function exportPODPdf() {
 </html>`;
 
 
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-  } else {
-    showToast('팝업 차단을 해제하고 다시 시도해주세요.');
-  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }
 
 // Export/Import
