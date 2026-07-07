@@ -1082,6 +1082,11 @@ async function migrateFromLocalStorage() {
   if (!currentUser) return;
   const localDataStr = localStorage.getItem('munjang-novel-writer-v3');
   if (!localDataStr) return;
+  
+  // 무한 지연을 막기 위해 시도 즉시 키 이름을 변경 (백업으로만 보존)
+  localStorage.setItem('munjang-novel-writer-v3_backup', localDataStr);
+  localStorage.removeItem('munjang-novel-writer-v3');
+  
   try {
     const localData = JSON.parse(localDataStr);
     if (localData && localData.projects && localData.projects.length > 0) {
@@ -1147,13 +1152,14 @@ async function loadStateSupabase() {
   const newState = { schemaVersion: 6, currentProjectId: null, projects: [] };
   
   // 1. Projects 로드
-  const { data: projectsData, error: pErr } = await sb.from('novel_projects').select('*').order('updated_at', { ascending: false });
+  const { data: projectsData, error: pErr } = await sb.from('novel_projects').select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false });
   if (pErr) { console.error('Project Load Error:', pErr); showToast('프로젝트 로딩 실패'); return; }
   
   if (projectsData && projectsData.length > 0) {
   // 2. Episodes 로드 (body, plan, comments 제외하여 지연 로딩)
   const { data: episodesData, error: eErr } = await sb.from('novel_episodes')
-    .select('id,project_id,type,title,status,order_idx,created_at,updated_at');
+    .select('id,project_id,type,title,status,order_idx,created_at,updated_at')
+    .eq('user_id', currentUser.id);
   if (eErr) console.error('Episode Load Error:', eErr);
     
     for (const pRow of projectsData) {
