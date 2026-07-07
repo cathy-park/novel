@@ -635,19 +635,25 @@ async function initApp() {
   sb.auth.onAuthStateChange(async (event, session) => {
     console.log('Auth event:', event);
     if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session && !currentUser) {
+      showToast('로그인 성공! 서재를 불러옵니다...');
       currentUser = session.user;
       $('#welcomeScreen').style.display = 'none';
       await migrateFromLocalStorage();
       await loadStateSupabase();
       renderLibrary();
     } else if (event === 'SIGNED_OUT') {
+      showToast('로그아웃 되었습니다.');
       currentUser = null;
       window.location.href = window.location.origin;
+    } else if (event === 'SIGNED_IN' && !session) {
+      showToast('로그인 이벤트 발생했으나 세션이 없습니다.');
     }
   });
 
   // 기존 세션 확인 (이미 로그인된 상태)
-  const { data: { session } } = await sb.auth.getSession();
+  const { data: { session }, error: sessionErr } = await sb.auth.getSession();
+  if (sessionErr) showToast('세션 확인 에러: ' + sessionErr.message);
+  
   if (session) {
     currentUser = session.user;
     $('#welcomeScreen').style.display = 'none';
