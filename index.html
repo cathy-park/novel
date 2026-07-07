@@ -723,15 +723,15 @@ async function migrateFromLocalStorage() {
           id: p.id, user_id: currentUser.id, title: p.title, status: p.status, cover: p.cover,
           cover_color: p.coverColor, view_mode: p.viewMode, plan_sections: p.planSections, updated_at: p.updatedAt
         });
-        for (let i = 0; i < (p.episodes || []).length; i++) {
-          const ep = p.episodes[i];
-          await sb.from('novel_episodes').upsert({
+        if (p.episodes && p.episodes.length > 0) {
+          const epData = p.episodes.map((ep, i) => ({
             id: ep.id, project_id: p.id, user_id: currentUser.id, title: ep.title, body: ep.body,
             plan: ep.plan || '',
-            type: ep.type, status: ep.status, order_idx: i,
+            type: ep.type, status: ep.status || 'idea', order_idx: i,
             created_at: ep.createdAt || Date.now(),
             updated_at: ep.updatedAt || Date.now()
-          });
+          }));
+          await sb.from('novel_episodes').upsert(epData);
         }
       }
       localStorage.removeItem('munjang-novel-writer-v3'); // 이주 완료 후 삭제
@@ -832,29 +832,28 @@ async function saveProjectSupabase(p) {
   };
     await sb.from('novel_projects').upsert(pData);
     
-    // Episodes Update
-    for (let i = 0; i < p.episodes.length; i++) {
-      const ep = p.episodes[i];
-      const eData = {
+    // Episodes Update (Bulk Upsert)
+    if (p.episodes && p.episodes.length > 0) {
+      const epData = p.episodes.map((ep, i) => ({
         id: ep.id,
         project_id: p.id,
         user_id: currentUser.id,
         type: ep.type,
         title: ep.title,
         body: ep.body || '',
-        plan: ep.plan || '',  // 회차 기획 메모
+        plan: ep.plan || '',
         status: ep.status || 'idea',
         created_at: ep.createdAt || Date.now(),
         updated_at: ep.updatedAt || Date.now(),
         order_idx: i
-      };
-      const { error: epErr } = await sb.from('novel_episodes').upsert(eData);
+      }));
+      const { error: epErr } = await sb.from('novel_episodes').upsert(epData);
       if (epErr) {
-        // plan 컨럼이 없으면 plan 제외하고 재시도
+        // 컬럼 누락 등의 에러 처리
         if (epErr.message && epErr.message.includes('plan')) {
-          console.warn('plan column missing, saving without plan. Please run: ALTER TABLE novel_episodes ADD COLUMN IF NOT EXISTS plan text DEFAULT \'\';');
-          const { plan: _p, ...eDataNoPlan } = eData;
-          await sb.from('novel_episodes').upsert(eDataNoPlan);
+          console.warn('plan column missing, saving without plan. Please run ALTER TABLE.');
+          const epDataNoPlan = epData.map(({ plan, ...rest }) => rest);
+          await sb.from('novel_episodes').upsert(epDataNoPlan);
         } else {
           throw epErr;
         }
