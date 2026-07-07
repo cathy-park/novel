@@ -221,31 +221,32 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor .n-msg,
 .n-msg {
   display: block !important;
-  max-width: 68% !important;
-  margin: 20px 0 !important;
-  background: #F5F5F4 !important;
+  max-width: 70% !important;
+  margin: 16px 0 !important;
+  background: #F4F5F6 !important;
   border: none !important;
-  border-radius: 8px !important;
-  padding: 14px 18px !important;
+  border-radius: 18px 18px 18px 2px !important;
+  padding: 12px 18px !important;
   font-size: 0.95em !important;
-  line-height: 1.85 !important;
+  line-height: 1.6 !important;
   text-align: left !important;
   text-indent: 0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
 }
 /* 연속된 메시지 블록 그룹화 */
 .ql-editor p.n-msg:has(+ p.n-msg),
-.n-msg:has(+ .n-msg),
-.msg-first, .msg-middle {
-  margin-bottom: 0 !important;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
+.n-msg:has(+ .n-msg) {
+  margin-bottom: 4px !important;
+  border-bottom-left-radius: 6px !important;
 }
 .ql-editor p.n-msg + p.n-msg,
-.n-msg + .n-msg,
-.msg-last, .msg-middle {
+.n-msg + .n-msg {
   margin-top: 0 !important;
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
+  border-top-left-radius: 6px !important;
+}
+.ql-editor p.n-msg + p.n-msg:not(:has(+ p.n-msg)),
+.n-msg + .n-msg:not(:has(+ .n-msg)) {
+  border-bottom-left-radius: 2px !important;
 }
 
 /* ② 시스템 문구 (n-sys) */
@@ -361,36 +362,58 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .n-status {
   display: block !important;
   text-align: left !important;
-  font-family: 'Pretendard', 'Noto Sans KR', monospace !important;
-  font-weight: 600 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   font-size: 0.92em !important;
-  color: #3B4046 !important;
-  background: #F3F5F7 !important;
-  border: 1px solid #DCE0E5 !important;
-  border-left: 4px solid #A8B2C1 !important;
-  border-radius: 6px !important;
-  padding: 14px 18px !important;
-  margin: 20px 0 !important;
+  background: #F2F7F4 !important;
+  border: none !important;
+  border-radius: 8px !important;
   line-height: 1.8 !important;
-  letter-spacing: 0.02em !important;
   text-indent: 0 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
-}
-.ql-editor p.n-status:has(+ p.n-status),
-.n-status:has(+ .n-status) {
+
+  /* 첫 줄 기본 스타일 */
+  font-weight: 700 !important;
+  color: #384A42 !important;
+  padding: 16px 20px 4px 20px !important;
+  margin: 20px 0 0 0 !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
-  border-bottom: none !important;
-  margin-bottom: 0 !important;
-  padding-bottom: 8px !important;
 }
+/* 첫 줄 다이아몬드 아이콘 */
+.ql-editor p.n-status::before,
+.n-status::before {
+  content: '\25C7' !important;
+  display: inline-block !important;
+  font-size: 12px !important;
+  color: #92B4A3 !important;
+  margin-right: 8px !important;
+}
+
+/* 두 번째 줄부터 (내용) */
 .ql-editor p.n-status + p.n-status,
 .n-status + .n-status {
+  font-weight: 500 !important;
+  color: #4A5A53 !important;
+  padding: 4px 20px 4px 40px !important; /* 다이아몬드 너비만큼 들여쓰기 */
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
-  border-top: none !important;
-  margin-top: 0 !important;
-  padding-top: 8px !important;
+}
+/* 두 번째 줄부터 다이아몬드 숨김 */
+.ql-editor p.n-status + p.n-status::before,
+.n-status + .n-status::before {
+  content: none !important;
+}
+
+/* 마지막 줄 처리 (둥근 모서리와 하단 여백 복구) */
+.ql-editor p.n-status:not(:has(+ p.n-status)),
+.ql-editor p.n-status + p.n-status:not(:has(+ p.n-status)),
+.n-status:not(:has(+ .n-status)),
+.n-status + .n-status:not(:has(+ .n-status)) {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+  padding-bottom: 16px !important;
+  margin-bottom: 20px !important;
 }
 
 /* ⑦ UI 인라인 칩 (n-ui) */
