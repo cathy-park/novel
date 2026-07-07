@@ -1343,7 +1343,7 @@ $('#openManuscriptBtn').onclick = () => {
   const eps = orderedEpisodes().filter(e=>cleanText(e.body));
   $('#manuscriptTitle').textContent = currentProject().title;
   $('#manuscriptMeta').textContent = `총 ${eps.reduce((s,e)=>s+stats(e.body).withSpaces,0).toLocaleString()}자 · ${eps.length}회차`;
-  $('#manuscriptContent').innerHTML = eps.map(e=>`<article class="manuscript-ep"><h2>${escapeHtml(e.title)}</h2><div class="ql-editor">${e.body||''}</div></article>`).join('');
+  $('#manuscriptContent').innerHTML = eps.map(e=>`<article class="manuscript-ep"><div class="ql-editor">${e.body||''}</div></article>`).join('');
 };
 $('#backFromManuscript').onclick = showEditor;
 $('#copyManuscriptFull').onclick = () => copyText(orderedEpisodes().filter(e=>cleanText(e.body)).map(e=>cleanText(e.body)).join('\n\n\n'), '전체 본문을 복사했어요.');
