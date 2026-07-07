@@ -216,9 +216,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
    타입별 차이: 배경색이 아닌 정렬/너비/테두리/여백/서체로 구분
 ───────────────────────────────────────────────────────────────── */
 
-/* ① 메시지 (n-msg)
-   — 왼쪽 정렬, 최대 너비 68%, 연한 회색 박스, 둥근 모서리
-   — 발신자명은 작가가 첫 줄에 bold로 직접 입력 */
+/* ① 메시지 (n-msg) */
 .ql-editor p.n-msg,
 .ql-editor .n-msg,
 .n-msg {
@@ -234,6 +232,21 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-align: left !important;
   text-indent: 0 !important;
 }
+/* 연속된 메시지 블록 그룹화 */
+.ql-editor p.n-msg:has(+ p.n-msg),
+.n-msg:has(+ .n-msg),
+.msg-first, .msg-middle {
+  margin-bottom: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+.ql-editor p.n-msg + p.n-msg,
+.n-msg + .n-msg,
+.msg-last, .msg-middle {
+  margin-top: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
 
 /* ② 시스템 문구 (n-sys) */
 .ql-editor p.n-sys,
@@ -242,12 +255,15 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   display: block !important;
   text-align: center !important;
   color: #686868 !important;
-  font-size: 0.92em !important;
-  line-height: 1.9 !important;
-  padding: 6px 0 !important;
-  margin: 36px 0 !important;
+  font-size: 0.9em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-weight: 500 !important;
+  line-height: 1.8 !important;
+  padding: 0 !important;
+  margin: 24px 0 !important;
   text-indent: 0 !important;
   background: transparent !important;
+  border: none !important;
 }
 .ql-editor p.n-sys::before,
 .ql-editor .n-sys::before,
@@ -256,11 +272,9 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   display: block !important;
   font-size: 10px !important;
   color: #BEBBB5 !important;
-  margin-bottom: 10px !important;
-  background:
-    linear-gradient(#CCCAC5, #CCCAC5) left center / calc(50% - 14px) 1px no-repeat,
-    linear-gradient(#CCCAC5, #CCCAC5) right center / calc(50% - 14px) 1px no-repeat !important;
-  padding: 0 4px !important;
+  margin-bottom: 6px !important;
+  background: none !important;
+  padding: 0 !important;
 }
 
 /* ③ 시스템 로그 (n-log) */
@@ -334,14 +348,17 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 /* ⑥ UI 인라인 칩 (n-ui) */
 .ql-editor .n-ui,
 .n-ui {
-  display: inline !important;
-  font-size: 0.87em !important;
-  font-weight: 600 !important;
+  display: inline-block !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 0.86em !important;
   color: #3A3A3A !important;
-  background: #ECEAE7 !important;
-  border: 1px solid #D2D0CB !important;
+  background: #F0F0F0 !important;
+  border: 1px solid #E0E0E0 !important;
   border-radius: 4px !important;
-  padding: 1px 7px !important;
+  padding: 2px 6px !important;
+  margin: 0 2px !important;
+  line-height: 1.2 !important;
   box-decoration-break: clone !important;
   -webkit-box-decoration-break: clone !important;
 }
@@ -2242,6 +2259,59 @@ $('#copyManuscriptFull').onclick = () => {
   copyText(mdText, '전체 본문을 복사했어요. (마크다운)');
 };
 $('#exportPODBtn').onclick = exportPODPdf;
+function processEpisodeBody(html, epTitle) {
+  if (!html) return { body: '', hasTitle: false };
+  const div = document.createElement('div');
+  div.innerHTML = html;
+
+  // 1. 빈 리스트 삭제
+  div.querySelectorAll('li').forEach(li => {
+    if (!li.textContent.trim() && !li.querySelector('img')) li.remove();
+  });
+  div.querySelectorAll('ul, ol').forEach(list => {
+    if (list.children.length === 0) list.remove();
+  });
+
+  // 2. n-msg 그룹화
+  const els = Array.from(div.children);
+  for (let i = 0; i < els.length; i++) {
+    const cur = els[i];
+    const isMsg = cur.classList.contains('n-msg') || cur.querySelector('.n-msg');
+    if (isMsg) {
+      const prev = els[i-1], next = els[i+1];
+      const pIsMsg = prev && (prev.classList.contains('n-msg') || prev.querySelector('.n-msg'));
+      const nIsMsg = next && (next.classList.contains('n-msg') || next.querySelector('.n-msg'));
+      
+      let target = cur.classList.contains('n-msg') ? cur : cur.querySelector('.n-msg');
+      if (pIsMsg && nIsMsg) target.classList.add('msg-middle');
+      else if (pIsMsg && !nIsMsg) target.classList.add('msg-last');
+      else if (!pIsMsg && nIsMsg) target.classList.add('msg-first');
+    }
+  }
+
+  // 3. 제목 중복 체크 (첫 번째 의미 있는 헤딩)
+  let hasTitle = false;
+  if (epTitle) {
+    const norm = (s) => s.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+    const titleNorm = norm(epTitle);
+    const headings = div.querySelectorAll('h1, h2');
+    if (headings.length > 0) {
+      const firstH = headings[0];
+      let isFirstMeaningful = true;
+      for (const cur of els) {
+        if (cur === firstH) break;
+        if (cur.textContent.trim() !== '') {
+           isFirstMeaningful = false; break;
+        }
+      }
+      if (isFirstMeaningful && norm(firstH.textContent) === titleNorm) {
+        hasTitle = true;
+      }
+    }
+  }
+
+  return { body: div.innerHTML, hasTitle };
+}
 
 function exportPODPdf() {
   const p = currentProject();
@@ -2304,23 +2374,50 @@ function exportPODPdf() {
   }
   /* Narrative Blocks for PDF \u2014 v3 (\uc774\ubbf8\uc9c0 \uac00\uc774\ub4dc \ub3d9\uc77c \uc801\uc6a9) */
   .n-msg {
-    display: block; max-width: 68%; margin: 18px 0;
-    background: #F0F0EF; border: none; border-radius: 8px;
-    padding: 12px 16px; font-size: 0.95em; line-height: 1.85;
-    text-align: left; text-indent: 0 !important;
+    display: block !important;
+    max-width: 68% !important;
+    margin: 20px 0 !important;
+    background: #EEEEEC !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 14px 18px !important;
+    font-size: 0.95em !important;
+    line-height: 1.85 !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+  }
+  .msg-first, .msg-middle {
+    margin-bottom: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+  .msg-last, .msg-middle {
+    margin-top: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
   }
   .n-sys {
-    display: block; text-align: center; color: #686868;
-    font-size: 0.92em; line-height: 1.9; padding: 6px 0;
-    margin: 36px 0; text-indent: 0 !important;
+    display: block !important;
+    text-align: center !important;
+    color: #686868 !important;
+    font-size: 0.9em !important;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+    font-weight: 500 !important;
+    line-height: 1.8 !important;
+    padding: 0 !important;
+    margin: 24px 0 !important;
+    text-indent: 0 !important;
+    background: transparent !important;
+    border: none !important;
   }
   .n-sys::before {
-    content: '\u25c7'; display: block; font-size: 10px; color: #BEBBB5;
-    margin-bottom: 10px;
-    background:
-      linear-gradient(#CCCAC5, #CCCAC5) left center / calc(50% - 14px) 1px no-repeat,
-      linear-gradient(#CCCAC5, #CCCAC5) right center / calc(50% - 14px) 1px no-repeat;
-    padding: 0 4px;
+    content: '\u25c7' !important;
+    display: block !important;
+    font-size: 10px !important;
+    color: #BEBBB5 !important;
+    margin-bottom: 6px !important;
+    background: none !important;
+    padding: 0 !important;
   }
   .n-log {
     display: block; background: #F5F5F4;
@@ -2349,11 +2446,19 @@ function exportPODPdf() {
     font-style: normal; text-indent: 0 !important;
   }
   .n-ui {
-    display: inline; font-size: 0.87em; font-weight: 600;
-    color: #3A3A3A; background: #ECEAE7;
-    border: 1px solid #D2D0CB; border-radius: 4px;
-    padding: 1px 7px; box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
+    display: inline-block !important;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.86em !important;
+    color: #3A3A3A !important;
+    background: #F0F0F0 !important;
+    border: 1px solid #E0E0E0 !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    margin: 0 2px !important;
+    line-height: 1.2 !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
   }
 </style>
 </head>
@@ -2364,10 +2469,11 @@ function exportPODPdf() {
 `;
 
   eps.forEach((ep, i) => {
+    const processed = processEpisodeBody(ep.body, ep.title);
     html += `
   <div class="chapter">
-    <div class="chapter-title">${escapeHtml(ep.title)}</div>
-    <div class="chapter-content">${ep.body}</div>
+    ${processed.hasTitle ? '' : `<div class="chapter-title">${escapeHtml(ep.title)}</div>`}
+    <div class="chapter-content">${processed.body}</div>
   </div>`;
   });
 
@@ -2645,9 +2751,17 @@ function renderEbookPage(eps, idx) {
     epLabel = `${ci + 1}화 / ${chapters.length}화`;
   }
 
+  const processed = processEpisodeBody(ep.body, ep.title);
   $('#ebookEpNum').textContent = epLabel;
-  $('#ebookEpTitle').textContent = ep.title;
-  $('#ebookContent').innerHTML = `<div class="ql-editor">${ep.body || ''}</div>`;
+  
+  if (processed.hasTitle) {
+    $('#ebookEpTitle').style.display = 'none';
+  } else {
+    $('#ebookEpTitle').style.display = 'block';
+    $('#ebookEpTitle').textContent = ep.title;
+  }
+  
+  $('#ebookContent').innerHTML = `<div class="ql-editor">${processed.body}</div>`;
 
   // 코멘트 오버레이 렌더
   renderEbookComments(ep);
