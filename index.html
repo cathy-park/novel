@@ -347,16 +347,27 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   border-radius: 4px;
 }
 
+
+.plan-md-view h1, .plan-md-view h2, .plan-md-view h3 { margin: 12px 0 6px; font-weight: 800; }
+.plan-md-view h1 { font-size: 16px; }
+.plan-md-view h2 { font-size: 15px; }
+.plan-md-view h3 { font-size: 14px; }
+.plan-md-view p { margin: 0 0 10px; }
+.plan-md-view ul, .plan-md-view ol { margin: 0 0 10px; padding-left: 20px; }
+.plan-md-view strong { font-weight: 700; color: var(--c-accent-dk); }
+.plan-md-view em { font-style: italic; color: var(--c-sub); }
+.plan-md-view blockquote { border-left: 3px solid var(--c-line); margin: 0 0 10px; padding-left: 10px; color: var(--c-sub); }
+.plan-md-view table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+.plan-md-view th, .plan-md-view td { border: 1px solid var(--c-line); padding: 4px 8px; }
+.plan-md-view th { background: var(--c-surface-3); }
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
 <div id="welcomeScreen" style="position:fixed;inset:0;background:var(--c-bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
-  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style="margin-bottom:24px;">
-    <rect width="64" height="64" rx="17" fill="#C8BEFF"/>
-    <path d="M14 17c8-2 14 0 18 5v27c-4-5-10-7-18-5V17Zm36 0c-8-2-14 0-18 5v27c4-5 10-7 18-5V17Z" stroke="#17141F" stroke-width="4" stroke-linejoin="round"/>
-  </svg>
+  <img src="/apple-touch-icon.png" width="64" height="64" style="border-radius:16px; margin-bottom:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
   <h1 style="font-size:24px;margin:0 0 8px;font-weight:800;">야니의 소설창고 (Cloud)</h1>
   <p style="color:var(--c-body);margin:0 0 24px;line-height:1.6;">모든 원고가 클라우드에 안전하게 보관됩니다.<br>언제 어디서든 로그인하여 집필을 이어가세요.</p>
   <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;text-align:left;">
@@ -611,6 +622,10 @@ $('#signupBtn').onclick = async () => {
   if(!email || !password) return $('#authError').textContent = '이메일과 비밀번호를 입력해주세요.';
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) { $('#authError').textContent = error.message; return; }
+  if (!data.session) {
+    $('#authError').innerHTML = '수파베이스 대시보드(Auth->Providers->Email)에서<br><b>Confirm email</b> 설정을 끄신 후 다시 시도해주세요!';
+    return;
+  }
   showToast('가입 완료! 로그인 되었습니다.');
   currentUser = data.user;
   $('#welcomeScreen').style.display = 'none';
@@ -1160,7 +1175,8 @@ function renderProjectPlan() {
     const isPdf = x.type === 'pdf_attachment';
     const bodyContent = isPdf
       ? `<div style="padding:16px;text-align:center;"><button class="secondary" data-open-pdf="${x.id}" data-filename="${escapeHtml(x.pdfName)}" style="width:100%;">📄 PDF 문서 열기</button><p style="margin:8px 0 0;font-size:11px;color:var(--c-muted);word-break:break-all;">${escapeHtml(x.pdfName)}</p></div>`
-      : `<textarea class="plan-section-body" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea>`;
+      : `<div class="plan-md-view" style="padding:12px; font-size:13px; line-height:1.6; cursor:pointer;" onclick="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus();" title="클릭하여 수정">${window.marked ? marked.parse(x.body || '내용이 없습니다.') : escapeHtml(x.body)}</div>
+         <textarea class="plan-section-body hidden" data-bdy="${x.id}" onblur="this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); this.previousElementSibling.innerHTML = window.marked ? marked.parse(this.value) : escapeHtml(this.value);">${escapeHtml(x.body)}</textarea>`;
     return `<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
     <div class="plan-accordion-head"><button class="accordion-toggle" data-tgl="${x.id}">›</button><input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/><button class="icon-btn" style="width:28px;height:28px;" data-del="${x.id}">×</button></div>
     <div class="plan-accordion-body">${bodyContent}</div>
