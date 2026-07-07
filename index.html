@@ -794,25 +794,27 @@ async function saveProjectSupabase(p) {
     plan_sections: p.planSections,
     updated_at: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()
   };
-  await sb.from('novel_projects').upsert(pData);
-  
-  // Episodes Update
-  for (let i = 0; i < p.episodes.length; i++) {
-    const ep = p.episodes[i];
-    const eData = {
-      id: ep.id,
-      project_id: p.id,
-      user_id: currentUser.id,
-      type: ep.type,
-      title: ep.title,
-      body: ep.body,
-      plan: ep.plan || '',
-      created_at: ep.createdAt ? new Date(ep.createdAt).toISOString() : new Date().toISOString(),
-      updated_at: ep.updatedAt ? new Date(ep.updatedAt).toISOString() : new Date().toISOString(),
-      order_idx: i
-    };
-    await sb.from('novel_episodes').upsert(eData);
-  }
+    const { error: pErr } = await sb.from('novel_projects').upsert(pData);
+    if (pErr) alert('Project DB Error: ' + JSON.stringify(pErr));
+    
+    // Episodes Update
+    for (let i = 0; i < p.episodes.length; i++) {
+      const ep = p.episodes[i];
+      const eData = {
+        id: ep.id,
+        project_id: p.id,
+        user_id: currentUser.id,
+        type: ep.type,
+        title: ep.title,
+        body: ep.body,
+        plan: ep.plan || '',
+        created_at: ep.createdAt ? new Date(ep.createdAt).toISOString() : new Date().toISOString(),
+        updated_at: ep.updatedAt ? new Date(ep.updatedAt).toISOString() : new Date().toISOString(),
+        order_idx: i
+      };
+      const { error: eErr } = await sb.from('novel_episodes').upsert(eData);
+      if (eErr) alert('Episode DB Error: ' + JSON.stringify(eErr));
+    }
 }
 
 // 에피소드 삭제 (DB)
