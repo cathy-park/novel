@@ -503,11 +503,12 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   <aside id="planDrawer" class="plan-drawer">
     <div class="drawer-head">
       <h2>작품 기획</h2>
-      <div>
-        <button id="copyAllPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px;">전체 복사</button>
-        <button id="importPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px;">가져오기</button>
-        <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px;">＋ 항목</button>
-        <button id="closeDrawerBtn" class="icon-btn" type="button" style="display:inline-flex;margin-left:8px;">×</button>
+      <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+        <button id="copyAllPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">복사</button>
+        <button id="importPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">가져오기</button>
+        <button id="addBeatSheetBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">🎬 비트시트</button>
+        <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">＋ 항목</button>
+        <button id="closeDrawerBtn" class="icon-btn" type="button" style="display:inline-flex;margin-left:4px;">×</button>
       </div>
     </div>
     <div id="projectPlanList" class="drawer-body"></div>
