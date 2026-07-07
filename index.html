@@ -594,7 +594,9 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
   display: flex; gap: 10px;
   padding: 14px 18px 28px;
-  background: linear-gradient(to top, #FAF7F0 70%, transparent);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0,0,0,.08);
 }
 .ebook-nav button {
   flex: 1; height: 48px;
