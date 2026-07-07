@@ -993,37 +993,7 @@ if ('serviceWorker' in navigator) {
     for(let registration of registrations) { registration.unregister(); }
   });
   if (window.caches) {
-    sb.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        currentUser = session.user;
-        $('#loginView').classList.add('hidden');
-        $('#appView').classList.remove('hidden');
-        if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && !isAppInitialized) {
-          isAppInitialized = true;
-          loadStateSupabase().then(() => {
-            renderLibrary();
-            if (state.projects.length === 0) showToast('새 프로젝트를 만들어보세요!');
-          });
-        }
-      } else {
-        currentUser = null;
-        $('#loginView').classList.remove('hidden');
-        $('#appView').classList.add('hidden');
-      }
-    });
 
-    // Supabase 세션 초기화 지연 방지 (안전 장치)
-    sb.auth.getSession().then(({ data: { session } }) => {
-      if (session && !isAppInitialized) {
-        currentUser = session.user;
-        $('#loginView').classList.add('hidden');
-        $('#appView').classList.remove('hidden');
-        isAppInitialized = true;
-        loadStateSupabase().then(() => {
-          renderLibrary();
-        });
-      }
-    });
     caches.keys().then(function(names) {
       for (let name of names) { caches.delete(name); }
     });
@@ -1110,6 +1080,22 @@ async function initApp() {
       $('#welcomeScreen').style.display = 'flex';
     } else if (event === 'SIGNED_IN' && !session) {
       showToast('로그인 이벤트 발생했으나 세션이 없습니다.');
+    }
+  });
+
+  // 새로고침 시 INITIAL_SESSION이 누락되는 경우를 대비한 수동 세션 복구
+  sb.auth.getSession().then(async ({ data: { session } }) => {
+    if (session && !currentUser) {
+      console.log('Manual session recovery successful');
+      showToast('세션을 복구했습니다. 서재를 불러옵니다...');
+      currentUser = session.user;
+      $('#welcomeScreen').style.display = 'none';
+      try { await migrateFromLocalStorage(); } catch(e) {}
+      try { await loadStateSupabase(); } catch(e) { showToast('DB 로딩 지연. 새로고침 해주세요.'); }
+      autoRescue();
+      renderLibrary();
+    } else if (!session && !currentUser) {
+      $('#welcomeScreen').style.display = 'flex';
     }
   });
 }
