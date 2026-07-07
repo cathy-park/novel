@@ -199,7 +199,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .mode-split { grid-template-columns: minmax(320px, 0.8fr) minmax(480px, 1.2fr); }
 .mode-split .plan-pane { border-right: 1px solid var(--c-line); background: var(--c-bg); }
 
-.pane { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 24px 36px 0; }
+.pane { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 24px 36px 0; position: relative; }
 .workspace-shell.focus-mode .pane { padding: 0; }
 .plan-editor, .body-editor { flex: 1; min-height: 0; width: 100%; max-width: 680px; margin: 0 auto; border: 0; outline: 0; background: transparent; resize: none; overflow-y: auto; padding-bottom: 60px; }
 .plan-editor { font-size: 15px; line-height: 1.9; color: var(--c-ink); }
@@ -577,6 +577,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
       <div class="breadcrumb"><span id="projectBreadcrumb"></span><span class="slash">/</span><strong id="episodeBreadcrumb"></strong></div>
       <div class="top-actions">
         <span id="saveStatus" class="save-status">저장됨</span>
+        <button id="openPCEbookBtn" class="ghost" type="button">📖 이북 뷰어</button>
         <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
         <button id="versionBtn" class="ghost" type="button">버전 기록</button>
         <button id="toggleFocusBtn" class="ghost" type="button" title="집중 모드 (⌘.)">집중 ⌘.</button>
@@ -628,8 +629,9 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
       <div style="max-width:880px; margin:0 auto 20px; display:flex; justify-content:space-between; align-items:center;">
         <div><h1 id="manuscriptTitle" style="display:none;"></h1><p id="manuscriptMeta" style="margin:4px 0 0;color:var(--c-sub);font-size:12px;"></p></div>
         <div style="display:flex; gap:8px;">
-          <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
+          <button id="exportPODBtn" class="primary" style="background:#2E2A25;" type="button">🖨️ A5 출판용 PDF</button>
           <button id="copyManuscriptFull" class="primary" type="button">전체 본문 복사</button>
+          <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
         </div>
       </div>
       <div id="manuscriptContent" class="manuscript"></div>
@@ -637,17 +639,25 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   </main>
 
   <aside id="planDrawer" class="plan-drawer">
-    <div class="drawer-head">
-      <h2>작품 기획</h2>
-      <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+    <div class="drawer-head" style="flex-direction:column; align-items:flex-start; gap:12px;">
+      <div style="display:flex; justify-content:space-between; width:100%;">
+        <div class="drawer-tabs" style="display:flex; gap:16px; font-size:16px; font-weight:800;">
+          <div id="tabPlanBtn" class="drawer-tab active" style="cursor:pointer;">작품 기획</div>
+          <div id="tabCommentBtn" class="drawer-tab" style="cursor:pointer; color:var(--c-muted);">코멘트 <span id="pcCommentBadge" style="font-size:11px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:10px;display:none;">0</span></div>
+        </div>
+        <button id="closeDrawerBtn" class="icon-btn" type="button">×</button>
+      </div>
+      <div id="planToolbar" style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
         <button id="copyAllPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">복사</button>
         <button id="importPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">가져오기</button>
         <button id="addBeatSheetBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">🎬 비트시트</button>
         <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">＋ 항목</button>
-        <button id="closeDrawerBtn" class="icon-btn" type="button" style="display:inline-flex;margin-left:4px;">×</button>
       </div>
     </div>
     <div id="projectPlanList" class="drawer-body"></div>
+    <div id="projectCommentList" class="drawer-body hidden" style="padding:16px;">
+      <!-- PC 코멘트 리스트 렌더링 영역 -->
+    </div>
   </aside>
 </div>
 
@@ -1039,7 +1049,15 @@ async function deleteEpisode(epId) {
 function currentProject() { return state.projects.find(p=>p.id===state.currentProjectId) || state.projects[0]; }
 function currentEpisode() { const p=currentProject(); return p?.episodes.find(e=>e.id===p.selectedEpisodeId) || p?.episodes[0]; }
 function touchProject() { const p=currentProject(); if(p) p.updatedAt = Date.now(); }
-function cleanText(t='') { return String(t).replace(/\r\n/g,'\n').replace(/[\t\u00A0]+/g,' ').replace(/[ ]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim(); }
+function cleanText(t='') { 
+  let s = String(t);
+  if (s.includes('<p') || s.includes('<br')) {
+    const d = document.createElement('div'); 
+    d.innerHTML = s; 
+    s = d.innerText || d.textContent || '';
+  }
+  return s.replace(/\r\n/g,'\n').replace(/[\t\u00A0]+/g,' ').replace(/[ ]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim(); 
+}
 function stats(t='') { 
   let text = String(t).replace(/<p[^>]*>/gi, '\n').replace(/<br[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
   text = text.replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').trim();
@@ -1184,6 +1202,7 @@ function openProject(id) {
     $('#workspaceView').classList.remove('hidden');
     showEditor();
     renderWorkspace();
+    updateCommentBadge();
   }
 }
 
@@ -1344,12 +1363,26 @@ function maybeVersion(ep, force=false) {
 }
 
 // Export / Import
-function exportBackup() {
+async function exportBackup() {
   persistEditor(); queueSaveFS();
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const jsonString = JSON.stringify(state, null, 2);
+  let blob = new Blob([jsonString], {type:'application/json'});
+  let filename = `야니의_소설창고_backup_${new Date().toISOString().slice(0,10)}.json`;
+  
+  // CompressionStream을 지원하는 브라우저인 경우 gzip 압축
+  if (window.CompressionStream) {
+    try {
+      const stream = new Response(blob).body.pipeThrough(new CompressionStream('gzip'));
+      blob = await new Response(stream).blob();
+      filename += '.gz';
+    } catch(e) {
+      console.warn('압축 실패, 원본 JSON으로 다운로드합니다.', e);
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
-  a.download = `야니의_소설창고_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 function remapImportedProject(project) {
@@ -1619,6 +1652,78 @@ function renderProjectPlan() {
   $$('[data-open-pdf]').forEach(b=>b.onclick=()=>openAttachedPdf(b.dataset.openPdf));
 }
 
+function updateCommentBadge() {
+  const p = currentProject();
+  if(!p) return;
+  const count = p.episodes.reduce((acc, ep) => acc + (ep.comments?.length || 0), 0);
+  const badge = $('#pcCommentBadge');
+  if (count > 0) {
+    badge.style.display = 'inline-block';
+    badge.textContent = count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderPCCommentList() {
+  const p = currentProject();
+  const list = $('#projectCommentList');
+  if (!p) return;
+  
+  let html = '';
+  let total = 0;
+  p.episodes.forEach((ep, i) => {
+    const comments = ep.comments || [];
+    if (comments.length === 0) return;
+    total += comments.length;
+    
+    html += `<div style="margin-bottom:16px;">
+      <h3 style="font-size:13px;color:var(--c-sub);margin:0 0 8px;">${ep.type==='prologue'?'프':ep.type==='epilogue'?'에':(i+1)+'화'} - ${escapeHtml(ep.title)}</h3>
+      <div style="display:grid;gap:8px;">
+        ${comments.map(c => `
+          <div class="comment-item" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;" onclick="gotoComment('${ep.id}', '${escapeHtml(c.quote).replace(/'/g, "\\'")}')">
+            <div style="font-size:12px;color:var(--c-muted);margin-bottom:6px;padding-left:8px;border-left:2px solid var(--border);">"${escapeHtml(c.quote)}"</div>
+            <div style="font-size:13px;color:var(--c-body);line-height:1.5;">${escapeHtml(c.text)}</div>
+            <div style="font-size:11px;color:var(--c-muted);margin-top:6px;text-align:right;">${new Date(c.createdAt).toLocaleString()}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  });
+  
+  if (total === 0) {
+    list.innerHTML = `<div class="plan-empty">등록된 코멘트가 없어요.<br><br>📖 이북 뷰어에서 텍스트를 선택해<br>코멘트를 남겨보세요.</div>`;
+  } else {
+    list.innerHTML = html;
+  }
+  updateCommentBadge();
+}
+
+function gotoComment(epId, quote) {
+  // 에피소드 열기
+  const p = currentProject();
+  if (p.selectedEpisodeId !== epId) {
+    p.selectedEpisodeId = epId;
+    renderEpisodeList();
+    renderEditor();
+  }
+  
+  // 본문 이동
+  const editor = $('#bodyEditor');
+  if (window.quill) {
+    // 텍스트에서 인용구 위치 검색
+    const text = quill.getText();
+    const idx = text.indexOf(quote);
+    if (idx !== -1) {
+      quill.setSelection(idx, quote.length);
+      const bounds = quill.getBounds(idx);
+      editor.scrollTop = bounds.top - 100; // 스크롤 여유
+    } else {
+      showToast('해당 문장을 찾을 수 없습니다. (수정되었을 수 있음)');
+    }
+  }
+}
+
 // Copy Logic
 function buildEpisodeText(ep, mode) {
   const t=cleanText(ep.title), p=cleanText(ep.plan), b=cleanText(ep.body);
@@ -1683,7 +1788,28 @@ $('#planEditor').onblur = () => {
 $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
+$('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
 $('#closeDrawerBtn').onclick = togglePlanDrawer;
+
+$('#tabPlanBtn').onclick = () => {
+  $('#tabPlanBtn').classList.add('active');
+  $('#tabPlanBtn').style.color = '';
+  $('#tabCommentBtn').classList.remove('active');
+  $('#tabCommentBtn').style.color = 'var(--c-muted)';
+  $('#projectPlanList').classList.remove('hidden');
+  $('#planToolbar').classList.remove('hidden');
+  $('#projectCommentList').classList.add('hidden');
+};
+$('#tabCommentBtn').onclick = () => {
+  $('#tabCommentBtn').classList.add('active');
+  $('#tabCommentBtn').style.color = '';
+  $('#tabPlanBtn').classList.remove('active');
+  $('#tabPlanBtn').style.color = 'var(--c-muted)';
+  $('#projectCommentList').classList.remove('hidden');
+  $('#projectPlanList').classList.add('hidden');
+  $('#planToolbar').classList.add('hidden');
+  renderPCCommentList();
+};
 $('#addPlanSectionBtn').onclick = () => { currentProject().planSections.push(defaultPlanSection()); touchProject(); queueSaveFS(); renderProjectPlan(); };
 $('#addBeatSheetBtn').onclick = () => {
   const p = currentProject();
@@ -1762,18 +1888,129 @@ $('#openManuscriptBtn').onclick = () => {
 };
 $('#backFromManuscript').onclick = showEditor;
 $('#copyManuscriptFull').onclick = () => copyText(orderedEpisodes().filter(e=>cleanText(e.body)).map(e=>cleanText(e.body)).join('\n\n\n'), '전체 본문을 복사했어요.');
+$('#exportPODBtn').onclick = exportPODPdf;
+
+function exportPODPdf() {
+  const p = currentProject();
+  if(!p) return;
+  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  if(eps.length === 0) return showToast('출판할 본문이 없습니다.');
+  
+  showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
+  
+  let html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(p.title)} - 출판용 원고</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></script>
+<style>
+  @page {
+    size: A5;
+    margin: 20mm 15mm 20mm 15mm;
+    @bottom-center {
+      content: counter(page);
+      font-size: 9pt;
+      font-family: 'Noto Serif KR', serif;
+    }
+  }
+  @page:first {
+    @bottom-center { content: none; }
+  }
+  body {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 10pt;
+    line-height: 1.8;
+    color: #111;
+  }
+  .title-page {
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+  }
+  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
+  .chapter {
+    break-before: page;
+    margin-top: 40px;
+  }
+  .chapter-title {
+    font-size: 14pt;
+    font-weight: 700;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  .chapter-content p {
+    text-indent: 10pt;
+    margin: 0;
+    word-break: keep-all;
+  }
+</style>
+</head>
+<body>
+  <div class="title-page">
+    <h1>${escapeHtml(p.title)}</h1>
+  </div>
+`;
+
+  eps.forEach((ep, i) => {
+    html += `
+  <div class="chapter">
+    <div class="chapter-title">${escapeHtml(ep.title)}</div>
+    <div class="chapter-content">${ep.body}</div>
+  </div>`;
+  });
+
+  html += `
+  <script>
+    class PrintHandler extends window.Paged.Handler {
+      afterRendered(pages) {
+        setTimeout(() => window.print(), 500);
+      }
+    }
+    window.Paged.registerHandlers(PrintHandler);
+  </script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  } else {
+    showToast('팝업 차단을 해제하고 다시 시도해주세요.');
+  }
+}
 
 // Export/Import
 $('#exportBackupBtn').onclick = exportBackup;
 $('#importBackupBtn').onclick = () => { $('#importInput').value=''; $('#importInput').click(); };
-$('#importInput').onchange = () => {
+$('#importInput').onchange = async () => {
   const file = $('#importInput').files?.[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try { const data = JSON.parse(reader.result); if(Array.isArray(data.projects)) { importTempData = data; $('#importProjectCount').textContent = data.projects.length; openModal('importModal'); } else throw new Error(); }
-    catch(e) { showToast('잘못된 백업 파일입니다.'); }
-  };
-  reader.readAsText(file);
+  try {
+    let jsonString = '';
+    // 압축된 파일(.gz)인 경우 해제
+    if (file.name.endsWith('.gz') && window.DecompressionStream) {
+      const stream = file.stream().pipeThrough(new DecompressionStream('gzip'));
+      const text = await new Response(stream).text();
+      jsonString = text;
+    } else {
+      jsonString = await file.text();
+    }
+    const data = JSON.parse(jsonString);
+    if(Array.isArray(data.projects)) { 
+      importTempData = data; 
+      $('#importProjectCount').textContent = data.projects.length; 
+      openModal('importModal'); 
+    } else throw new Error();
+  } catch(e) {
+    console.error(e);
+    showToast('잘못된 백업 파일입니다.');
+  }
 };
 $('#importReplaceBtn').onclick = () => handleImport('replace');
 $('#importAddBtn').onclick = () => handleImport('add');
@@ -2060,6 +2297,7 @@ function getEpComments(ep) {
   return ep.comments;
 }
 
+
 function renderEbookComments(ep) {
   const existing = $$('.ebook-comment-bubble');
   existing.forEach(b => b.remove());
@@ -2099,30 +2337,31 @@ function attachEbookSelectionHandler(ep) {
 
     const tip = document.createElement('div');
     tip.id = 'ebook-comment-tooltip';
-    tip.textContent = '✏️ 코멘트 달기';
-    // 화면 영역 안에서 위치 계산
-    const tipLeft = Math.min(
-      window.innerWidth - 160,
-      Math.max(8, rect.left + rect.width / 2 - 70)
-    );
-    const tipTop = rect.top > 60 ? rect.top - 48 : rect.bottom + 8;
+    tip.innerHTML = `<span style="font-size:18px;">💬</span> 선택한 문장에 코멘트 달기`;
+    
+    // 모바일 기본 메뉴와 겹치지 않도록 하단 중앙 고정 플로팅 버튼으로 배치
     tip.style.cssText = `
       position: fixed;
-      left: ${tipLeft}px;
-      top: ${tipTop}px;
-      background: #1C1813;
+      left: 50%;
+      bottom: 80px;
+      transform: translateX(-50%);
+      background: #6B5CE7;
       color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      padding: 10px 18px;
-      border-radius: 24px;
-      z-index: 9999;
+      font-size: 15px;
+      font-weight: 800;
+      padding: 14px 24px;
+      border-radius: 30px;
+      z-index: 99999;
       cursor: pointer;
       white-space: nowrap;
-      box-shadow: 0 4px 20px rgba(0,0,0,.35);
+      box-shadow: 0 8px 24px rgba(107, 92, 231, 0.4);
       font-family: 'Pretendard', sans-serif;
       user-select: none;
       -webkit-user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     `;
     tip.onpointerdown = (e) => {
       e.preventDefault();
@@ -2154,6 +2393,9 @@ function attachEbookSelectionHandler(ep) {
     if (sel && !sel.isCollapsed && sel.toString().trim() && content.contains(sel.anchorNode)) {
       clearTimeout(content._selTipTimer);
       content._selTipTimer = setTimeout(showTip, 300);
+    } else {
+      const old = document.getElementById('ebook-comment-tooltip');
+      if (old) old.remove();
     }
   });
 }
