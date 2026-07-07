@@ -1218,7 +1218,77 @@ function openCoverSettings(projectId) {
   $('#coverColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${p.coverColor===c?'active':''}" data-cover-color="${c}" style="background:${c}"></button>`).join('');
   $('#coverCustomColor').value = p.coverColor || DEFAULT_COVER_COLOR;
   $('#coverColorValue').textContent = p.coverColor || DEFAULT_COVER_COLOR;
-  $$('#coverColors [data-cover-color]').forEach// ─── 비트시트 배포 함수 ─────────────────────────────────────
+  $$('#coverColors [data-cover-color]').forEach(b=>b.onclick=()=>{
+    const c=b.dataset.coverColor; p.coverColor=c; p.cover='';
+    $$('#coverColors [data-cover-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+    $('#coverCustomColor').value=c; $('#coverColorValue').textContent=c;
+    $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
+    touchProject(); queueSaveFS(); renderLibrary();
+  });
+  openModal('coverModal');
+}
+$('#coverCustomColor').oninput = () => {
+  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  const c = $('#coverCustomColor').value; p.coverColor=c; p.cover='';
+  $('#coverColorValue').textContent=c;
+  $$('#coverColors [data-cover-color]').forEach(x=>x.classList.remove('active'));
+  $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
+  touchProject(); queueSaveFS(); renderLibrary();
+};
+$('#uploadCoverBtn').onclick = () => $('#coverInput').click();
+$('#coverInput').onchange = () => {
+  const file = $('#coverInput').files?.[0]; if(!file) return;
+  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_SIZE = 800;
+      let width = img.width, height = img.height;
+      if (width > MAX_SIZE || height > MAX_SIZE) {
+        if (width > height) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        else { width *= MAX_SIZE / height; height = MAX_SIZE; }
+      }
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      p.cover = canvas.toDataURL('image/webp', 0.8);
+      $('#coverPreview').innerHTML = `<img src="${p.cover}" alt="표지"/>`;
+      touchProject(); queueSaveFS(); renderLibrary();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+};
+$('#removeCoverImageBtn').onclick = () => {
+  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  p.cover='';
+  $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
+  touchProject(); queueSaveFS(); renderLibrary();
+  showToast('표지 이미지를 지웠어요.');
+};
+
+// Drawer & Plan
+
+async function openAttachedPdf(filename) {
+  if(!rootHandle) return;
+  const p = currentProject();
+  try {
+    const folderName = safeName(p.title) + '_' + p.id.split('-').pop();
+    const projDir = await rootHandle.getDirectoryHandle(folderName);
+    const planDir = await projDir.getDirectoryHandle('기획');
+    const pdfFileHandle = await planDir.getFileHandle(filename);
+    const file = await pdfFileHandle.getFile();
+    const blobUrl = URL.createObjectURL(file);
+    window.open(blobUrl, '_blank');
+  } catch(e) {
+    console.error(e);
+    showToast('파일을 찾을 수 없습니다.');
+  }
+}
+
+// ─── 비트시트 배포 함수 ─────────────────────────────────────
 function parseBeatSheet(text) {
   // ## 헤더 기준으로 파싱
   const blocks = [];
@@ -1329,36 +1399,6 @@ function renderProjectPlan() {
   });
   $$('[data-del]').forEach(b=>b.onclick=()=>{ if(confirm('항목을 삭제할까요?')){ p.planSections=p.planSections.filter(x=>x.id!==b.dataset.del); touchProject(); queueSaveFS(); renderProjectPlan(); }});
   $$('[data-distribute-beat]').forEach(b=>b.onclick=()=>distributeBeatSheet(b.dataset.distributeBeat));
-}projDir = await rootHandle.getDirectoryHandle(folderName);
-    const planDir = await projDir.getDirectoryHandle('기획');
-    const pdfFileHandle = await planDir.getFileHandle(filename);
-    const file = await pdfFileHandle.getFile();
-    const blobUrl = URL.createObjectURL(file);
-    window.open(blobUrl, '_blank');
-  } catch(e) {
-    console.error(e);
-    showToast('파일을 찾을 수 없습니다.');
-  }
-}
-
-function renderProjectPlan() {
-  const p = currentProject(), list = $('#projectPlanList'), sections = p.planSections||[];
-  if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
-  list.innerHTML = sections.map(x=> {
-    const isPdf = x.type === 'pdf_attachment';
-    const bodyContent = isPdf
-      ? `<div style="padding:16px;text-align:center;"><button class="secondary" data-open-pdf="${x.id}" data-filename="${escapeHtml(x.pdfName)}" style="width:100%;">📄 PDF 문서 열기</button><p style="margin:8px 0 0;font-size:11px;color:var(--c-muted);word-break:break-all;">${escapeHtml(x.pdfName)}</p></div>`
-      : `<div class="plan-md-view" style="padding:12px; font-size:13px; line-height:1.6; cursor:pointer;" onclick="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus();" title="클릭하여 수정">${window.marked ? marked.parse(x.body || '내용이 없습니다.') : escapeHtml(x.body)}</div>
-         <textarea class="plan-section-body hidden" data-bdy="${x.id}" onblur="this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); this.previousElementSibling.innerHTML = window.marked ? marked.parse(this.value) : escapeHtml(this.value);">${escapeHtml(x.body)}</textarea>`;
-    return `<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
-    <div class="plan-accordion-head"><button class="accordion-toggle" data-tgl="${x.id}">›</button><input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/><button class="icon-btn" style="width:28px;height:28px;" data-del="${x.id}">×</button></div>
-    <div class="plan-accordion-body">${bodyContent}</div>
-  </article>`;
-  }).join('');
-  $$('[data-tgl]').forEach(b=>b.onclick=()=>{ const s=sections.find(x=>x.id===b.dataset.tgl); s.open=!s.open; touchProject(); queueSaveFS(); renderProjectPlan(); });
-  $$('[data-ttl]').forEach(i=>i.oninput=()=>{ sections.find(x=>x.id===i.dataset.ttl).title=i.value; touchProject(); queueSaveFS(); });
-  $$('[data-bdy]').forEach(t=>{ t.oninput=()=>{ sections.find(x=>x.id===t.dataset.bdy).body=t.value; touchProject(); autosizePlanSection(t); queueSaveFS(); }; requestAnimationFrame(()=>autosizePlanSection(t)); });
-  $$('[data-del]').forEach(b=>b.onclick=()=>{ if(confirm('항목을 삭제할까요?')){ p.planSections=p.planSections.filter(x=>x.id!==b.dataset.del); touchProject(); queueSaveFS(); renderProjectPlan(); }});
 }
 
 // Copy Logic
