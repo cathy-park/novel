@@ -1,4 +1,4 @@
-const CACHE_NAME = 'novel-cache-v1783405561';
+const CACHE_NAME = `novel-cache-${Date.now()}`;
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,9 +9,9 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
@@ -31,6 +31,6 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
