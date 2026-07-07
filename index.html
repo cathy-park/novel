@@ -624,6 +624,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
       <div class="breadcrumb"><span id="projectBreadcrumb"></span><span class="slash">/</span><strong id="episodeBreadcrumb"></strong></div>
       <div class="top-actions">
         <span id="saveStatus" class="save-status">저장됨</span>
+        <button id="emergencyRestoreBtn" class="ghost" type="button" style="color: #e53935; font-weight: 600;">🚨 최신 백업 복원</button>
         <button id="openPCEbookBtn" class="ghost" type="button">📖 이북 뷰어</button>
         <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
         <button id="versionBtn" class="ghost" type="button">버전 기록</button>
@@ -2067,6 +2068,30 @@ $('#versionBtn').onclick = () => {
     queueSaveFS(); closeModal('versionModal'); renderEpisode(); showToast('이전 버전으로 복원했어요.');
   });
   openModal('versionModal');
+};
+
+$('#emergencyRestoreBtn').onclick = () => {
+  const ep = currentEpisode();
+  if (!ep) return;
+  if (!ep.versions || ep.versions.length === 0) {
+    alert('이 회차에 저장된 백업본이 없습니다.');
+    return;
+  }
+  // 가장 최신 백업본 가져오기 (비어있지 않은 것)
+  const validBackup = ep.versions.find(v => cleanText(v.body).length > 0);
+  if (!validBackup) {
+    alert('저장된 유효한 텍스트 데이터가 없습니다.');
+    return;
+  }
+  const backup = validBackup.body;
+  const chars = stats(backup).withSpaces;
+  if (confirm(`가장 최근에 저장된 백업본(${chars}자)을 불러오시겠습니까?\n현재 에디터의 내용은 덮어씌워집니다.`)) {
+    ep.body = backup;
+    if (quill) quill.root.innerHTML = backup;
+    queueSaveFS(true);
+    updateBodyStats();
+    showToast('안전하게 백업본이 복구되었습니다!');
+  }
 };
 
 // Manuscript
