@@ -210,30 +210,150 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .workspace-shell.focus-mode .editor-bottom-bar { justify-content: flex-end; }
 .workspace-shell.focus-mode .dropdown-container { display: none; }
 
-/* Narrative Blocks Styles */
+/* ─────────────────────────────────────────────────────────────
+   Narrative Blocks — 소설 본문 서사 블록 (이미지 가이드 v2)
+   원칙: 출판 원고 흐름 안에 자연스럽게 삽입, 웹 UI 컴포넌트 금지
+───────────────────────────────────────────────────────────────── */
+
+/* 1. 메시지 (n-msg)
+   회색 박스 + 발신자명 영역 + 왼쪽 정렬 + 너비 제한 */
 .ql-editor .n-msg, .n-msg {
-  max-width: 76%; margin-left: auto; margin-right: 0; background: #F5F5F3; border: none; border-radius: 10px; padding: 12px 16px; font-size: 0.95em; line-height: 1.75; text-align: left; margin-top: 16px; margin-bottom: 16px; text-indent: 0;
+  display: block;
+  max-width: 72%;
+  margin: 22px 0 22px auto;
+  background: #F3F3F2;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 0.96em;
+  line-height: 1.85;
+  text-align: left;
+  text-indent: 0;
+  position: relative;
 }
+/* 메시지 발신자명: 첫 줄이 발신자로 간주, bold 처리는 작가가 직접 */
+
+/* 2. 시스템 문구 (n-sys)
+   완전 중앙 정렬, ◇ + 가로선 장식, 충분한 여백 */
 .ql-editor .n-sys, .n-sys {
-  text-align: center; width: 100%; background: transparent; border: none; color: #5F6268; font-size: 0.92em; font-weight: 500; letter-spacing: 0.025em; line-height: 1.8; padding: 8px 24px; margin: 22px 0; text-indent: 0;
+  display: block;
+  text-align: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #6B6B6B;
+  font-size: 0.93em;
+  line-height: 2.0;
+  padding: 28px 20px;
+  margin: 8px 0;
+  text-indent: 0;
+  position: relative;
 }
-.ql-editor .n-sys::before, .n-sys::before {
-  content: "◇"; display: block; margin-bottom: 4px; font-size: 11px; color: #B0B3B8;
+.ql-editor .n-sys::before,
+.n-sys::before {
+  content: '───────  ◇  ───────';
+  display: block;
+  font-size: 11px;
+  color: #B8B5B0;
+  letter-spacing: 0.2em;
+  margin-bottom: 10px;
+  line-height: 1;
 }
+.ql-editor .n-sys::after,
+.n-sys::after {
+  content: '';
+  display: block;
+  width: 80px;
+  height: 1px;
+  background: #C8C5BF;
+  margin: 10px auto 0;
+}
+
+/* 3. 시스템 로그 (n-log)
+   고정폭, 왼쪽 포인트 라인, 연한 배경 */
 .ql-editor .n-log, .n-log {
-  width: 100%; background: #F5F6F7; border-left: 2px solid #B9BEC5; border-radius: 3px; padding: 12px 16px; margin: 16px 0; font-family: monospace; font-size: 13px; line-height: 1.65; color: #4C5158; text-align: left; white-space: pre-wrap; box-shadow: none; text-indent: 0;
+  display: block;
+  width: 100%;
+  background: #F7F7F6;
+  border: none;
+  border-left: 2.5px solid #C2C0BC;
+  border-radius: 0;
+  padding: 11px 16px;
+  margin: 20px 0;
+  font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #4E4E4E;
+  text-align: left;
+  white-space: pre-wrap;
+  letter-spacing: 0.01em;
+  text-indent: 0;
 }
+
+/* 4. 알림·경고 (n-alert)
+   ▲ 아이콘, 연한 붉은 배경, 얇은 테두리 */
 .ql-editor .n-alert, .n-alert {
-  width: 100%; background: #FAFAF8; border: 1px solid #D8D6D0; border-radius: 5px; padding: 11px 14px 11px 40px; margin: 16px 0; position: relative; text-align: left; font-size: 0.92em; color: #55575B; text-indent: 0;
+  display: block;
+  width: 100%;
+  background: #FEF6F5;
+  border: 1px solid #EAC6C2;
+  border-radius: 5px;
+  padding: 11px 16px 11px 42px;
+  margin: 20px 0;
+  position: relative;
+  text-align: left;
+  font-size: 0.94em;
+  color: #4A4A4A;
+  line-height: 1.75;
+  text-indent: 0;
 }
 .ql-editor .n-alert::before, .n-alert::before {
-  content: "!"; position: absolute; left: 14px; top: 11px; font-family: sans-serif; font-size: 14px; font-weight: 700; color: #888A8E; background: transparent; width: auto; height: auto; border-radius: 0; line-height: inherit; text-align: left; margin-right: 0;
+  content: '▲';
+  position: absolute;
+  left: 15px;
+  top: 12px;
+  font-size: 13px;
+  color: #C0544A;
+  background: transparent;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  line-height: 1;
 }
+
+/* 5. 기록·게시물 (n-record)
+   왼쪽 세로선 + 들여쓰기, 인용문형 */
 .ql-editor .n-record, .n-record {
-  background: transparent; border-left: 2px solid #C8C4BA; border-radius: 0; margin: 16px 0 16px 28px; padding: 2px 0 2px 18px; max-width: calc(100% - 28px); font-family: inherit; font-size: 0.96em; line-height: 1.8; color: #55534F; font-style: normal; text-indent: 0;
+  display: block;
+  background: transparent;
+  border-left: 2.5px solid #C8C5BF;
+  border-radius: 0;
+  margin: 20px 0 20px 0;
+  padding: 3px 0 3px 20px;
+  max-width: 100%;
+  font-family: inherit;
+  font-size: 0.96em;
+  line-height: 1.9;
+  color: #505050;
+  font-style: normal;
+  text-indent: 0;
 }
+
+/* 6. UI 인라인 칩 (n-ui)
+   인라인, 작은 칩 형태, 본문 흐름 방해 안 함 */
 .ql-editor .n-ui, .n-ui {
-  display: inline; font-family: inherit; font-size: 0.9em; font-weight: 500; color: #4F5359; background: #F4F5F6; border: 1px solid #D8DBDF; border-radius: 4px; padding: 1px 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  display: inline;
+  font-family: inherit;
+  font-size: 0.88em;
+  font-weight: 600;
+  color: #3D3D3D;
+  background: #EFEFED;
+  border: 1px solid #D6D4CF;
+  border-radius: 4px;
+  padding: 1px 7px;
+  letter-spacing: 0.01em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 /* Quill Toolbar Narrative Dropdown */
@@ -2176,14 +2296,52 @@ function exportPODPdf() {
     margin: 0;
     word-break: keep-all;
   }
-  .n-msg { max-width: 76%; margin-left: auto; margin-right: 0; background: #F5F5F3; border: none; border-radius: 10px; padding: 12px 16px; font-size: 0.95em; line-height: 1.75; text-align: left; margin-top: 16px; margin-bottom: 16px; text-indent: 0 !important; }
-  .n-sys { text-align: center; width: 100%; background: transparent; border: none; color: #5F6268; font-size: 0.92em; font-weight: 500; letter-spacing: 0.025em; line-height: 1.8; padding: 8px 24px; margin: 22px 0; text-indent: 0 !important; }
-  .n-sys::before { content: "◇"; display: block; margin-bottom: 4px; font-size: 11pt; color: #B0B3B8; }
-  .n-log { width: 100%; background: #F5F6F7; border-left: 2px solid #B9BEC5; border-radius: 3px; padding: 12px 16px; margin: 16px 0; font-family: monospace; font-size: 9pt; line-height: 1.65; color: #4C5158; text-align: left; white-space: pre-wrap; box-shadow: none; text-indent: 0 !important; }
-  .n-alert { width: 100%; background: #FAFAF8; border: 1px solid #D8D6D0; border-radius: 5px; padding: 11px 14px 11px 40px; margin: 16px 0; position: relative; text-align: left; font-size: 0.92em; color: #55575B; text-indent: 0 !important; }
-  .n-alert::before { content: "!"; position: absolute; left: 14px; top: 11px; font-family: sans-serif; font-size: 14px; font-weight: 700; color: #888A8E; background: transparent; width: auto; height: auto; border-radius: 0; line-height: inherit; text-align: left; margin-right: 0; }
-  .n-record { background: transparent; border-left: 2px solid #C8C4BA; border-radius: 0; margin: 16px 0 16px 28px; padding: 2px 0 2px 18px; max-width: calc(100% - 28px); font-family: inherit; font-size: 0.96em; line-height: 1.8; color: #55534F; font-style: normal; text-indent: 0 !important; }
-  .n-ui { display: inline; font-family: inherit; font-size: 0.9em; font-weight: 500; color: #4F5359; background: #F4F5F6; border: 1px solid #D8DBDF; border-radius: 4px; padding: 1px 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  /* Narrative Blocks for PDF — 이미지 가이드 v2 */
+  .n-msg {
+    display: block; max-width: 72%; margin: 18px 0 18px auto;
+    background: #F3F3F2; border: none; border-radius: 8px;
+    padding: 12px 16px; font-size: 0.95em; line-height: 1.85;
+    text-align: left; text-indent: 0 !important;
+  }
+  .n-sys {
+    display: block; text-align: center; width: 100%;
+    background: transparent; border: none; color: #6B6B6B;
+    font-size: 0.93em; line-height: 2.0; padding: 4px 20px;
+    margin: 28px 0; text-indent: 0 !important;
+  }
+  .n-log {
+    display: block; width: 100%; background: #F7F7F6;
+    border-left: 2.5px solid #C2C0BC; border-radius: 0;
+    padding: 10px 14px; margin: 18px 0;
+    font-family: 'Menlo','Consolas','Monaco',monospace;
+    font-size: 11pt; line-height: 1.75; color: #4E4E4E;
+    white-space: pre-wrap; text-indent: 0 !important;
+  }
+  .n-alert {
+    display: block; width: 100%; background: #FEF6F5;
+    border: 1px solid #EAC6C2; border-radius: 5px;
+    padding: 10px 14px 10px 38px; margin: 18px 0;
+    position: relative; font-size: 0.94em; color: #4A4A4A;
+    line-height: 1.75; text-indent: 0 !important;
+  }
+  .n-alert::before {
+    content: '▲'; position: absolute; left: 13px; top: 11px;
+    font-size: 12pt; color: #C0544A;
+  }
+  .n-record {
+    display: block; background: transparent;
+    border-left: 2.5px solid #C8C5BF; border-radius: 0;
+    margin: 18px 0; padding: 3px 0 3px 18px;
+    font-size: 0.96em; line-height: 1.9; color: #505050;
+    font-style: normal; text-indent: 0 !important;
+  }
+  .n-ui {
+    display: inline; font-size: 0.88em; font-weight: 600;
+    color: #3D3D3D; background: #EFEFED;
+    border: 1px solid #D6D4CF; border-radius: 4px;
+    padding: 1px 6px; box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
 </style>
 </head>
 <body>
