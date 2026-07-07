@@ -211,127 +211,106 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .workspace-shell.focus-mode .dropdown-container { display: none; }
 
 /* ─────────────────────────────────────────────────────────────
-   Narrative Blocks — 소설 본문 서사 블록 (이미지 가이드 v2)
+   Narrative Blocks — 소설 본문 서사 블록 (이미지 가이드 v3)
    원칙: 출판 원고 흐름 안에 자연스럽게 삽입, 웹 UI 컴포넌트 금지
+   타입별 차이: 배경색이 아닌 정렬/너비/테두리/여백/서체로 구분
 ───────────────────────────────────────────────────────────────── */
 
-/* 1. 메시지 (n-msg)
-   회색 박스 + 발신자명 영역 + 왼쪽 정렬 + 너비 제한 */
+/* ① 메시지 (n-msg)
+   — 왼쪽 정렬, 최대 너비 68%, 연한 회색 박스, 둥근 모서리
+   — 발신자명은 작가가 첫 줄에 bold로 직접 입력 */
 .ql-editor .n-msg, .n-msg {
   display: block;
-  max-width: 72%;
-  margin: 22px 0 22px auto;
-  background: #F3F3F2;
+  max-width: 68%;
+  margin: 20px 0;
+  background: #F0F0EF;
   border: none;
   border-radius: 8px;
   padding: 14px 18px;
-  font-size: 0.96em;
+  font-size: 0.95em;
   line-height: 1.85;
   text-align: left;
   text-indent: 0;
-  position: relative;
 }
-/* 메시지 발신자명: 첫 줄이 발신자로 간주, bold 처리는 작가가 직접 */
 
-/* 2. 시스템 문구 (n-sys)
-   완전 중앙 정렬, ◇ + 가로선 장식, 충분한 여백 */
+/* ② 시스템 문구 (n-sys)
+   — 완전 중앙 정렬, 위에 ◇ 장식(좌우로 실선), 충분한 여백 */
 .ql-editor .n-sys, .n-sys {
   display: block;
   text-align: center;
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: #6B6B6B;
-  font-size: 0.93em;
-  line-height: 2.0;
-  padding: 28px 20px;
-  margin: 8px 0;
+  color: #686868;
+  font-size: 0.92em;
+  line-height: 1.9;
+  padding: 6px 0;
+  margin: 36px 0;
   text-indent: 0;
-  position: relative;
 }
-.ql-editor .n-sys::before,
-.n-sys::before {
-  content: '───────  ◇  ───────';
+/* ◇ 위의 가로선 + 다이아몬드 아이콘 */
+.ql-editor .n-sys::before, .n-sys::before {
+  content: '◇';
   display: block;
-  font-size: 11px;
-  color: #B8B5B0;
-  letter-spacing: 0.2em;
+  font-size: 10px;
+  color: #BEBBB5;
   margin-bottom: 10px;
-  line-height: 1;
-}
-.ql-editor .n-sys::after,
-.n-sys::after {
-  content: '';
-  display: block;
-  width: 80px;
-  height: 1px;
-  background: #C8C5BF;
-  margin: 10px auto 0;
+  /* 좌우 가로선을 배경 그라디언트로 표현 */
+  background:
+    linear-gradient(#CCCAC5, #CCCAC5) left center / calc(50% - 14px) 1px no-repeat,
+    linear-gradient(#CCCAC5, #CCCAC5) right center / calc(50% - 14px) 1px no-repeat;
+  padding: 0 4px;
 }
 
-/* 3. 시스템 로그 (n-log)
-   고정폭, 왼쪽 포인트 라인, 연한 배경 */
+/* ③ 시스템 로그 (n-log)
+   — 고정폭 폰트, 왼쪽만 회색 세로선, 연한 배경 */
 .ql-editor .n-log, .n-log {
   display: block;
   width: 100%;
-  background: #F7F7F6;
+  background: #F5F5F4;
   border: none;
-  border-left: 2.5px solid #C2C0BC;
-  border-radius: 0;
-  padding: 11px 16px;
+  border-left: 2px solid #C4C2BC;
+  padding: 12px 16px;
   margin: 20px 0;
   font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
   font-size: 12.5px;
-  line-height: 1.75;
-  color: #4E4E4E;
-  text-align: left;
+  line-height: 1.8;
+  color: #4A4A4A;
   white-space: pre-wrap;
-  letter-spacing: 0.01em;
   text-indent: 0;
 }
 
-/* 4. 알림·경고 (n-alert)
-   ▲ 아이콘, 연한 붉은 배경, 얇은 테두리 */
+/* ④ 알림·경고 (n-alert)
+   — ▲ 빨간 아이콘, 연한 핑크 배경, 얇은 분홍 테두리 */
 .ql-editor .n-alert, .n-alert {
   display: block;
-  width: 100%;
-  background: #FEF6F5;
-  border: 1px solid #EAC6C2;
+  background: #FEF4F3;
+  border: 1px solid #E8C3BE;
   border-radius: 5px;
-  padding: 11px 16px 11px 42px;
+  padding: 12px 16px 12px 42px;
   margin: 20px 0;
   position: relative;
-  text-align: left;
   font-size: 0.94em;
-  color: #4A4A4A;
+  color: #464646;
   line-height: 1.75;
   text-indent: 0;
 }
 .ql-editor .n-alert::before, .n-alert::before {
   content: '▲';
   position: absolute;
-  left: 15px;
-  top: 12px;
-  font-size: 13px;
-  color: #C0544A;
-  background: transparent;
-  width: auto;
-  height: auto;
-  border-radius: 0;
+  left: 14px;
+  top: 13px;
+  font-size: 12px;
+  color: #C0524A;
   line-height: 1;
+  background: transparent;
 }
 
-/* 5. 기록·게시물 (n-record)
-   왼쪽 세로선 + 들여쓰기, 인용문형 */
+/* ⑤ 기록·게시물 (n-record)
+   — 왼쪽 세로선 + 들여쓰기 (인용문 형태) */
 .ql-editor .n-record, .n-record {
   display: block;
   background: transparent;
-  border-left: 2.5px solid #C8C5BF;
-  border-radius: 0;
-  margin: 20px 0 20px 0;
-  padding: 3px 0 3px 20px;
-  max-width: 100%;
-  font-family: inherit;
+  border-left: 2.5px solid #CCCAC5;
+  padding: 2px 0 2px 20px;
+  margin: 20px 0;
   font-size: 0.96em;
   line-height: 1.9;
   color: #505050;
@@ -339,19 +318,17 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-indent: 0;
 }
 
-/* 6. UI 인라인 칩 (n-ui)
-   인라인, 작은 칩 형태, 본문 흐름 방해 안 함 */
+/* ⑥ UI 인라인 칩 (n-ui)
+   — 인라인, 작은 둥근 칩, 본문 흐름 방해 없음 */
 .ql-editor .n-ui, .n-ui {
   display: inline;
-  font-family: inherit;
-  font-size: 0.88em;
+  font-size: 0.87em;
   font-weight: 600;
-  color: #3D3D3D;
-  background: #EFEFED;
-  border: 1px solid #D6D4CF;
+  color: #3A3A3A;
+  background: #ECEAE7;
+  border: 1px solid #D2D0CB;
   border-radius: 4px;
   padding: 1px 7px;
-  letter-spacing: 0.01em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -2296,50 +2273,57 @@ function exportPODPdf() {
     margin: 0;
     word-break: keep-all;
   }
-  /* Narrative Blocks for PDF — 이미지 가이드 v2 */
+  /* Narrative Blocks for PDF \u2014 v3 (\uc774\ubbf8\uc9c0 \uac00\uc774\ub4dc \ub3d9\uc77c \uc801\uc6a9) */
   .n-msg {
-    display: block; max-width: 72%; margin: 18px 0 18px auto;
-    background: #F3F3F2; border: none; border-radius: 8px;
+    display: block; max-width: 68%; margin: 18px 0;
+    background: #F0F0EF; border: none; border-radius: 8px;
     padding: 12px 16px; font-size: 0.95em; line-height: 1.85;
     text-align: left; text-indent: 0 !important;
   }
   .n-sys {
-    display: block; text-align: center; width: 100%;
-    background: transparent; border: none; color: #6B6B6B;
-    font-size: 0.93em; line-height: 2.0; padding: 4px 20px;
-    margin: 28px 0; text-indent: 0 !important;
+    display: block; text-align: center; color: #686868;
+    font-size: 0.92em; line-height: 1.9; padding: 6px 0;
+    margin: 36px 0; text-indent: 0 !important;
+  }
+  .n-sys::before {
+    content: '\u25c7'; display: block; font-size: 10px; color: #BEBBB5;
+    margin-bottom: 10px;
+    background:
+      linear-gradient(#CCCAC5, #CCCAC5) left center / calc(50% - 14px) 1px no-repeat,
+      linear-gradient(#CCCAC5, #CCCAC5) right center / calc(50% - 14px) 1px no-repeat;
+    padding: 0 4px;
   }
   .n-log {
-    display: block; width: 100%; background: #F7F7F6;
-    border-left: 2.5px solid #C2C0BC; border-radius: 0;
-    padding: 10px 14px; margin: 18px 0;
+    display: block; background: #F5F5F4;
+    border-left: 2px solid #C4C2BC;
+    padding: 12px 16px; margin: 18px 0;
     font-family: 'Menlo','Consolas','Monaco',monospace;
-    font-size: 11pt; line-height: 1.75; color: #4E4E4E;
+    font-size: 11pt; line-height: 1.8; color: #4A4A4A;
     white-space: pre-wrap; text-indent: 0 !important;
   }
   .n-alert {
-    display: block; width: 100%; background: #FEF6F5;
-    border: 1px solid #EAC6C2; border-radius: 5px;
-    padding: 10px 14px 10px 38px; margin: 18px 0;
-    position: relative; font-size: 0.94em; color: #4A4A4A;
+    display: block; background: #FEF4F3;
+    border: 1px solid #E8C3BE; border-radius: 5px;
+    padding: 12px 16px 12px 42px; margin: 18px 0;
+    position: relative; font-size: 0.94em; color: #464646;
     line-height: 1.75; text-indent: 0 !important;
   }
   .n-alert::before {
-    content: '▲'; position: absolute; left: 13px; top: 11px;
-    font-size: 12pt; color: #C0544A;
+    content: '\u25b2'; position: absolute; left: 14px; top: 13px;
+    font-size: 12px; color: #C0524A; line-height: 1;
   }
   .n-record {
     display: block; background: transparent;
-    border-left: 2.5px solid #C8C5BF; border-radius: 0;
-    margin: 18px 0; padding: 3px 0 3px 18px;
+    border-left: 2.5px solid #CCCAC5;
+    padding: 2px 0 2px 20px; margin: 18px 0;
     font-size: 0.96em; line-height: 1.9; color: #505050;
     font-style: normal; text-indent: 0 !important;
   }
   .n-ui {
-    display: inline; font-size: 0.88em; font-weight: 600;
-    color: #3D3D3D; background: #EFEFED;
-    border: 1px solid #D6D4CF; border-radius: 4px;
-    padding: 1px 6px; box-decoration-break: clone;
+    display: inline; font-size: 0.87em; font-weight: 600;
+    color: #3A3A3A; background: #ECEAE7;
+    border: 1px solid #D2D0CB; border-radius: 4px;
+    padding: 1px 7px; box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
   }
 </style>
