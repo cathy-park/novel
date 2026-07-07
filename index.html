@@ -360,7 +360,21 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .plan-md-view table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
 .plan-md-view th, .plan-md-view td { border: 1px solid var(--c-line); padding: 4px 8px; }
 .plan-md-view th { background: var(--c-surface-3); }
+
+.ep-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.ep-badge.prologue { background: #F3E8FF; color: #7E22CE; }
+.ep-badge.chapter { background: #E0F2FE; color: #0369A1; }
+.ep-badge.epilogue { background: #DCFCE7; color: #15803D; }
 </style>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -947,12 +961,37 @@ function renderEpisodeList() {
   let chapterIdx = 1;
   eps.forEach(ep=>{
     const isChap = ep.type==='chapter';
-    const dispTitle = isChap ? `${chapterIdx++}화 | ${ep.title.replace(/^\d+화\s*\|\s*/, '')}` : ep.title;
+    let rawTitle = ep.title;
+    let badgeType = '', badgeText = '';
+    
+    const prologueMatch = rawTitle.match(/^(프롤로그)\s*[-:|]?\s*/);
+    const epilogueMatch = rawTitle.match(/^(에필로그)\s*[-:|]?\s*/);
+    const chapMatch = rawTitle.match(/^(\d+화)\s*[-:|]?\s*/);
+
+    if (prologueMatch) {
+      badgeType = 'prologue'; badgeText = '프롤로그';
+      rawTitle = rawTitle.substring(prologueMatch[0].length).trim();
+    } else if (epilogueMatch) {
+      badgeType = 'epilogue'; badgeText = '에필로그';
+      rawTitle = rawTitle.substring(epilogueMatch[0].length).trim();
+    } else if (chapMatch) {
+      badgeType = 'chapter'; badgeText = chapMatch[1];
+      rawTitle = rawTitle.substring(chapMatch[0].length).trim();
+    } else if (isChap) {
+      badgeType = 'chapter'; badgeText = `${chapterIdx++}화`;
+    } else if (ep.type === 'prologue') {
+      badgeType = 'prologue'; badgeText = '프롤로그';
+    } else if (ep.type === 'epilogue') {
+      badgeType = 'epilogue'; badgeText = '에필로그';
+    }
+
+    let badgeHtml = badgeText ? `<span class="ep-badge ${badgeType}">${escapeHtml(badgeText)}</span>` : '';
+    let dispTitle = rawTitle || '(제목 없는 회차)';
     
     const row = document.createElement('div');
     row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
     row.draggable = isChap;
-    row.innerHTML = `<span class="drag" style="letter-spacing: -3px; opacity: 0.4; font-size: 16px; margin-right: 8px;">⋮⋮</span><div class="episode-main" style="flex:1;"><strong>${escapeHtml(dispTitle)}</strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
+    row.innerHTML = `<span class="drag" style="letter-spacing: -3px; opacity: 0.4; font-size: 16px; margin-right: 8px;">⋮⋮</span><div class="episode-main" style="flex:1;"><strong>${badgeHtml}${escapeHtml(dispTitle)}</strong><span style="display:block; margin-top:2px;">${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
                     (isChap ? `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '');
     row.querySelector('.episode-main').onclick = ()=>selectEpisode(ep.id);
     if(ep.type==='chapter') {
