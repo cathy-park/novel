@@ -587,11 +587,11 @@ function normalizeProject(p) { p.cover=p.cover||''; p.coverColor=p.coverColor||D
 // --- Supabase Cloud Logic ---
 const SUPABASE_URL = 'https://vsmqtpavcvabalrveqma.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzbXF0cGF2Y3ZhYmFscnZlcW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDEzNjksImV4cCI6MjA5NzQxNzM2OX0.TFvpFln-1QunLVpxAZgQIHcfsJjsK6Anal8kI4zETNk';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 
 async function initApp() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
     $('#welcomeScreen').style.display = 'none';
@@ -607,7 +607,7 @@ if ($('#googleLoginBtn')) {
     $('#googleLoginBtn').style.opacity = '0.7';
     $('#googleLoginBtn').textContent = '로그인 중...';
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await sb.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin
@@ -626,7 +626,7 @@ if ($('#googleLoginBtn')) {
 $('#signupBtn').onclick = async () => {
   const email = $('#authEmail').value; const password = $('#authPassword').value;
   if(!email || !password) return $('#authError').textContent = '이메일과 비밀번호를 입력해주세요.';
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await sb.auth.signUp({ email, password });
   if (error) { $('#authError').textContent = error.message; return; }
   if (!data.session) {
     $('#authError').innerHTML = '수파베이스 대시보드(Auth->Providers->Email)에서<br><b>Confirm email</b> 설정을 끄신 후 다시 시도해주세요!';
@@ -640,7 +640,7 @@ $('#signupBtn').onclick = async () => {
 };
 
 $('#logoutBtn').onclick = async () => {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   location.reload();
 };
 
@@ -648,12 +648,12 @@ async function loadStateSupabase() {
   const newState = { schemaVersion: 6, currentProjectId: null, projects: [] };
   
   // 1. Projects 로드
-  const { data: projectsData, error: pErr } = await supabase.from('novel_projects').select('*').order('updated_at', { ascending: false });
+  const { data: projectsData, error: pErr } = await sb.from('novel_projects').select('*').order('updated_at', { ascending: false });
   if (pErr) { console.error('Project Load Error:', pErr); showToast('프로젝트 로딩 실패'); return; }
   
   if (projectsData && projectsData.length > 0) {
     // 2. Episodes 로드
-    const { data: episodesData, error: eErr } = await supabase.from('novel_episodes').select('*');
+    const { data: episodesData, error: eErr } = await sb.from('novel_episodes').select('*');
     if (eErr) console.error('Episode Load Error:', eErr);
     
     for (const pRow of projectsData) {
@@ -732,7 +732,7 @@ async function saveProjectSupabase(p) {
     plan_sections: p.planSections,
     updated_at: p.updatedAt
   };
-  await supabase.from('novel_projects').upsert(pData);
+  await sb.from('novel_projects').upsert(pData);
   
   // Episodes Update
   for (let i = 0; i < p.episodes.length; i++) {
@@ -748,7 +748,7 @@ async function saveProjectSupabase(p) {
       updated_at: ep.updatedAt || Date.now(),
       order_idx: i
     };
-    await supabase.from('novel_episodes').upsert(eData);
+    await sb.from('novel_episodes').upsert(eData);
   }
 }
 
@@ -764,7 +764,7 @@ async function deleteEpisode(epId) {
   
   // Supabase Delete
   if(currentUser) {
-    await supabase.from('novel_episodes').delete().eq('id', epId);
+    await sb.from('novel_episodes').delete().eq('id', epId);
   }
   
   touchProject();
