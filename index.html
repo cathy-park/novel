@@ -633,31 +633,17 @@ if ($('#googleLoginBtn')) {
       console.error(err);
       $('#googleLoginBtn').style.opacity = '1';
       $('#googleLoginBtn').innerHTML = 'Google 계정으로 시작하기';
-      $('#authError').innerHTML = '구글 로그인 실패: ' + err.message + '<br>(Supabase 대시보드에서 Google Provider를 켜주세요!)';
+      if($('#authError')) $('#authError').innerHTML = '구글 로그인 실패: ' + err.message;
     }
   };
 }
 
-$('#signupBtn').onclick = async () => {
-  const email = $('#authEmail').value; const password = $('#authPassword').value;
-  if(!email || !password) return $('#authError').textContent = '이메일과 비밀번호를 입력해주세요.';
-  const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) { $('#authError').textContent = error.message; return; }
-  if (!data.session) {
-    $('#authError').innerHTML = '수파베이스 대시보드(Auth->Providers->Email)에서<br><b>Confirm email</b> 설정을 끄신 후 다시 시도해주세요!';
-    return;
-  }
-  showToast('가입 완료! 로그인 되었습니다.');
-  currentUser = data.user;
-  $('#welcomeScreen').style.display = 'none';
-  await loadStateSupabase();
-  renderLibrary();
-};
-
-$('#logoutBtn').onclick = async () => {
-  await sb.auth.signOut();
-  location.reload();
-};
+if ($('#logoutBtn')) {
+  $('#logoutBtn').onclick = async () => {
+    await sb.auth.signOut();
+    location.reload();
+  };
+}
 
 async function loadStateSupabase() {
   const newState = { schemaVersion: 6, currentProjectId: null, projects: [] };
