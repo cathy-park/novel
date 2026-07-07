@@ -318,7 +318,8 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   content: '⚠️' !important;
   position: absolute !important;
   left: 14px !important;
-  top: 13px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
   font-size: 14px !important;
   color: #C0524A !important;
   line-height: 1 !important;
@@ -330,13 +331,13 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor .n-record,
 .n-record {
   display: block !important;
-  background: transparent !important;
-  border-left: 2.5px solid #CCCAC5 !important;
-  border-top: none !important;
-  border-right: none !important;
-  border-bottom: none !important;
-  border-radius: 0 !important;
-  padding: 2px 0 2px 20px !important;
+  background: #F4F8FD !important;
+  border: none !important;
+  border-left: 3px solid #95AED0 !important;
+  border-radius: 4px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  padding: 14px 18px !important;
   margin: 20px 0 !important;
   font-size: 0.96em !important;
   line-height: 1.9 !important;
@@ -1603,6 +1604,16 @@ function renderEpisode() {
         ]
       }
     });
+
+    setTimeout(() => {
+      const toolbarGroups = document.querySelectorAll('.ql-toolbar .ql-formats');
+      if (toolbarGroups.length >= 3 && !document.querySelector('.ql-ui')) {
+        const btn = document.createElement('button');
+        btn.className = 'ql-ui';
+        btn.title = 'UI 강조 (확인, 선택 등)';
+        toolbarGroups[2].appendChild(btn);
+      }
+    }, 100);
 
     quill.on('text-change', (delta, oldDelta, source) => {
       const ep = currentEpisode();
