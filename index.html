@@ -352,31 +352,34 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor .n-status,
 .n-status {
   display: block !important;
-  text-align: center !important;
+  text-align: left !important;
   font-family: 'Pretendard', 'Noto Sans KR', monospace !important;
-  font-weight: 700 !important;
-  font-size: 0.95em !important;
-  color: #333 !important;
-  background: transparent !important;
-  border-top: 2px solid #C4C4C4 !important;
-  border-bottom: 2px solid #C4C4C4 !important;
-  border-left: none !important;
-  border-right: none !important;
-  border-radius: 0 !important;
-  padding: 16px 20px !important;
-  margin: 24px 0 !important;
+  font-weight: 600 !important;
+  font-size: 0.92em !important;
+  color: #3B4046 !important;
+  background: #F3F5F7 !important;
+  border: 1px solid #DCE0E5 !important;
+  border-left: 4px solid #A8B2C1 !important;
+  border-radius: 6px !important;
+  padding: 14px 18px !important;
+  margin: 20px 0 !important;
   line-height: 1.8 !important;
-  letter-spacing: 0.05em !important;
+  letter-spacing: 0.02em !important;
   text-indent: 0 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
 }
 .ql-editor p.n-status:has(+ p.n-status),
 .n-status:has(+ .n-status) {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
   border-bottom: none !important;
   margin-bottom: 0 !important;
   padding-bottom: 8px !important;
 }
 .ql-editor p.n-status + p.n-status,
 .n-status + .n-status {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
   border-top: none !important;
   margin-top: 0 !important;
   padding-top: 8px !important;
