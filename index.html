@@ -1315,15 +1315,25 @@ function parseBeatSheet(text) {
 
 function matchEpisodeForBeat(header, episodes) {
   const h = header.trim().toLowerCase();
-  if (h.includes('프롤로그') || h.includes('prologue')) return episodes.find(e => e.type === 'prologue');
-  if (h.includes('에필로그') || h.includes('epilogue')) return episodes.find(e => e.type === 'epilogue');
+  
+  if (h.includes('프롤로그') || h.includes('prologue')) {
+    return episodes.find(e => e.type === 'prologue' || e.title.includes('프롤로그') || e.title.toLowerCase().includes('prologue')) || null;
+  }
+  if (h.includes('에필로그') || h.includes('epilogue')) {
+    return episodes.find(e => e.type === 'epilogue' || e.title.includes('에필로그') || e.title.toLowerCase().includes('epilogue')) || null;
+  }
+  
   // 숫자화 매핑: "1화", "2화" 등
   const numMatch = h.match(/(\d+)\s*화/);
   if (numMatch) {
     const num = parseInt(numMatch[1]);
+    const matchedByTitle = episodes.find(e => e.title.includes(`${num}화`));
+    if (matchedByTitle) return matchedByTitle;
+    
     const chapters = episodes.filter(e => e.type === 'chapter');
     return chapters[num - 1] || null;
   }
+  
   // 제목 부분 매핑
   return episodes.find(e => e.title.toLowerCase().includes(h) || h.includes(e.title.toLowerCase())) || null;
 }
@@ -1342,6 +1352,9 @@ function distributeBeatSheet(sectionId) {
     if (ep) {
       const beatMd = `### 📋 비트시트 — ${block.header}\n${block.body}`;
       ep.plan = beatMd + (ep.plan ? '\n\n---\n\n' + ep.plan : '');
+      if (p.selectedEpisodeId === ep.id && !$('#workspaceView').classList.contains('hidden')) {
+        $('#planEditor').value = ep.plan; // 현재 열려있는 에피소드면 에디터 즉시 업데이트
+      }
       matched++;
     }
   }
