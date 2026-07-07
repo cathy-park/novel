@@ -1049,9 +1049,9 @@ function renderEpisode() {
   const ep = currentEpisode(); if(!ep) return;
   $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeStatus').value = ep.status; $('#episodeBreadcrumb').textContent = ep.title;
   $('#planEditor').value = ep.plan||'';
-  $('#planMdPreview').innerHTML = window.marked ? marked.parse(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.');
-  $('#planMdPreview').classList.remove('hidden');
-  $('#planEditor').classList.add('hidden');
+  if($('#planMdPreview')) $('#planMdPreview').innerHTML = window.marked ? marked.parse(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.');
+  if($('#planMdPreview')) $('#planMdPreview').classList.remove('hidden');
+  if($('#planEditor')) $('#planEditor').classList.add('hidden');
   if(!quill) {
     // 폰트사이즈 툴바 한국어로 커스텀
     const icons = Quill.import('ui/icons');
@@ -1279,9 +1279,9 @@ $('#episodeType').onchange = () => { currentEpisode().type=$('#episodeType').val
 $('#episodeStatus').onchange = () => { currentEpisode().status=$('#episodeStatus').value; touchProject(); renderEpisodeList(); queueSaveFS(); };
 $('#planEditor').oninput = () => { currentEpisode().plan=$('#planEditor').value; touchProject(); queueSaveFS(); };
 $('#planEditor').onblur = () => { 
-  $('#planEditor').classList.add('hidden'); 
-  $('#planMdPreview').classList.remove('hidden'); 
-  $('#planMdPreview').innerHTML = window.marked ? marked.parse($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.'); 
+  if($('#planEditor')) $('#planEditor').classList.add('hidden'); 
+  if($('#planMdPreview')) $('#planMdPreview').classList.remove('hidden'); 
+  if($('#planMdPreview')) $('#planMdPreview').innerHTML = window.marked ? marked.parse($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.'); 
 };
 $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
