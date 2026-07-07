@@ -2271,28 +2271,31 @@ function getMarkdownForEpisode(ep) {
   let md = html;
   
   // 인라인 스타일
-  md = md.replace(/<strong>(.*?)<\/strong>/g, '**$1**');
-  md = md.replace(/<em>(.*?)<\/em>/g, '*$1*');
-  md = md.replace(/<s>(.*?)<\/s>/g, '~~$1~~');
-  md = md.replace(/<u>(.*?)<\/u>/g, '$1'); // MD는 밑줄 비표준
-  md = md.replace(/<span class="n-ui"[^>]*>(.*?)<\/span>/g, '`$1`');
+  md = md.replace(/<strong>([\s\S]*?)<\/strong>/g, '**$1**');
+  md = md.replace(/<em>([\s\S]*?)<\/em>/g, '*$1*');
+  md = md.replace(/<s>([\s\S]*?)<\/s>/g, '~~$1~~');
+  md = md.replace(/<u>([\s\S]*?)<\/u>/g, '$1'); // MD는 밑줄 비표준
+  md = md.replace(/<span class="n-ui"[^>]*>([\s\S]*?)<\/span>/g, '`$1`');
   
+  // <br> 태그를 줄바꿈 문자로 변경
+  md = md.replace(/<br\s*\/?>/gi, '\n');
+
   // 서사 블록
-  md = md.replace(/<p class="n-msg"[^>]*>(.*?)<\/p>/g, '> [메시지] $1\n\n');
-  md = md.replace(/<p class="n-sys"[^>]*>(.*?)<\/p>/g, '> [시스템] $1\n\n');
-  md = md.replace(/<p class="n-alert"[^>]*>(.*?)<\/p>/g, '> [알림] $1\n\n');
-  md = md.replace(/<p class="n-record"[^>]*>(.*?)<\/p>/g, '> [기록] $1\n\n');
-  md = md.replace(/<p class="n-status"[^>]*>(.*?)<\/p>/g, '> [상태창] $1\n\n');
-  md = md.replace(/<p class="n-log"[^>]*>(.*?)<\/p>/g, '```log\n$1\n```\n\n');
+  md = md.replace(/<p class="n-msg"[^>]*>([\s\S]*?)<\/p>/g, '> [메시지] $1\n\n');
+  md = md.replace(/<p class="n-sys"[^>]*>([\s\S]*?)<\/p>/g, '> [시스템] $1\n\n');
+  md = md.replace(/<p class="n-alert"[^>]*>([\s\S]*?)<\/p>/g, '> [알림] $1\n\n');
+  md = md.replace(/<p class="n-record"[^>]*>([\s\S]*?)<\/p>/g, '> [기록] $1\n\n');
+  md = md.replace(/<p class="n-status"[^>]*>([\s\S]*?)<\/p>/g, '> [상태창] $1\n\n');
+  md = md.replace(/<p class="n-log"[^>]*>([\s\S]*?)<\/p>/g, '```log\n$1\n```\n\n');
   
   // 헤더
-  md = md.replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n');
-  md = md.replace(/<h2>(.*?)<\/h2>/g, '## $1\n\n');
-  md = md.replace(/<h3>(.*?)<\/h3>/g, '### $1\n\n');
+  md = md.replace(/<h1>([\s\S]*?)<\/h1>/g, '# $1\n\n');
+  md = md.replace(/<h2>([\s\S]*?)<\/h2>/g, '## $1\n\n');
+  md = md.replace(/<h3>([\s\S]*?)<\/h3>/g, '### $1\n\n');
   
   // 일반 단락
-  md = md.replace(/<p><br><\/p>/g, '\n\n');
-  md = md.replace(/<p[^>]*>(.*?)<\/p>/g, '$1\n\n');
+  md = md.replace(/<p><\/p>/g, '\n\n');
+  md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/g, '$1\n\n');
   
   // 남은 태그 제거 및 엔티티 복원
   md = md.replace(/<[^>]+>/g, '');
