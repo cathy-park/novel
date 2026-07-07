@@ -774,8 +774,7 @@ async function deleteEpisode(epId) {
 
 // 로컬 -> 클라우드 마이그레이션 버튼 로직
 $('#migrateLocalBtn').onclick = async () => {
-  if(!confirm('선택하신 로컬 폴더의 기존 원고를 모두 클라우드(수파베이스)로 업로드합니다.
-진행하시겠습니까?')) return;
+  if(!confirm('선택하신 로컬 폴더의 기존 원고를 모두 클라우드(수파베이스)로 업로드합니다. 진행하시겠습니까?')) return;
   try {
     const handle = await window.showDirectoryPicker({ mode: 'read' });
     let migratedCount = 0;
