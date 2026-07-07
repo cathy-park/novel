@@ -774,7 +774,7 @@ async function deleteEpisode(epId) {
 }
 
 // 로컬 -> 클라우드 마이그레이션 버튼 로직
-$('#migrateLocalBtn').onclick = async () => {
+if ($('#migrateLocalBtn')) $('#migrateLocalBtn').onclick = async () => {
   if(!confirm('선택하신 로컬 폴더의 기존 원고를 모두 클라우드(수파베이스)로 업로드합니다. 진행하시겠습니까?')) return;
   try {
     const handle = await window.showDirectoryPicker({ mode: 'read' });
@@ -1473,20 +1473,18 @@ if (manualSaveBtn) {
       const ep = currentEpisode();
       if (ep) ep.body = quill.root.innerHTML;
     }
-    forceSaveAllFS();
+    forceSaveAllSupabase();
     showToast('수동으로 저장했습니다.');
   };
 }
 
 
+// 기존 Service Worker 해제 & 캐시 클리어
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('SW registered: ', registration);
-    }).catch(registrationError => {
-      console.log('SW registration failed: ', registrationError);
-    });
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(r => r.unregister());
   });
+  caches.keys().then(names => names.forEach(n => caches.delete(n)));
 }
 
 // Init
