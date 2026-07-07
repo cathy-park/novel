@@ -1011,8 +1011,22 @@ async function initApp() {
   if (session) {
     currentUser = session.user;
     $('#welcomeScreen').style.display = 'none';
-    await migrateFromLocalStorage();
-    await loadStateSupabase();
+    try {
+      await Promise.race([
+        migrateFromLocalStorage(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Migration Timeout')), 5000))
+      ]);
+    } catch(err) { console.error('Migration failed or timed out:', err); }
+    
+    try {
+      await Promise.race([
+        loadStateSupabase(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Load DB Timeout')), 15000))
+      ]);
+    } catch(err) {
+      console.error('DB Load failed or timed out:', err);
+      showToast('DB 로딩 지연. 새로고침 해주세요.');
+    }
     autoRescue();
     renderLibrary();
   } else {
@@ -1091,7 +1105,13 @@ async function migrateFromLocalStorage() {
       localStorage.removeItem('munjang-novel-writer-v3'); // 이주 완료 후 삭제
       if ($('#saveStatus')) $('#saveStatus').textContent = '복구 완료';
     }
-  } catch(e) { console.error('Migration failed:', e); }
+  } catch(e) { 
+    console.error('Migration failed:', e); 
+    // 반복 시도를 방지하기 위해 1회 실패 후 키 이름을 변경하여 백업으로만 남김
+    localStorage.setItem('munjang-novel-writer-v3_failed_backup', localDataStr);
+    localStorage.removeItem('munjang-novel-writer-v3');
+    showToast('⚠️ 이전 로컬 원고 복구에 일부 실패했습니다.');
+  }
 }
 
 async function ensureProjectBodiesLoaded(p) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'novel-cache-v1783405560';
+const CACHE_NAME = 'novel-cache-v1783405561';
 const urlsToCache = [
   '/',
   '/index.html',
