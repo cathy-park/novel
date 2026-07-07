@@ -301,7 +301,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor p.n-alert::before,
 .ql-editor .n-alert::before,
 .n-alert::before {
-  content: '\25b2' !important;
+  content: '\u26A0\uFE0F' !important;
   position: absolute !important;
   left: 14px !important;
   top: 13px !important;
@@ -1693,7 +1693,23 @@ async function openAttachedPdf(sectionId) {
 
   // pdfUrl이 저장된 경우 (신규 방식)
   if (section.pdfUrl) {
-    window.open(section.pdfUrl, '_blank');
+    try {
+      showToast('PDF 다운로드를 시작합니다...');
+      const res = await fetch(section.pdfUrl);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = section.pdfName || '다운로드.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch(e) {
+      console.error('PDF 다운로드 에러', e);
+      window.open(section.pdfUrl, '_blank');
+    }
     return;
   }
 
@@ -2096,7 +2112,7 @@ function deltaToMarkdown(delta) {
   });
   
   if (inLog) markdown += '```\n\n';
-  return markdown.trim().replace(/\n{3,}/g, '\n\n');
+  return markdown.trimEnd(); // 연속된 줄바꿈 보존을 위해 과도한 정규식 제거
 }
 
 function getMarkdownForEpisode(ep) {
@@ -2322,7 +2338,7 @@ function exportPODPdf() {
     line-height: 1.75; text-indent: 0 !important;
   }
   .n-alert::before {
-    content: '\u25b2'; position: absolute; left: 14px; top: 13px;
+    content: '\u26A0\uFE0F'; position: absolute; left: 14px; top: 13px;
     font-size: 12px; color: #C0524A; line-height: 1;
   }
   .n-record {
