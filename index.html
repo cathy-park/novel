@@ -1466,14 +1466,17 @@ window.addEventListener('keydown', e=>{
 window.addEventListener('beforeunload', ()=> { persistEditor(); queueSaveFS(); });
 
 
-$('#manualSaveBtn').onclick = () => {
-  if (quill) {
-    const ep = currentEpisode();
-    if(ep) ep.body = quill.root.innerHTML;
-  }
-  forceSaveAllFS();
-  showToast('수동으로 저장했습니다.');
-};
+const manualSaveBtn = $('#manualSaveBtn');
+if (manualSaveBtn) {
+  manualSaveBtn.onclick = () => {
+    if (quill) {
+      const ep = currentEpisode();
+      if (ep) ep.body = quill.root.innerHTML;
+    }
+    forceSaveAllFS();
+    showToast('수동으로 저장했습니다.');
+  };
+}
 
 
 if ('serviceWorker' in navigator) {
