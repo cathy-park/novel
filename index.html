@@ -954,7 +954,7 @@ let currentUser = null;
 
 function autoRescue() {
   let rescued = 0;
-  projects.forEach(p => {
+  state.projects.forEach(p => {
     (p.episodes || []).forEach(ep => {
       if (!cleanText(ep.body) && ep.versions && ep.versions.length > 0) {
         ep.body = ep.versions[0].body;
@@ -987,7 +987,7 @@ async function initApp() {
       try {
         await Promise.race([
           loadStateSupabase(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Load DB Timeout')), 15000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Load DB Timeout')), 30000))
         ]);
       } catch (err) {
         console.error('DB Load failed or timed out:', err);
