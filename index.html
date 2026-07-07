@@ -396,6 +396,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 0 5px !important;
   margin: 0 2px !important;
   line-height: 1.5 !important;
+  text-indent: 0 !important;
   box-decoration-break: clone !important;
   -webkit-box-decoration-break: clone !important;
 }
@@ -1585,7 +1586,7 @@ function renderEpisode() {
     const ClassAttributor = Parchment.Attributor.Class;
     const NarrativeClass = new ClassAttributor('narrative', 'n', {
       scope: Parchment.Scope.BLOCK,
-      whitelist: ['msg', 'sys', 'log', 'alert', 'record']
+      whitelist: ['msg', 'sys', 'log', 'alert', 'record', 'status']
     });
     Quill.register(NarrativeClass, true);
 
