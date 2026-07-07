@@ -1356,9 +1356,10 @@ function renderEpisode() {
     const icons = Quill.import('ui/icons');
     
     // 서사 블록 (Narrative) Attributor 등록
-    const ClassAttributor = Quill.import('attributors/class');
+    const Parchment = Quill.import('parchment');
+    const ClassAttributor = Parchment.Attributor.Class;
     const NarrativeClass = new ClassAttributor('narrative', 'n', {
-      scope: Quill.import('parchment').Scope.BLOCK,
+      scope: Parchment.Scope.BLOCK,
       whitelist: ['msg', 'sys', 'log', 'alert', 'record']
     });
     Quill.register(NarrativeClass, true);
