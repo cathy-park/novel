@@ -266,6 +266,10 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .manuscript-ep:last-child { margin: 0; padding: 0; border: 0; }
 .manuscript-ep h2 { font-size: 26px; margin: 0 0 30px; letter-spacing: -.04em; }
 .manuscript-ep p { white-space: pre-wrap; font-size: 17px; line-height: 2.1; color: var(--c-body); margin: 0; }
+/* 전체 원고 보기: 본문 내 헤딩(회차·제목) 숨김 - 본문에 직접 작성된 제목이 중복 출력되지 않도록 */
+.manuscript .ql-editor h1,
+.manuscript .ql-editor h2,
+.manuscript .ql-editor h3 { display: none !important; }
 
 @media(max-width:760px) {
   .workspace-shell { grid-template-columns: 1fr; }
