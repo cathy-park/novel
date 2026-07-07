@@ -692,8 +692,9 @@ async function migrateFromLocalStorage() {
           const ep = p.episodes[i];
           await sb.from('novel_episodes').upsert({
             id: ep.id, project_id: p.id, user_id: currentUser.id, title: ep.title, body: ep.body,
-            type: ep.type, status: ep.status, plan: ep.plan, order_idx: i,
-            created_at: ep.createdAt || Date.now(), updated_at: ep.updatedAt || Date.now()
+            type: ep.type, status: ep.status, plan: ep.plan || '', order_idx: i,
+            created_at: new Date(ep.createdAt || Date.now()).toISOString(),
+            updated_at: new Date(ep.updatedAt || Date.now()).toISOString()
           });
         }
       }
@@ -791,7 +792,7 @@ async function saveProjectSupabase(p) {
     cover_color: p.coverColor,
     view_mode: p.viewMode,
     plan_sections: p.planSections,
-    updated_at: p.updatedAt
+    updated_at: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()
   };
   await sb.from('novel_projects').upsert(pData);
   
@@ -805,8 +806,9 @@ async function saveProjectSupabase(p) {
       type: ep.type,
       title: ep.title,
       body: ep.body,
-      created_at: ep.createdAt,
-      updated_at: ep.updatedAt || Date.now(),
+      plan: ep.plan || '',
+      created_at: ep.createdAt ? new Date(ep.createdAt).toISOString() : new Date().toISOString(),
+      updated_at: ep.updatedAt ? new Date(ep.updatedAt).toISOString() : new Date().toISOString(),
       order_idx: i
     };
     await sb.from('novel_episodes').upsert(eData);
