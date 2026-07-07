@@ -805,32 +805,6 @@ async function deleteEpisode(epId) {
   queueSaveFS();
   renderWorkspace();
 }
-
-
-    
-    for await (const [name, dirHandle] of handle.entries()) {
-      if (dirHandle.kind === 'directory') {
-        const p = await loadProj(dirHandle);
-        if (p) {
-          // state에 없는 프로젝트면 추가
-          if(!state.projects.find(x => x.id === p.id)) {
-            state.projects.push(p);
-            migratedCount++;
-          }
-        }
-      }
-    }
-    if(migratedCount > 0) {
-      await forceSaveAllSupabase();
-      showToast(`${migratedCount}개의 작품을 클라우드로 업로드 완료했습니다!`);
-      renderLibrary();
-    } else {
-      showToast('업로드할 새로운 작품을 찾지 못했습니다.');
-    }
-  } catch(e) {
-    if(e.name !== 'AbortError') showToast('로컬 폴더를 읽지 못했습니다.');
-  }
-};
 // --- End Supabase Cloud Logic ---
 
 function currentProject() { return state.projects.find(p=>p.id===state.currentProjectId) || state.projects[0]; }
@@ -1052,8 +1026,6 @@ function togglePlanDrawer() {
   $('#planDrawer').classList.toggle('open', isPlanDrawerOpen);
   if(isPlanDrawerOpen) renderProjectPlan();
   restoreEditorScroll();
-}
-
 }
 
 function maybeVersion(ep, force=false) {
