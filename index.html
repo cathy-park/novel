@@ -639,8 +639,23 @@ async function initApp() {
       showToast('로그인 성공! 서재를 불러옵니다...');
       currentUser = session.user;
       $('#welcomeScreen').style.display = 'none';
-      await migrateFromLocalStorage();
-      await loadStateSupabase();
+      try {
+        await Promise.race([
+          migrateFromLocalStorage(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Migration Timeout')), 15000))
+        ]);
+      } catch(err) {
+        console.error('Migration failed or timed out:', err);
+      }
+      try {
+        await Promise.race([
+          loadStateSupabase(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Load DB Timeout')), 15000))
+        ]);
+      } catch (err) {
+        console.error('DB Load failed or timed out:', err);
+        showToast('DB 로딩 지연. 새로고침 해주세요.');
+      }
       renderLibrary();
     } else if (event === 'SIGNED_OUT') {
       showToast('로그아웃 되었습니다.');
@@ -690,7 +705,6 @@ if ($('#googleLoginBtn')) {
 if ($('#logoutBtn')) {
   $('#logoutBtn').onclick = async () => {
     if (!confirm('로그아웃 하시겠습니까?')) return;
-    // 로그아웃 전 반드시 저장 완료
     try {
       persistEditor();
       if ($('#saveStatus')) $('#saveStatus').textContent = '저장 중...';
@@ -698,6 +712,7 @@ if ($('#logoutBtn')) {
       showToast('저장 완료. 로그아웃합니다.');
     } catch(saveErr) {
       console.error('Save before logout failed:', saveErr);
+      showToast('⚠️ 저장 실패: ' + (saveErr.message || '알 수 없는 오류') + '\n강제 로그아웃합니다.');
     }
     try {
       await sb.auth.signOut();
