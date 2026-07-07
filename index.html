@@ -1037,9 +1037,15 @@ async function forceSaveAllSupabase() {
   }
 }
 
-function queueSaveFS() { // 호환성을 위해 함수명 유지
+function queueSaveFS() {
   if(!currentUser) return;
   if($('#saveStatus')) $('#saveStatus').textContent='저장 중…';
+  
+  // 서버 에러나 오프라인에 대비한 로컬 2중 백업 (버전 기록 포함 완벽 보존)
+  try {
+    localStorage.setItem('novel_emergency_backup', JSON.stringify(state.projects));
+  } catch(e) { console.warn('Local backup failed', e); }
+
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => forceSaveAllSupabase(), 1500);
 }
