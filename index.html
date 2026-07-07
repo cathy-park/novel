@@ -579,6 +579,18 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 
 <script>
 const STORAGE_KEY = 'munjang-novel-writer-v3';
+// --- 강제 캐시 초기화 (Service Worker 킬러) ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) { registration.unregister(); }
+  });
+  if (window.caches) {
+    caches.keys().then(function(names) {
+      for (let name of names) { caches.delete(name); }
+    });
+  }
+}
+
 const VERSION_LIMIT = 12, VERSION_INTERVAL = 5*60*1000;
 const DEFAULT_COVER_COLOR = '#6B5CE7';
 const COVER_COLORS = ['#17141F','#6B5CE7','#6D9DF6','#5CB6C9','#46A57F','#F39AB9','#F5B86C','#B4A5FF','#8C91A5','#E4E6ED'];
@@ -1102,18 +1114,19 @@ function remapImportedProject(project) {
     episodes
   };
 }
-function handleImport(mode) {
+async function handleImport(mode) {
   if(!importTempData || !importTempData.projects) return;
   try {
     let newState = mode === 'replace' ? importTempData : { ...state, projects: [...state.projects, ...importTempData.projects.map(remapImportedProject)] };
-    const str = JSON.stringify(newState);
-    localStorage.setItem(STORAGE_KEY, str);
     state = newState;
     closeModal('importModal');
+    showToast('클라우드에 백업 데이터를 동기화 중입니다...');
+    await forceSaveAllSupabase();
     if($('#libraryView').classList.contains('hidden')) { renderWorkspace(); } else { renderLibrary(); }
-    showToast(mode==='replace'?'데이터를 교체했어요.':'데이터를 추가했어요.');
+    showToast(mode==='replace'?'백업 데이터를 완벽하게 복원했어요!':'백업 데이터를 추가했어요!');
   } catch(e) {
-    showToast('저장 용량 초과로 불러올 수 없어요.');
+    console.error(e);
+    showToast('저장 중 오류가 발생했습니다.');
   }
 }
 
@@ -1152,9 +1165,23 @@ $('#coverInput').onchange = () => {
   const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
   const reader = new FileReader();
   reader.onload = () => {
-    p.cover = reader.result;
-    $('#coverPreview').innerHTML = `<img src="${p.cover}" alt="표지"/>`;
-    touchProject(); queueSaveFS(); renderLibrary();
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_SIZE = 800;
+      let width = img.width, height = img.height;
+      if (width > MAX_SIZE || height > MAX_SIZE) {
+        if (width > height) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        else { width *= MAX_SIZE / height; height = MAX_SIZE; }
+      }
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      p.cover = canvas.toDataURL('image/webp', 0.8);
+      $('#coverPreview').innerHTML = `<img src="${p.cover}" alt="표지"/>`;
+      touchProject(); queueSaveFS(); renderLibrary();
+    };
+    img.src = reader.result;
   };
   reader.readAsDataURL(file);
 };
