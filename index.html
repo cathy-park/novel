@@ -347,7 +347,42 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-indent: 0 !important;
 }
 
-/* ⑥ UI 인라인 칩 (n-ui) */
+/* ⑥ 상태창 / 선택지 (n-status) */
+.ql-editor p.n-status,
+.ql-editor .n-status,
+.n-status {
+  display: block !important;
+  text-align: center !important;
+  font-family: 'Pretendard', 'Noto Sans KR', monospace !important;
+  font-weight: 700 !important;
+  font-size: 0.95em !important;
+  color: #333 !important;
+  background: transparent !important;
+  border-top: 2px solid #C4C4C4 !important;
+  border-bottom: 2px solid #C4C4C4 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+  padding: 16px 20px !important;
+  margin: 24px 0 !important;
+  line-height: 1.8 !important;
+  letter-spacing: 0.05em !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-status:has(+ p.n-status),
+.n-status:has(+ .n-status) {
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
+}
+.ql-editor p.n-status + p.n-status,
+.n-status + .n-status {
+  border-top: none !important;
+  margin-top: 0 !important;
+  padding-top: 8px !important;
+}
+
+/* ⑦ UI 인라인 칩 (n-ui) */
 .ql-editor .n-ui,
 .n-ui {
   display: inline-block !important;
@@ -372,6 +407,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="log"]::before { content: '>_ 시스템 로그'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠ 알림 · 경고'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 메시지'; }
@@ -379,6 +415,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="log"]::before { content: '>_ 시스템 로그'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠ 알림 · 경고'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
 .ql-snow .ql-toolbar button.ql-ui { width: 28px; }
@@ -1572,7 +1609,7 @@ function renderEpisode() {
       modules: {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
-          [{ 'narrative': [false, 'msg', 'sys', 'log', 'alert', 'record'] }],
+          [{ 'narrative': [false, 'msg', 'sys', 'log', 'alert', 'record', 'status'] }],
           ['bold', 'italic', 'underline', 'strike', 'ui'],
           ['clean']
         ]
