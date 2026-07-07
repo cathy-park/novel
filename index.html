@@ -598,6 +598,7 @@ async function initApp() {
     if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && !currentUser) {
       currentUser = session.user;
       $('#welcomeScreen').style.display = 'none';
+      await migrateFromLocalStorage();
       await loadStateSupabase();
       renderLibrary();
     } else if (event === 'SIGNED_OUT') {
@@ -611,6 +612,7 @@ async function initApp() {
   if (session) {
     currentUser = session.user;
     $('#welcomeScreen').style.display = 'none';
+    await migrateFromLocalStorage();
     await loadStateSupabase();
     renderLibrary();
   } else {
@@ -644,6 +646,34 @@ if ($('#logoutBtn')) {
     await sb.auth.signOut();
     location.reload();
   };
+}
+
+async function migrateFromLocalStorage() {
+  if (!currentUser) return;
+  const localDataStr = localStorage.getItem('munjang-novel-writer-v3');
+  if (!localDataStr) return;
+  try {
+    const localData = JSON.parse(localDataStr);
+    if (localData && localData.projects && localData.projects.length > 0) {
+      if ($('#saveStatus')) $('#saveStatus').textContent = '이전 원고 복구 중...';
+      for (const p of localData.projects) {
+        await sb.from('novel_projects').upsert({
+          id: p.id, user_id: currentUser.id, title: p.title, status: p.status, cover: p.cover,
+          cover_color: p.coverColor, view_mode: p.viewMode, plan_sections: p.planSections, updated_at: p.updatedAt
+        });
+        for (let i = 0; i < (p.episodes || []).length; i++) {
+          const ep = p.episodes[i];
+          await sb.from('novel_episodes').upsert({
+            id: ep.id, project_id: p.id, user_id: currentUser.id, title: ep.title, body: ep.body,
+            type: ep.type, status: ep.status, plan: ep.plan, order_idx: i,
+            created_at: ep.createdAt || Date.now(), updated_at: ep.updatedAt || Date.now()
+          });
+        }
+      }
+      localStorage.removeItem('munjang-novel-writer-v3'); // 이주 완료 후 삭제
+      if ($('#saveStatus')) $('#saveStatus').textContent = '복구 완료';
+    }
+  } catch(e) { console.error('Migration failed:', e); }
 }
 
 async function loadStateSupabase() {
