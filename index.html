@@ -840,7 +840,12 @@ function currentProject() { return state.projects.find(p=>p.id===state.currentPr
 function currentEpisode() { const p=currentProject(); return p?.episodes.find(e=>e.id===p.selectedEpisodeId) || p?.episodes[0]; }
 function touchProject() { const p=currentProject(); if(p) p.updatedAt = Date.now(); }
 function cleanText(t='') { return String(t).replace(/\r\n/g,'\n').replace(/[\t\u00A0]+/g,' ').replace(/[ ]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim(); }
-function stats(t='') { const text=String(t), withSpaces=Array.from(text).length; return { withSpaces, manuscript: Math.ceil(withSpaces/200) }; }
+function stats(t='') { 
+  let text = String(t).replace(/<p[^>]*>/gi, '\n').replace(/<br[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
+  text = text.replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').trim();
+  const withSpaces = Array.from(text).length; 
+  return { withSpaces, manuscript: Math.ceil(withSpaces/200) }; 
+}
 function escapeHtml(v='') { return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c])); }
 function showToast(msg) { clearTimeout(toastTimer); $('#toast').textContent=msg; $('#toast').classList.add('show'); toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2100); }
 function openModal(id) { $('#'+id).classList.remove('hidden'); } function closeModal(id) { $('#'+id).classList.add('hidden'); }
