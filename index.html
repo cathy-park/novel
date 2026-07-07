@@ -383,7 +383,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 <div id="libraryView" class="library-shell">
   <header class="library-top">
     <div class="brand"><div class="brand-mark"><img src="/apple-touch-icon.png" width="32" height="32" style="border-radius:8px;" /></div><div class="brand-name">야니의 소설창고</div></div>
-    <div style="display:flex;gap:8px;"><button id="migrateLocalBtn" class="ghost border" type="button" title="기존 로컬 폴더의 원고를 서버로 이관합니다">☁️ 이전 원고 업로드</button><button id="logoutBtn" class="ghost border" type="button">로그아웃</button><button id="newProjectBtn" class="primary" type="button">＋ 새 작품</button></div>
+    <div style="display:flex;gap:8px;"><button id="logoutBtn" class="ghost border" type="button">로그아웃</button><button id="newProjectBtn" class="primary" type="button">＋ 새 작품</button></div>
   </header>
   <main class="library-main">
     <div class="library-filters"><button class="filter-btn active" data-filter="serializing" type="button">연재 중 <span id="serializingCount">0</span></button><button class="filter-btn" data-filter="completed" type="button">완결 <span id="completedCount">0</span></button></div>
@@ -806,59 +806,7 @@ async function deleteEpisode(epId) {
   renderWorkspace();
 }
 
-// 로컬 -> 클라우드 마이그레이션 버튼 로직
-if ($('#migrateLocalBtn')) $('#migrateLocalBtn').onclick = async () => {
-  if(!confirm('선택하신 로컬 폴더의 기존 원고를 모두 클라우드(수파베이스)로 업로드합니다. 진행하시겠습니까?')) return;
-  try {
-    const handle = await window.showDirectoryPicker({ mode: 'read' });
-    let migratedCount = 0;
-    showToast('업로드 중입니다. 잠시만 기다려주세요...');
-    
-    // 간이 로더 (기존 loadStateFS 로직 활용)
-    const loadProj = async (projDirHandle) => {
-      try {
-        const projFile = await projDirHandle.getFileHandle('project.json');
-        const file = await projFile.getFile();
-        const p = JSON.parse(await file.text());
-        p.episodes = [];
-        try {
-          const bodyDir = await projDirHandle.getDirectoryHandle('본문');
-          const epMap = new Map();
-          for await (const [name, handle] of bodyDir.entries()) {
-            if (handle.kind === 'directory') {
-              try {
-                // 회차 폴더 내의 파일들 읽기
-                const metaFile = await handle.getFileHandle('메타데이터.json');
-                const ep = JSON.parse(await (await metaFile.getFile()).text());
-                
-                try {
-                  const bodyFile = await handle.getFileHandle('본문.txt');
-                  ep.body = await (await bodyFile.getFile()).text();
-                } catch(e) { ep.body = ''; }
-                
-                try {
-                  const planFile = await handle.getFileHandle('기획.txt');
-                  ep.plan = await (await planFile.getFile()).text();
-                } catch(e) { ep.plan = ''; }
-                
-                epMap.set(ep.id, ep);
-              } catch(e) { console.error('회차 폴더 읽기 실패:', e); }
-            } else if (name.endsWith('.json')) {
-              // 단일 JSON 파일(더 과거 버전 호환성)
-              try {
-                const f = await handle.getFile();
-                const ep = JSON.parse(await f.text());
-                if (!epMap.has(ep.id) || (epMap.get(ep.id).updatedAt || 0) < (ep.updatedAt || 0)) {
-                  epMap.set(ep.id, ep);
-                }
-              } catch(e) {}
-            }
-          }
-          p.episodes = Array.from(epMap.values()).sort((a,b) => a.id.localeCompare(b.id));
-        } catch(e) {}
-        return p;
-      } catch(e) { return null; }
-    };
+
     
     for await (const [name, dirHandle] of handle.entries()) {
       if (dirHandle.kind === 'directory') {
@@ -1096,7 +1044,7 @@ function persistEditor() { if($('#workspaceView').classList.contains('hidden') |
 function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
 function updateBodyStats() { const s=stats(quill?quill.getText():$('#bodyEditor').innerText||''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
 function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) queueSaveFS(); restoreEditorScroll(); }
-function addEpisode() { persistEditor(); const p=currentProject(), chCount = p.episodes.filter(e=>e.type==='chapter').length; const ep=defaultEpisode('chapter', chCount+1); p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisode(); showToast('회차를 추가했어요.'); }
+function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 프롤로그, 1화)'); if(title===null) return; const t = title.trim() || '제목 없는 회차'; persistEditor(); const p=currentProject(); const ep=defaultEpisode('chapter', 1); ep.title = t; if(t.includes('프롤로그')) ep.type='prologue'; else if(t.includes('에필로그')) ep.type='epilogue'; p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisode(); showToast('회차를 추가했어요.'); }
 
 function togglePlanDrawer() {
   saveEditorScroll();
@@ -1105,12 +1053,7 @@ function togglePlanDrawer() {
   if(isPlanDrawerOpen) renderProjectPlan();
   restoreEditorScroll();
 }
-function toggleFocusMode() {
-  saveEditorScroll();
-  isFocusMode = !isFocusMode;
-  $('#workspaceView').classList.toggle('focus-mode', isFocusMode);
-  restoreEditorScroll();
-  if(isFocusMode) { if(quill) quill.focus(); else $('#bodyEditor').focus(); }
+
 }
 
 function maybeVersion(ep, force=false) {
@@ -1289,7 +1232,7 @@ $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#closeDrawerBtn').onclick = togglePlanDrawer;
 $('#addPlanSectionBtn').onclick = () => { currentProject().planSections.push(defaultPlanSection()); touchProject(); queueSaveFS(); renderProjectPlan(); };
 $('#copyAllPlanBtn').onclick = () => { const txt = (currentProject().planSections||[]).map(x=>`${cleanText(x.title)}\n\n${cleanText(x.body)}`).join('\n\n\n'); copyText(txt, '전체 기획을 복사했어요.'); };
-$('#toggleFocusBtn').onclick = toggleFocusMode;
+
 
 // Dropdown
 $('#quickCopyBodyBtn').onclick = () => copyText(cleanText(currentEpisode().body), '본문만 복사했어요.');
