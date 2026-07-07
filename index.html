@@ -591,6 +591,21 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 
 async function initApp() {
+  // OAuth 리다이렉트 후 세션 감지를 위한 리스너
+  sb.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth event:', event);
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && !currentUser) {
+      currentUser = session.user;
+      $('#welcomeScreen').style.display = 'none';
+      await loadStateSupabase();
+      renderLibrary();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      location.reload();
+    }
+  });
+
+  // 기존 세션 확인 (이미 로그인된 상태)
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
