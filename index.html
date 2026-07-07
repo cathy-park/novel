@@ -437,7 +437,8 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
       
       <div id="editorColumns" class="editor-columns mode-split">
         <section class="pane plan-pane">
-          <textarea id="planEditor" class="plan-editor" spellcheck="false" placeholder="이번 화 기획이나 메모를 자유롭게 적으세요."></textarea>
+          <div id="planMdPreview" class="plan-md-view" style="padding:12px;font-size:13px;line-height:1.7;cursor:pointer;overflow-y:auto;height:100%;" onclick="this.classList.add('hidden');$('#planEditor').classList.remove('hidden');$('#planEditor').focus();" title="클릭하여 수정"></div>
+          <textarea id="planEditor" class="plan-editor hidden" spellcheck="false" placeholder="이번 화 기획이나 메모를 자유롭게 적으세요."></textarea>
         </section>
         <section class="pane body-pane">
           <div id="bodyEditor" spellcheck="false"></div>
@@ -995,6 +996,9 @@ function renderEpisode() {
   const ep = currentEpisode(); if(!ep) return;
   $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeStatus').value = ep.status; $('#episodeBreadcrumb').textContent = ep.title;
   $('#planEditor').value = ep.plan||'';
+  $('#planMdPreview').innerHTML = window.marked ? marked.parse(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.');
+  $('#planMdPreview').classList.remove('hidden');
+  $('#planEditor').classList.add('hidden');
   if(!quill) {
     // 폰트사이즈 툴바 한국어로 커스텀
     const icons = Quill.import('ui/icons');
@@ -1221,6 +1225,11 @@ $('#episodeTitle').oninput = () => { currentEpisode().title=$('#episodeTitle').v
 $('#episodeType').onchange = () => { currentEpisode().type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); touchProject(); renderEpisodeList(); queueSaveFS(); };
 $('#episodeStatus').onchange = () => { currentEpisode().status=$('#episodeStatus').value; touchProject(); renderEpisodeList(); queueSaveFS(); };
 $('#planEditor').oninput = () => { currentEpisode().plan=$('#planEditor').value; touchProject(); queueSaveFS(); };
+$('#planEditor').onblur = () => { 
+  $('#planEditor').classList.add('hidden'); 
+  $('#planMdPreview').classList.remove('hidden'); 
+  $('#planMdPreview').innerHTML = window.marked ? marked.parse($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.'); 
+};
 $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
