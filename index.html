@@ -941,7 +941,7 @@ let isPlanDrawerOpen = false;
 let episodeScrollState = new Map();
 
 function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
-function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: type==='prologue'?'프롤로그':type==='epilogue'?'에필로그':`${index||1}화｜제목 없는 회차`, status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now() }; }
+function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: type==='prologue'?'프롤로그':type==='epilogue'?'에필로그':`${index||1}화｜제목 없는 회차`, status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
 function defaultPlanSection(title='새 기획 항목', body='') { return { id: uid('plan'), title, body, open: true }; }
 function normalizeProject(p) { p.cover=p.cover||''; p.coverColor=p.coverColor||DEFAULT_COVER_COLOR; p.planSections=p.planSections||[]; p.planSections=p.planSections.map(x=>({id:x.id||uid('plan'),title:x.title||'제목 없는 항목',body:x.body||'',open:x.open!==false})); return p; }
 
@@ -1094,6 +1094,35 @@ async function migrateFromLocalStorage() {
   } catch(e) { console.error('Migration failed:', e); }
 }
 
+async function ensureProjectBodiesLoaded(p) {
+  if (!p) return;
+  const missingEps = p.episodes.filter(e => e.body === undefined);
+  if (missingEps.length === 0) return; // 이미 다 불러옴
+
+  // 여러 번에 걸쳐 가져올 수 있으므로 in 조건 사용
+  const missingIds = missingEps.map(e => e.id);
+  const { data, error } = await sb.from('novel_episodes')
+    .select('id, body, plan, comments')
+    .in('id', missingIds);
+
+  if (error) {
+    console.error('Failed to load episode bodies:', error);
+    return;
+  }
+
+  if (data) {
+    data.forEach(d => {
+      const ep = p.episodes.find(e => e.id === d.id);
+      if (ep) {
+        ep.body = d.body || '';
+        ep.plan = d.plan || '';
+        ep.comments = (() => { try { return d.comments ? JSON.parse(d.comments) : []; } catch(_) { return []; } })();
+        ep._dirty = false;
+      }
+    });
+  }
+}
+
 async function loadStateSupabase() {
   const newState = { schemaVersion: 6, currentProjectId: null, projects: [] };
   
@@ -1102,9 +1131,9 @@ async function loadStateSupabase() {
   if (pErr) { console.error('Project Load Error:', pErr); showToast('프로젝트 로딩 실패'); return; }
   
   if (projectsData && projectsData.length > 0) {
-  // 2. Episodes 로드 (필요 필드만 선택해서 빠르게)
+  // 2. Episodes 로드 (body, plan, comments 제외하여 지연 로딩)
   const { data: episodesData, error: eErr } = await sb.from('novel_episodes')
-    .select('id,project_id,type,title,body,plan,status,order_idx,created_at,updated_at,comments');
+    .select('id,project_id,type,title,status,order_idx,created_at,updated_at');
   if (eErr) console.error('Episode Load Error:', eErr);
     
     for (const pRow of projectsData) {
@@ -1118,7 +1147,8 @@ async function loadStateSupabase() {
         planSections: pRow.plan_sections || [],
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
-        selectedEpisodeId: null
+        selectedEpisodeId: null,
+        _dirty: false
       };
       // 에피소드 매핑
       if (episodesData) {
@@ -1126,13 +1156,11 @@ async function loadStateSupabase() {
           id: e.id,
           type: e.type,
           title: e.title,
-          body: e.body,
-          plan: e.plan,
           status: e.status,
           createdAt: e.created_at,
           updatedAt: e.updated_at,
           order: e.order_idx,
-          comments: (() => { try { return e.comments ? JSON.parse(e.comments) : []; } catch(_) { return []; } })()
+          _dirty: false
         })).sort((a,b) => a.order - b.order); // 서버의 order_idx로 정렬
       }
       if(p.episodes.length > 0) p.selectedEpisodeId = p.episodes[0].id;
@@ -1181,45 +1209,51 @@ async function saveProjectSupabase(p) {
   if(!currentUser) return;
   
   // Project Update
-  const pData = {
-    id: p.id,
-    user_id: currentUser.id,
-    title: p.title,
-    status: p.status,
-    cover: p.cover,
-    cover_color: p.coverColor,
-    view_mode: p.viewMode,
-    plan_sections: p.planSections,
-    updated_at: p.updatedAt || Date.now()
-  };
+  if (p._dirty) {
+    const pData = {
+      id: p.id,
+      user_id: currentUser.id,
+      title: p.title,
+      status: p.status,
+      cover: p.cover,
+      cover_color: p.coverColor,
+      view_mode: p.viewMode,
+      plan_sections: p.planSections,
+      updated_at: p.updatedAt || Date.now()
+    };
     await sb.from('novel_projects').upsert(pData);
+    p._dirty = false;
+  }
     
-    // Episodes Update (Bulk Upsert)
+    // Episodes Update (Bulk Upsert for dirty only)
     if (p.episodes && p.episodes.length > 0) {
-      const epData = p.episodes.map((ep, i) => ({
-        id: ep.id,
-        project_id: p.id,
-        user_id: currentUser.id,
-        type: ep.type,
-        title: ep.title,
-        body: ep.body || '',
-        plan: ep.plan || '',
-        status: ep.status || 'idea',
-        created_at: ep.createdAt || Date.now(),
-        updated_at: ep.updatedAt || Date.now(),
-        order_idx: i,
-        comments: ep.comments && ep.comments.length ? JSON.stringify(ep.comments) : null
-      }));
-      const { error: epErr } = await sb.from('novel_episodes').upsert(epData);
-      if (epErr) {
-        // 컬럼 누락 등의 에러 처리
-        if (epErr.message && epErr.message.includes('plan')) {
-          console.warn('plan column missing, saving without plan. Please run ALTER TABLE.');
-          const epDataNoPlan = epData.map(({ plan, ...rest }) => rest);
-          await sb.from('novel_episodes').upsert(epDataNoPlan);
-        } else {
-          throw epErr;
+      const dirtyEps = p.episodes.filter(ep => ep._dirty || typeof ep._dirty === 'undefined');
+      if (dirtyEps.length > 0) {
+        const epData = dirtyEps.map((ep, i) => ({
+          id: ep.id,
+          project_id: p.id,
+          user_id: currentUser.id,
+          type: ep.type,
+          title: ep.title,
+          body: ep.body || '',
+          plan: ep.plan || '',
+          status: ep.status || 'idea',
+          created_at: ep.createdAt || Date.now(),
+          updated_at: ep.updatedAt || Date.now(),
+          order_idx: p.episodes.indexOf(ep),
+          comments: ep.comments && ep.comments.length ? JSON.stringify(ep.comments) : null
+        }));
+        const { error: epErr } = await sb.from('novel_episodes').upsert(epData);
+        if (epErr) {
+          if (epErr.message && epErr.message.includes('plan')) {
+            console.warn('plan column missing, saving without plan. Please run ALTER TABLE.');
+            const epDataNoPlan = epData.map(({ plan, ...rest }) => rest);
+            await sb.from('novel_episodes').upsert(epDataNoPlan);
+          } else {
+            throw epErr;
+          }
         }
+        dirtyEps.forEach(ep => ep._dirty = false);
       }
     }
 }
@@ -1247,7 +1281,7 @@ async function deleteEpisode(epId) {
 
 function currentProject() { return state.projects.find(p=>p.id===state.currentProjectId) || state.projects[0]; }
 function currentEpisode() { const p=currentProject(); return p?.episodes.find(e=>e.id===p.selectedEpisodeId) || p?.episodes[0]; }
-function touchProject() { const p=currentProject(); if(p) p.updatedAt = Date.now(); }
+function touchProject() { const p=currentProject(); if(p) { p.updatedAt = Date.now(); p._dirty = true; } }
 function cleanText(t='') { 
   let s = String(t);
   if (s.includes('<p') || s.includes('<br')) {
@@ -1388,10 +1422,16 @@ function showLibrary() {
 }
 function isMobile() { return window.innerWidth <= 760; }
 
-function openProject(id) {
+async function openProject(id) {
   state.currentProjectId = id;
   const p = currentProject();
   if (!p.selectedEpisodeId && p.episodes[0]) p.selectedEpisodeId = p.episodes[0].id;
+  
+  if (p.episodes.some(e => e.body === undefined)) {
+    showToast('프로젝트 본문을 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+  
   queueSaveFS();
   // PC에서도 이북 버튼 제공, 모바일은 항상 이북으로
   if (isMobile()) {
@@ -1426,6 +1466,7 @@ function reorderEpisode(targetId) {
   ch.splice(tIdx, 0, m);
   
   p.episodes = [...p.episodes.filter(e=>e.type==='prologue'), ...ch, ...p.episodes.filter(e=>e.type==='epilogue')];
+  p.episodes.forEach(e => e._dirty = true);
   touchProject(); queueSaveFS(); renderEpisodeList(); draggedId=null;
 }
 
@@ -1540,6 +1581,7 @@ function renderEpisode() {
     quill.on('text-change', (delta, oldDelta, source) => {
       const ep = currentEpisode();
       ep.body = quill.root.innerHTML;
+      ep._dirty = true;
       maybeVersion(ep); touchProject(); updateBodyStats(); queueSaveFS();
       // 성능 최적화: 타이핑 중 에피소드 목록 전체 리렌더 제거 (자수만 업데이트)
     });
@@ -1560,7 +1602,7 @@ function renderEpisode() {
 
 
 function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId=id; touchProject(); queueSaveFS(); showEditor(); renderEpisode(); }
-function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.plan=$('#planEditor').value; ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; }
+function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.plan=$('#planEditor').value; ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; ep._dirty = true; }
 function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
 function updateBodyStats() { const s=stats(quill?quill.getText():$('#bodyEditor').innerText||''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
 function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) queueSaveFS(); restoreEditorScroll(); }
@@ -1588,6 +1630,16 @@ function maybeVersion(ep, force=false) {
 // Export / Import
 async function exportBackup() {
   persistEditor(); queueSaveFS();
+  
+  // 전체 백업이므로 안 불러온 모든 본문 로드
+  let needsLoading = state.projects.some(p => p.episodes.some(e => e.body === undefined));
+  if (needsLoading) {
+    showToast('백업을 위해 전체 데이터를 불러오는 중입니다...');
+    for (const p of state.projects) {
+      if (p.episodes.some(e => e.body === undefined)) await ensureProjectBodiesLoaded(p);
+    }
+  }
+  
   const jsonString = JSON.stringify(state, null, 2);
   let blob = new Blob([jsonString], {type:'application/json'});
   let filename = `야니의_소설창고_backup_${new Date().toISOString().slice(0,10)}.json`;
@@ -1976,7 +2028,7 @@ async function copyText(text, msg) {
 // Bindings
 $('#newProjectBtn').onclick = () => { $('#newProjectColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${c===DEFAULT_COVER_COLOR?'active':''}" data-new-color="${c}" style="background:${c}"></button>`).join(''); $$('[data-new-color]').forEach(b=>b.onclick=()=>{$$('[data-new-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');}); openModal('newProjectModal'); setTimeout(()=>$('#newProjectTitle').focus(),30); };
 $('#createProjectBtn').onclick = async () => {
-  const p = { id:uid('project'), title:$('#newProjectTitle').value.trim()||'제목 없는 작품', status:$('#newProjectStatus').value||'serializing', cover:'', coverColor: $('.cover-color-swatch.active')?.dataset.newColor||DEFAULT_COVER_COLOR, updatedAt:Date.now(), selectedEpisodeId:null, viewMode:'split', planSections:[], episodes:[] };
+  const p = { id:uid('project'), title:$('#newProjectTitle').value.trim()||'제목 없는 작품', status:$('#newProjectStatus').value||'serializing', cover:'', coverColor: $('.cover-color-swatch.active')?.dataset.newColor||DEFAULT_COVER_COLOR, updatedAt:Date.now(), selectedEpisodeId:null, viewMode:'split', planSections:[], episodes:[], _dirty: true };
   const ep = defaultEpisode('prologue'); p.episodes.push(ep); p.selectedEpisodeId = ep.id;
   state.projects.unshift(p);
   closeModal('newProjectModal'); $('#newProjectTitle').value='';
@@ -1992,8 +2044,8 @@ $$('.filter-btn').forEach(b=>b.onclick=()=>{ libraryFilter=b.dataset.filter; ren
 $('#projectTitle').oninput = () => { const p=currentProject(); p.title=$('#projectTitle').value||'제목 없는 작품'; $('#projectBreadcrumb').textContent=p.title; touchProject(); queueSaveFS(); };
 $('#projectStatus').onchange = () => { currentProject().status=$('#projectStatus').value; touchProject(); queueSaveFS(); };
 $('#addEpisodeBtn').onclick = addEpisode;
-$('#episodeTitle').oninput = () => { currentEpisode().title=$('#episodeTitle').value; $('#episodeBreadcrumb').textContent=$('#episodeTitle').value||'제목 없는 회차'; touchProject(); renderEpisodeList(); queueSaveFS(); };
-$('#episodeType').onchange = () => { currentEpisode().type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); touchProject(); renderEpisodeList(); queueSaveFS(); };
+$('#episodeTitle').oninput = () => { const ep=currentEpisode(); ep.title=$('#episodeTitle').value; $('#episodeBreadcrumb').textContent=$('#episodeTitle').value||'제목 없는 회차'; ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
+$('#episodeType').onchange = () => { const ep=currentEpisode(); ep.type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
 
 // planMdPreview 클릭 → planEditor 전환 (인라인 onclick 대신 안전한 JS 이벤트)
 $('#planMdPreview').onclick = () => {
@@ -2005,9 +2057,12 @@ $('#planMdPreview').onclick = () => {
 };
 
 $('#planEditor').oninput = () => {
-  const ep = currentEpisode(); if(!ep) return;
+  const ep = currentEpisode();
+  if(!ep) return;
   ep.plan = $('#planEditor').value;
-  touchProject(); queueSaveFS();
+  ep._dirty = true;
+  touchProject(); 
+  queueSaveFS();
 };
 $('#planEditor').onblur = () => {
   const ep = currentEpisode();
@@ -2024,7 +2079,7 @@ $('#planEditor').onblur = () => {
     ? marked.parse($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.')
     : escapeHtml($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.');
 };
-$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
+$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; ep._dirty = true; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
@@ -2313,9 +2368,15 @@ function processEpisodeBody(html, epTitle) {
   return { body: div.innerHTML, hasTitle };
 }
 
-function exportPODPdf() {
+async function exportPODPdf() {
   const p = currentProject();
   if(!p) return;
+  
+  if (p.episodes.some(e => e.body === undefined)) {
+    showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+  
   const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
   if(eps.length === 0) return showToast('출판할 본문이 없습니다.');
   
@@ -2720,10 +2781,16 @@ initApp();
 let ebookProjectId = null;
 let ebookEpIndex = 0;
 
-function openEbook(projectId) {
+async function openEbook(projectId) {
   ebookProjectId = projectId;
   state.currentProjectId = projectId;
   const p = currentProject();
+  
+  if (p.episodes.some(e => e.body === undefined)) {
+    showToast('프로젝트 본문을 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+  
   const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
   if (!eps.length) { showToast('작성된 회차가 없습니다.'); return; }
 
