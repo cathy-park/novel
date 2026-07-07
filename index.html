@@ -708,6 +708,8 @@ async function loadStateSupabase() {
           type: e.type,
           title: e.title,
           body: e.body,
+          plan: e.plan,
+          status: e.status,
           createdAt: e.created_at,
           updatedAt: e.updated_at,
           order: e.order_idx
@@ -823,12 +825,33 @@ if ($('#migrateLocalBtn')) $('#migrateLocalBtn').onclick = async () => {
           const bodyDir = await projDirHandle.getDirectoryHandle('본문');
           const epMap = new Map();
           for await (const [name, handle] of bodyDir.entries()) {
-            if (name.endsWith('.json')) {
-              const f = await handle.getFile();
-              const ep = JSON.parse(await f.text());
-              if (!epMap.has(ep.id) || (epMap.get(ep.id).updatedAt || 0) < (ep.updatedAt || 0)) {
+            if (handle.kind === 'directory') {
+              try {
+                // 회차 폴더 내의 파일들 읽기
+                const metaFile = await handle.getFileHandle('메타데이터.json');
+                const ep = JSON.parse(await (await metaFile.getFile()).text());
+                
+                try {
+                  const bodyFile = await handle.getFileHandle('본문.txt');
+                  ep.body = await (await bodyFile.getFile()).text();
+                } catch(e) { ep.body = ''; }
+                
+                try {
+                  const planFile = await handle.getFileHandle('기획.txt');
+                  ep.plan = await (await planFile.getFile()).text();
+                } catch(e) { ep.plan = ''; }
+                
                 epMap.set(ep.id, ep);
-              }
+              } catch(e) { console.error('회차 폴더 읽기 실패:', e); }
+            } else if (name.endsWith('.json')) {
+              // 단일 JSON 파일(더 과거 버전 호환성)
+              try {
+                const f = await handle.getFile();
+                const ep = JSON.parse(await f.text());
+                if (!epMap.has(ep.id) || (epMap.get(ep.id).updatedAt || 0) < (ep.updatedAt || 0)) {
+                  epMap.set(ep.id, ep);
+                }
+              } catch(e) {}
             }
           }
           p.episodes = Array.from(epMap.values()).sort((a,b) => a.id.localeCompare(b.id));
