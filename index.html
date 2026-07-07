@@ -830,6 +830,22 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 
+function autoRescue() {
+  let rescued = 0;
+  projects.forEach(p => {
+    (p.episodes || []).forEach(ep => {
+      if (!cleanText(ep.body) && ep.versions && ep.versions.length > 0) {
+        ep.body = ep.versions[0].body;
+        rescued++;
+      }
+    });
+  });
+  if (rescued > 0) {
+    queueSaveFS();
+    setTimeout(() => alert(`에러 발생으로 보이지 않던 ${rescued}개의 회차 본문 데이터를 안전하게 자동 복구했습니다!`), 500);
+  }
+}
+
 async function initApp() {
   // OAuth 리다이렉트 후 세션 감지를 위한 리스너
   sb.auth.onAuthStateChange(async (event, session) => {
@@ -855,6 +871,7 @@ async function initApp() {
         console.error('DB Load failed or timed out:', err);
         showToast('DB 로딩 지연. 새로고침 해주세요.');
       }
+      autoRescue();
       renderLibrary();
     } else if (event === 'SIGNED_OUT') {
       showToast('로그아웃 되었습니다.');
@@ -874,6 +891,7 @@ async function initApp() {
     $('#welcomeScreen').style.display = 'none';
     await migrateFromLocalStorage();
     await loadStateSupabase();
+    autoRescue();
     renderLibrary();
   } else {
     $('#welcomeScreen').style.display = 'flex';
