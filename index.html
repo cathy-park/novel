@@ -211,35 +211,29 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .workspace-shell.focus-mode .dropdown-container { display: none; }
 
 /* Narrative Blocks Styles */
-.n-msg {
-  margin-left: 48px; background: #f4f5f7; border-radius: 8px; max-width: 75%;
-  font-size: 0.95em; padding: 12px; margin-top: 12px; margin-bottom: 12px;
+.ql-editor .n-msg, .n-msg {
+  max-width: 76%; margin-left: auto; margin-right: 0; background: #F5F5F3; border: none; border-radius: 10px; padding: 12px 16px; font-size: 0.95em; line-height: 1.75; text-align: left; margin-top: 16px; margin-bottom: 16px; text-indent: 0;
 }
-.n-sys {
-  text-align: center; font-size: 0.9em; letter-spacing: 0.04em; color: #666; margin: 24px 0;
+.ql-editor .n-sys, .n-sys {
+  text-align: center; width: 100%; background: transparent; border: none; color: #5F6268; font-size: 0.92em; font-weight: 500; letter-spacing: 0.025em; line-height: 1.8; padding: 8px 24px; margin: 22px 0; text-indent: 0;
 }
-.n-sys::before { content: "◇"; display: block; margin-bottom: 4px; font-size: 14px; color: #aaa; }
-.n-log {
-  font-family: monospace; font-size: 0.85em; background: #F6F7F8;
-  border-radius: 3px; border-left: 2px solid #ccc; line-height: 1.4;
-  padding: 12px 16px; margin: 10px 0;
+.ql-editor .n-sys::before, .n-sys::before {
+  content: "◇"; display: block; margin-bottom: 4px; font-size: 11px; color: #B0B3B8;
 }
-.n-alert {
-  border: 1px solid #e0c8c8; background: #fdfafa; border-radius: 4px;
-  padding: 8px 12px; margin: 10px 0;
+.ql-editor .n-log, .n-log {
+  width: 100%; background: #F5F6F7; border-left: 2px solid #B9BEC5; border-radius: 3px; padding: 12px 16px; margin: 16px 0; font-family: monospace; font-size: 13px; line-height: 1.65; color: #4C5158; text-align: left; white-space: pre-wrap; box-shadow: none; text-indent: 0;
 }
-.n-alert::before {
-  content: "!"; display: inline-block; width: 18px; height: 18px; background: #d4a0a0;
-  color: #fff; border-radius: 50%; text-align: center; line-height: 18px; font-weight: bold;
-  margin-right: 8px; font-size: 12px;
+.ql-editor .n-alert, .n-alert {
+  width: 100%; background: #FAFAF8; border: 1px solid #D8D6D0; border-radius: 5px; padding: 11px 14px 11px 40px; margin: 16px 0; position: relative; text-align: left; font-size: 0.92em; color: #55575B; text-indent: 0;
 }
-.n-record {
-  margin-left: 24px; border-left: 2px solid #ccc; padding-left: 12px;
-  font-size: 0.95em; margin-top: 10px; margin-bottom: 10px;
+.ql-editor .n-alert::before, .n-alert::before {
+  content: "!"; position: absolute; left: 14px; top: 11px; font-family: sans-serif; font-size: 14px; font-weight: 700; color: #888A8E; background: transparent; width: auto; height: auto; border-radius: 0; line-height: inherit; text-align: left; margin-right: 0;
 }
-.n-ui {
-  font-family: monospace; font-size: 12px; font-weight: 500; border: 1px solid #ccc;
-  border-radius: 4px; padding: 2px 4px; background: transparent;
+.ql-editor .n-record, .n-record {
+  background: transparent; border-left: 2px solid #C8C4BA; border-radius: 0; margin: 16px 0 16px 28px; padding: 2px 0 2px 18px; max-width: calc(100% - 28px); font-family: inherit; font-size: 0.96em; line-height: 1.8; color: #55534F; font-style: normal; text-indent: 0;
+}
+.ql-editor .n-ui, .n-ui {
+  display: inline; font-family: inherit; font-size: 0.9em; font-weight: 500; color: #4F5359; background: #F4F5F6; border: 1px solid #D8DBDF; border-radius: 4px; padding: 1px 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
 }
 
 /* Quill Toolbar Narrative Dropdown */
@@ -2151,6 +2145,14 @@ function exportPODPdf() {
     margin: 0;
     word-break: keep-all;
   }
+  .n-msg { max-width: 76%; margin-left: auto; margin-right: 0; background: #F5F5F3; border: none; border-radius: 10px; padding: 12px 16px; font-size: 0.95em; line-height: 1.75; text-align: left; margin-top: 16px; margin-bottom: 16px; text-indent: 0 !important; }
+  .n-sys { text-align: center; width: 100%; background: transparent; border: none; color: #5F6268; font-size: 0.92em; font-weight: 500; letter-spacing: 0.025em; line-height: 1.8; padding: 8px 24px; margin: 22px 0; text-indent: 0 !important; }
+  .n-sys::before { content: "◇"; display: block; margin-bottom: 4px; font-size: 11pt; color: #B0B3B8; }
+  .n-log { width: 100%; background: #F5F6F7; border-left: 2px solid #B9BEC5; border-radius: 3px; padding: 12px 16px; margin: 16px 0; font-family: monospace; font-size: 9pt; line-height: 1.65; color: #4C5158; text-align: left; white-space: pre-wrap; box-shadow: none; text-indent: 0 !important; }
+  .n-alert { width: 100%; background: #FAFAF8; border: 1px solid #D8D6D0; border-radius: 5px; padding: 11px 14px 11px 40px; margin: 16px 0; position: relative; text-align: left; font-size: 0.92em; color: #55575B; text-indent: 0 !important; }
+  .n-alert::before { content: "!"; position: absolute; left: 14px; top: 11px; font-family: sans-serif; font-size: 14px; font-weight: 700; color: #888A8E; background: transparent; width: auto; height: auto; border-radius: 0; line-height: inherit; text-align: left; margin-right: 0; }
+  .n-record { background: transparent; border-left: 2px solid #C8C4BA; border-radius: 0; margin: 16px 0 16px 28px; padding: 2px 0 2px 18px; max-width: calc(100% - 28px); font-family: inherit; font-size: 0.96em; line-height: 1.8; color: #55534F; font-style: normal; text-indent: 0 !important; }
+  .n-ui { display: inline; font-family: inherit; font-size: 0.9em; font-weight: 500; color: #4F5359; background: #F4F5F6; border: 1px solid #D8DBDF; border-radius: 4px; padding: 1px 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 </style>
 </head>
 <body>
