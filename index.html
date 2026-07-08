@@ -2094,7 +2094,7 @@ function distributeBeatSheet(sectionId) {
     $('#planEditor').value = curEp.plan || '';
     $('#planMdPreview').innerHTML = window.marked ? marked.parse(curEp.plan || '') : escapeHtml(curEp.plan || '');
   }
-  showToast(`✅ ${matched}개 회차에 비트시트를 배포했어요!`);
+  // 현재 선택된 에피소드 기획창 갱신
 }
 // ─────────────────────────────────────────────────────────────
 
