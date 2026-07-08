@@ -1944,7 +1944,7 @@ function parseBeatSheet(text) {
   const blocks = [];
   let currentHeader = null, currentLines = [];
   for (const line of text.split('\n')) {
-    const hMatch = line.match(/^##\s+(.+)/);
+    const hMatch = line.match(/^##\s*(.+)/);
     if (hMatch) {
       if (currentHeader !== null) blocks.push({ header: currentHeader, body: currentLines.join('\n').trim() });
       currentHeader = hMatch[1].trim();
@@ -1961,25 +1961,29 @@ function matchEpisodeForBeat(header, episodes) {
   const h = header.trim().toLowerCase();
   
   if (h.includes('프롤로그') || h.includes('prologue')) {
-    return episodes.find(e => e.type === 'prologue' || e.title.includes('프롤로그') || e.title.toLowerCase().includes('prologue')) || null;
+    return episodes.find(e => e.type === 'prologue' || (e.title && (e.title.includes('프롤로그') || e.title.toLowerCase().includes('prologue')))) || null;
   }
   if (h.includes('에필로그') || h.includes('epilogue')) {
-    return episodes.find(e => e.type === 'epilogue' || e.title.includes('에필로그') || e.title.toLowerCase().includes('epilogue')) || null;
+    return episodes.find(e => e.type === 'epilogue' || (e.title && (e.title.includes('에필로그') || e.title.toLowerCase().includes('epilogue')))) || null;
   }
   
-  // 숫자화 매핑: "1화", "2화" 등
-  const numMatch = h.match(/(\d+)\s*화/);
+  // 숫자화 매핑: "1화", "1회차", "제1장", "1" 등
+  const numMatch = h.match(/(?:제)?\s*(\d+)\s*(?:화|회차|장|회|편)?/);
   if (numMatch) {
     const num = parseInt(numMatch[1]);
-    const matchedByTitle = episodes.find(e => e.title.includes(`${num}화`));
+    const matchedByTitle = episodes.find(e => e.title && (e.title.includes(`${num}화`) || e.title.includes(`${num}회`) || e.title.includes(`${num}장`)));
     if (matchedByTitle) return matchedByTitle;
     
     const chapters = episodes.filter(e => e.type === 'chapter');
     return chapters[num - 1] || null;
   }
   
-  // 제목 부분 매핑
-  return episodes.find(e => e.title.toLowerCase().includes(h) || h.includes(e.title.toLowerCase())) || null;
+  // 제목 부분 매핑 (빈 문자열 제외)
+  return episodes.find(e => {
+    const t = e.title ? e.title.trim().toLowerCase() : '';
+    if (!t) return false;
+    return t.includes(h) || h.includes(t);
+  }) || null;
 }
 
 function distributeBeatSheet(sectionId) {
