@@ -44,3 +44,4 @@ self.addEventListener('activate', event => {
 // syntax fix Wed Jul  8 14:41:23 KST 2026
 // cdn fix Wed Jul  8 14:43:24 KST 2026
 // remove rescue btn Wed Jul  8 14:44:36 KST 2026
+// fix reference error Wed Jul  8 14:46:28 KST 2026
