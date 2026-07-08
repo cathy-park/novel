@@ -1003,7 +1003,7 @@ if ('serviceWorker' in navigator) {
 }
 
 
-const VERSION_LIMIT = 12, VERSION_INTERVAL = 5*60*1000;
+const VERSION_LIMIT = 5, VERSION_INTERVAL = 5*60*1000;
 const DEFAULT_COVER_COLOR = '#6B5CE7';
 const COVER_COLORS = ['#17141F','#6B5CE7','#6D9DF6','#5CB6C9','#46A57F','#F39AB9','#F5B86C','#B4A5FF','#8C91A5','#E4E6ED'];
 
@@ -1276,7 +1276,22 @@ async function loadStateSupabase() {
     return; 
   }
   
+  
   if (projectsData && projectsData.length > 0) {
+    // 버전을 로컬 백업에서 복원!
+    try {
+      const localDataStr = localStorage.getItem('novel_emergency_backup');
+      if (localDataStr) {
+        const localState = JSON.parse(localDataStr);
+        for (const pRow of projectsData) {
+          const lp = localState.find(x => x.id === pRow.id);
+          if (lp && lp.episodes) {
+            pRow._localEpisodes = lp.episodes; // 임시 저장
+          }
+        }
+      }
+    } catch(e) {}
+
   // 2. Episodes 로드 (body, plan, comments 제외하여 지연 로딩)
   const { data: episodesData, error: eErr } = await sb.from('novel_episodes')
     .select('id,project_id,type,title,status,order_idx,created_at,updated_at')
@@ -1306,6 +1321,7 @@ async function loadStateSupabase() {
           status: e.status,
           createdAt: e.created_at,
           updatedAt: e.updated_at,
+          versions: (pRow._localEpisodes?.find(x => x.id === e.id)?.versions || []).slice(0, 5),
           order: e.order_idx,
           _dirty: false
         })).sort((a,b) => a.order - b.order); // 서버의 order_idx로 정렬
@@ -2037,7 +2053,7 @@ function distributeBeatSheet(sectionId) {
   const blocks = parseBeatSheet(section.body);
   if (!blocks.length) { showToast('## 헤더로 구분된 비트시트 내용이 없습니다.'); return; }
   let eps = orderedEpisodes(p);
-  let matched = 0, created = 0;
+  let matched = 0, created = 0; const matchedEpNames = [];
   for (const block of blocks) {
     if (!block.body) continue;
     let ep = matchEpisodeForBeat(block.header, eps);
@@ -2061,7 +2077,7 @@ function distributeBeatSheet(sectionId) {
       if (p.selectedEpisodeId === ep.id && !$('#workspaceView').classList.contains('hidden')) {
         $('#planEditor').value = ep.plan;
       }
-      matched++;
+      matched++; matchedEpNames.push(ep.title);
     }
   }
   if (matched === 0 && created === 0) { showToast('매칭되는 회차를 찾지 못했습니다.'); return; }
@@ -2070,7 +2086,8 @@ function distributeBeatSheet(sectionId) {
   forceSaveAllSupabase();
   renderProjectPlan();
   if (created > 0) renderEpisodeList();
-  showToast(created > 0 ? `${matched - created}개 배포, ${created}개 새 회차 생성 완료!` : `${matched}개의 회차에 배포 완료!`);
+  const debugNames = Array.from(new Set(matchedEpNames)).slice(0, 3).join(', ');
+  showToast(created > 0 ? `${matched - created}개 배포, ${created}개 새 회차 생성 완료! (${debugNames})` : `${matched}개의 회차에 배포 완료! (${debugNames})`);
   // 현재 선택된 에피소드 기획창 갱신
   const curEp = currentEpisode();
   if (curEp) {
