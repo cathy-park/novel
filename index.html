@@ -2381,9 +2381,10 @@ $('#emergencyRescueBtn').onclick = () => {
   if (!p) return;
   let count = 0;
   p.episodes.forEach(ep => {
-    if ((!ep.body || ep.body.trim().length === 0) && ep.versions && ep.versions.length > 0) {
+    const isEmpty = !ep.body || ep.body.trim() === '' || ep.body.trim() === '<p><br></p>' || ep.body.trim() === '<p></p>' || ep.body.length < 15;
+    if (isEmpty && ep.versions && ep.versions.length > 0) {
       const latest = ep.versions.reduce((max, v) => v.time > max.time ? v : max, ep.versions[0]);
-      if (latest && latest.body) {
+      if (latest && latest.body && latest.body.length > 20) {
         ep.body = latest.body;
         ep._dirty = true;
         count++;
