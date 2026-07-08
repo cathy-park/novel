@@ -1742,6 +1742,7 @@ function renderEpisodeList() {
 
 
 function renderEpisode() {
+  const p = currentProject();
   const ep = currentEpisode(); if(!ep) return;
   $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeBreadcrumb').textContent = getEpisodeDisplayTitle(ep, p);
   $('#planEditor').value = ep.plan||'';
