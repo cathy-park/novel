@@ -1020,7 +1020,7 @@ let isPlanDrawerOpen = false;
 let episodeScrollState = new Map();
 
 function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
-function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: type==='prologue'?'프롤로그':type==='epilogue'?'에필로그':`${index||1}화｜제목 없는 회차`, status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
+function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: '', status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
 function defaultPlanSection(title='새 기획 항목', body='') { return { id: uid('plan'), title, body, open: true }; }
 function normalizeProject(p) { p.cover=p.cover||''; p.coverColor=p.coverColor||DEFAULT_COVER_COLOR; p.planSections=p.planSections||[]; p.planSections=p.planSections.map(x=>({id:x.id||uid('plan'),title:x.title||'제목 없는 항목',body:x.body||'',open:x.open!==false})); return p; }
 
@@ -1585,9 +1585,33 @@ function showLibrary() {
 }
 function isMobile() { return window.innerWidth <= 760; }
 
+function migrateTitles(p) {
+  let migrated = false;
+  p.episodes.forEach(ep => {
+    if (ep.type === 'chapter' && ep.title) {
+      const match = ep.title.match(/^(?:제)?\s*\d+\s*(?:화|회|회차|장|편)[\s:.-]*(.*)/);
+      if (match && match[0] !== ep.title) {
+        ep.title = match[1].trim();
+        ep._dirty = true;
+        migrated = true;
+      } else if (match && match[0] === ep.title) {
+        ep.title = '';
+        ep._dirty = true;
+        migrated = true;
+      }
+    }
+  });
+  if (migrated) {
+    touchProject();
+    queueSaveFS();
+    forceSaveAllSupabase();
+  }
+}
+
 async function openProject(id) {
   state.currentProjectId = id;
   const p = currentProject();
+  migrateTitles(p);
   if (!p.selectedEpisodeId && p.episodes[0]) p.selectedEpisodeId = p.episodes[0].id;
   
   if (p.episodes.some(e => e.body === undefined)) {
@@ -1697,7 +1721,7 @@ function renderEpisodeList() {
 
 function renderEpisode() {
   const ep = currentEpisode(); if(!ep) return;
-  $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeBreadcrumb').textContent = ep.title;
+  $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeBreadcrumb').textContent = getEpisodeDisplayTitle(ep, p);
   $('#planEditor').value = ep.plan||'';
   if($('#planMdPreview')) $('#planMdPreview').innerHTML = window.marked ? marked.parse(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.');
   if($('#planMdPreview')) $('#planMdPreview').classList.remove('hidden');
@@ -1779,7 +1803,7 @@ function persistEditor() { if($('#workspaceView').classList.contains('hidden') |
 function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
 function updateBodyStats() { const s=stats(quill?quill.getText():$('#bodyEditor').innerText||''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
 function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) queueSaveFS(); restoreEditorScroll(); }
-function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 프롤로그, 1화)'); if(title===null) return; const t = title.trim() || '제목 없는 회차'; persistEditor(); const p=currentProject(); const ep=defaultEpisode('chapter', 1); ep.title = t; if(t.includes('프롤로그')) ep.type='prologue'; else if(t.includes('에필로그')) ep.type='epilogue'; p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisode(); showToast('회차를 추가했어요.'); }
+function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 불길한 징조)'); if(title===null) return; const t = title.trim(); persistEditor(); const p=currentProject(); const ep=defaultEpisode('chapter', 1); ep.title = t; if(t.includes('프롤로그')) ep.type='prologue'; else if(t.includes('에필로그')) ep.type='epilogue'; p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('회차를 추가했어요.'); }
 
 function togglePlanDrawer() {
   saveEditorScroll();
@@ -2103,6 +2127,36 @@ function distributeBeatSheet(sectionId) {
 }
 // ─────────────────────────────────────────────────────────────
 
+function syncPlanToBeatSheet(ep) {
+  const p = currentProject();
+  if (!p || !p.planSections) return;
+  const bsSection = p.planSections.find(s => s.type === 'beatsheet');
+  if (!bsSection || !bsSection.body) return;
+  
+  const blocks = parseBeatSheet(bsSection.body);
+  if (!blocks.length) return;
+  
+  const regex = /(?:^|\n)### 📋 비트시트 — ([^\n]+)\n([\s\S]*?)(?:\n\n---\n\n|$)/;
+  const match = ep.plan.match(regex);
+  if (!match) return;
+  
+  const header = match[1].trim();
+  const newBody = match[2].trim();
+  
+  const blockIndex = blocks.findIndex(b => b.header === header);
+  if (blockIndex === -1) return;
+  
+  if (blocks[blockIndex].body !== newBody) {
+    blocks[blockIndex].body = newBody;
+    bsSection.body = blocks.map(b => `## ${b.header}\n${b.body}`).join('\n\n');
+    touchProject();
+    queueSaveFS();
+    if (!$('#workspaceView').classList.contains('hidden')) {
+      renderProjectPlan(); // UI 즉시 갱신
+    }
+  }
+}
+
 function renderProjectPlan() {
   const p = currentProject(), list = $('#projectPlanList'), sections = p.planSections||[];
   if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
@@ -2300,11 +2354,12 @@ $('#planEditor').oninput = () => {
 };
 $('#planEditor').onblur = () => {
   const ep = currentEpisode();
-  // blur 시점에 반드시 메모리에 최신값 동기화
   if (ep) {
     ep.plan = $('#planEditor').value;
     touchProject();
     queueSaveFS();
+    syncPlanToBeatSheet(ep);
+    forceSaveAllSupabase();
   }
   $('#planEditor').classList.add('hidden');
   const preview = $('#planMdPreview');
