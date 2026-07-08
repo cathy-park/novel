@@ -749,7 +749,14 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
+<script>
+window.addEventListener('error', function(e) {
+  setTimeout(() => showToast('에러: ' + e.message), 1000);
+});
+window.addEventListener('unhandledrejection', function(e) {
+  setTimeout(() => showToast('Promise 에러: ' + e.reason), 1000);
+});
+</script></head>
 <body>
 
 <div id="welcomeScreen" style="position:fixed;inset:0;background:var(--c-bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
@@ -2380,17 +2387,66 @@ $('#emergencyRescueBtn').onclick = () => {
   const p = currentProject();
   if (!p) return;
   let count = 0;
+  
+  // 브라우저에 남아있는 모든 가능한 로컬 백업 키를 다 뒤집니다.
+  const backupKeys = [
+    'novel_emergency_backup',
+    'munjang-novel-writer-v3_backup',
+    'munjang-novel-writer-v3_failed_backup',
+    'munjang-novel-writer-v3'
+  ];
+  
+  let candidates = [];
+  backupKeys.forEach(key => {
+    try {
+      const data = localStorage.getItem(key);
+      if (data) candidates.push(JSON.parse(data));
+    } catch(e) {}
+  });
+
   p.episodes.forEach(ep => {
     const isEmpty = !ep.body || ep.body.trim() === '' || ep.body.trim() === '<p><br></p>' || ep.body.trim() === '<p></p>' || ep.body.length < 15;
-    if (isEmpty && ep.versions && ep.versions.length > 0) {
-      const latest = ep.versions.reduce((max, v) => v.time > max.time ? v : max, ep.versions[0]);
-      if (latest && latest.body && latest.body.length > 20) {
-        ep.body = latest.body;
+    if (isEmpty) {
+      let foundBody = null;
+      // 1. 메모리의 버전 기록 먼저 확인
+      if (ep.versions && ep.versions.length > 0) {
+        const latest = ep.versions.reduce((max, v) => v.time > max.time ? v : max, ep.versions[0]);
+        if (latest && latest.body && latest.body.length > 20) foundBody = latest.body;
+      }
+      
+      // 2. localStorage의 모든 백업 스캔
+      if (!foundBody) {
+        for (const backup of candidates) {
+          // 배열(최신) 또는 객체(과거) 형태 대응
+          const projs = Array.isArray(backup) ? backup : (backup.projects || []);
+          const bp = projs.find(x => x.id === p.id);
+          if (bp && bp.episodes) {
+            const bep = bp.episodes.find(x => x.id === ep.id);
+            if (bep) {
+              if (bep.body && bep.body.length > 20 && bep.body !== '<p><br></p>') {
+                foundBody = bep.body;
+                break;
+              }
+              if (bep.versions && bep.versions.length > 0) {
+                const latest = bep.versions.reduce((max, v) => v.time > max.time ? v : max, bep.versions[0]);
+                if (latest && latest.body && latest.body.length > 20) {
+                  foundBody = latest.body;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      if (foundBody) {
+        ep.body = foundBody;
         ep._dirty = true;
         count++;
       }
     }
   });
+
   if (count > 0) {
     showToast(`✅ ${count}개의 회차 본문이 로컬 백업에서 복원되었습니다!`);
     touchProject();
@@ -2398,7 +2454,14 @@ $('#emergencyRescueBtn').onclick = () => {
     forceSaveAllSupabase();
     renderEpisode();
   } else {
-    showToast('복원할 수 있는 백업 본문이 없습니다.');
+    showToast('복원할 수 있는 백업을 찾지 못했습니다. 백업 파일을 분석하기 위해 다운로드합니다.');
+    const dump = JSON.stringify(localStorage);
+    const blob = new Blob([dump], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'munjang_full_backup_dump.json';
+    a.click();
   }
 };
 $('#closeDrawerBtn').onclick = togglePlanDrawer;
