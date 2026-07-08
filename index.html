@@ -1677,6 +1677,18 @@ function renderWorkspace() {
 
 
 
+function getEpisodeDisplayTitle(ep, p) {
+  if (ep.type === 'prologue') return ep.title ? `프롤로그 ${ep.title}` : '프롤로그';
+  if (ep.type === 'epilogue') return ep.title ? `에필로그 ${ep.title}` : '에필로그';
+  let chapterIndex = 1;
+  const eps = p.episodes.slice().sort((a,b) => a.order - b.order);
+  for (const e of eps) {
+    if (e.id === ep.id) break;
+    if (e.type === 'chapter') chapterIndex++;
+  }
+  return ep.title ? `${chapterIndex}화 ${ep.title}` : `${chapterIndex}화`;
+}
+
 function renderEpisodeList() {
   const p = currentProject(), eps = orderedEpisodes(p);
   $('#episodeList').innerHTML = '';
