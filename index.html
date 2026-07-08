@@ -1220,12 +1220,37 @@ async function ensureProjectBodiesLoaded(p) {
       const ep = p.episodes.find(e => e.id === d.id);
       if (ep) {
         ep.body = d.body || '';
-        ep.plan = d.plan || '';
+        ep.plan = deduplicateBeatSheets(d.plan || '');
         ep.comments = (() => { try { return d.comments ? JSON.parse(d.comments) : []; } catch(_) { return []; } })();
         ep._dirty = false;
       }
     });
   }
+}
+
+function deduplicateBeatSheets(planStr) {
+  if (!planStr) return '';
+  const blocks = planStr.split(/(?:^|\n)### 📋 비트시트 — /);
+  if (blocks.length <= 1) return planStr; // No beatsheets
+  
+  let result = blocks[0]; // User's manual notes before the first beatsheet
+  const seenHeaders = new Set();
+  
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const headerMatch = block.match(/^([^\n]+)/);
+    if (!headerMatch) {
+      result += '\n### 📋 비트시트 — ' + block;
+      continue;
+    }
+    const header = headerMatch[1].trim();
+    if (!seenHeaders.has(header)) {
+      seenHeaders.add(header);
+      result += '\n### 📋 비트시트 — ' + block;
+    }
+  }
+  
+  return result.replace(/(?:\n\n---\n\n)+/g, '\n\n---\n\n').trim();
 }
 
 async function loadStateSupabase() {
