@@ -38,3 +38,4 @@ self.addEventListener('activate', event => {
 // updated Wed Jul  8 13:59:12 KST 2026
 // updated Wed Jul  8 14:03:52 KST 2026
 // feature updated Wed Jul  8 14:17:16 KST 2026
+// rescue btn updated Wed Jul  8 14:23:58 KST 2026
