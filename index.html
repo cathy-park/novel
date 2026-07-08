@@ -2047,14 +2047,14 @@ function renderProjectPlan() {
     if (isPdf) {
       bodyContent = `<div style="padding:16px;text-align:center;"><button class="secondary" data-open-pdf="${x.id}" style="width:100%;">📄 PDF 문서 열기</button><p style="margin:8px 0 0;font-size:11px;color:var(--c-muted);word-break:break-all;">${escapeHtml(x.pdfName || '')}</p></div>`;
     } else {
-      const distributeBtn = isBeat
-        ? `<button class="secondary" style="width:100%;margin-top:10px;" data-distribute-beat="${x.id}">${x.distributed ? '✅ 배포됨 (다시 배포)' : '🚀 회차에 배포하기'}</button>`
-        : '';
       bodyContent = `<div class="plan-md-view" style="padding:12px; font-size:13px; line-height:1.6; cursor:pointer;" data-mdv="${x.id}" title="클릭하여 수정">${window.marked ? marked.parse(x.body || '내용이 없습니다.') : escapeHtml(x.body)}</div>
-         <textarea class="plan-section-body hidden" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea>${distributeBtn}`;
+         <textarea class="plan-section-body hidden" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea>`;
     }
+    const distributeBtn = isBeat
+      ? `<button class="primary" style="margin-right:6px; padding:4px 10px; font-size:11px; height:24px; border-radius:4px; line-height:1;" data-distribute-beat="${x.id}">${x.distributed ? '재배포' : '배포하기'}</button>`
+      : '';
     return `<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
-    <div class="plan-accordion-head"><button class="accordion-toggle" data-tgl="${x.id}">›</button><input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/><button class="icon-btn" style="width:28px;height:28px;" data-del="${x.id}">×</button></div>
+    <div class="plan-accordion-head"><button class="accordion-toggle" data-tgl="${x.id}">›</button><input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/>${distributeBtn}<button class="icon-btn" style="width:28px;height:28px;" data-del="${x.id}">×</button></div>
     <div class="plan-accordion-body">${bodyContent}</div>
   </article>`;
   }).join('');
