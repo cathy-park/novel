@@ -45,3 +45,4 @@ self.addEventListener('activate', event => {
 // cdn fix Wed Jul  8 14:43:24 KST 2026
 // remove rescue btn Wed Jul  8 14:44:36 KST 2026
 // fix reference error Wed Jul  8 14:46:28 KST 2026
+// fix p not defined Wed Jul  8 14:48:08 KST 2026
