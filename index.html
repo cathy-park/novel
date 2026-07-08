@@ -863,7 +863,7 @@ window.addEventListener('unhandledrejection', function(e) {
           <textarea id="planEditor" class="plan-editor hidden" spellcheck="false" placeholder="이번 화 기획이나 메모를 자유롭게 적으세요."></textarea>
         </section>
         <section class="pane body-pane">
-          <div id="bodyEditor" spellcheck="false"></div>
+          <div id="bodyEditor" spellcheck="false" contenteditable="true"></div>
           <div class="editor-bottom-bar">
             <div class="dropdown-container">
               <div class="copy-group">
@@ -1763,7 +1763,8 @@ function renderEpisode() {
     UiBlot.className = 'n-ui';
     Quill.register(UiBlot, true);
     
-    quill = new Quill('#bodyEditor', {
+    try {
+      quill = new Quill('#bodyEditor', {
       theme: 'snow',
       placeholder: '첫 문장을 시작하세요...',
       modules: {
