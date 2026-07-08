@@ -2018,13 +2018,18 @@ function matchEpisodeForBeat(header, episodes) {
   if (numMatch) {
     const num = parseInt(numMatch[1]);
     
-    // 스마트 타이틀 매칭 (공백 무시)
+    // 스마트 타이틀 매칭
     const matchedByTitle = episodes.find(e => {
       if (!e.title) return false;
-      const t = e.title.replace(/\s+/g, '');
       // 프롤로그/에필로그는 숫자 매칭에서 무조건 제외
-      if (t.includes('프롤로그') || t.includes('에필로그')) return false;
-      return t.includes(`${num}화`) || t.includes(`${num}회`) || t.includes(`${num}장`) || t.includes(`${num}편`);
+      if (e.title.includes('프롤로그') || e.title.includes('에필로그')) return false;
+      
+      const regex = /(\d+)\s*(?:화|회|장|편)/g;
+      let match;
+      while ((match = regex.exec(e.title)) !== null) {
+        if (parseInt(match[1]) === num) return true;
+      }
+      return false;
     });
     if (matchedByTitle) return matchedByTitle;
     
