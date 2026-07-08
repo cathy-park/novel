@@ -1982,7 +1982,7 @@ function matchEpisodeForBeat(header, episodes) {
   return episodes.find(e => {
     const t = e.title ? e.title.trim().toLowerCase() : '';
     if (!t) return false;
-    return t.includes(h) || h.includes(t);
+    return t.includes(h) || h === t;
   }) || null;
 }
 
