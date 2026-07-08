@@ -1937,7 +1937,12 @@ async function openAttachedPdf(sectionId) {
 // ─── 비트시트 배포 함수 ─────────────────────────────────────
 function removeBeatSheetFromPlan(planStr) {
   if (!planStr) return '';
-  return planStr.replace(/(?:^|\n)### 📋 비트시트 —[\s\S]*?(?:\n\n---\n\n|$)/g, '').trim();
+  let old = '';
+  while (old !== planStr) {
+    old = planStr;
+    planStr = planStr.replace(/(?:^|\n)### 📋 비트시트 —[\s\S]*?(?:\n\n---\n\n|$)/, '\n').trim();
+  }
+  return planStr.replace(/\n{3,}/g, '\n\n').trim();
 }
 function parseBeatSheet(text) {
   // ## 헤더 기준으로 파싱
