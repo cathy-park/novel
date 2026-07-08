@@ -1944,7 +1944,7 @@ function parseBeatSheet(text) {
   const blocks = [];
   let currentHeader = null, currentLines = [];
   for (const line of text.split('\n')) {
-    const hMatch = line.match(/^##\s*(.+)/);
+    const hMatch = line.match(/^##\s*([^#].*)/);
     if (hMatch) {
       if (currentHeader !== null) blocks.push({ header: currentHeader, body: currentLines.join('\n').trim() });
       currentHeader = hMatch[1].trim();
