@@ -825,6 +825,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   <main class="workspace">
     <header class="topbar">
       <div class="breadcrumb"><span id="projectBreadcrumb"></span><span class="slash">/</span><strong id="episodeBreadcrumb"></strong></div>
+      <button id="emergencyRescueBtn" class="primary-btn" style="background:var(--c-danger); margin-left: 15px; font-size:12px; padding: 4px 10px;">🔥 긴급 복구</button>
       <div class="top-actions">
         <span id="saveStatus" class="save-status">저장됨</span>
         <button id="emergencyRestoreBtn" class="ghost" type="button" style="color: #e53935; font-weight: 600;">🚨 최신 백업 복원</button>
@@ -1392,20 +1393,23 @@ async function saveProjectSupabase(p) {
     if (p.episodes && p.episodes.length > 0) {
       const dirtyEps = p.episodes.filter(ep => ep._dirty || typeof ep._dirty === 'undefined');
       if (dirtyEps.length > 0) {
-        const epData = dirtyEps.map((ep, i) => ({
-          id: ep.id,
-          project_id: p.id,
-          user_id: currentUser.id,
-          type: ep.type,
-          title: ep.title,
-          body: ep.body || '',
-          plan: ep.plan || '',
-          status: ep.status || 'idea',
-          created_at: ep.createdAt || Date.now(),
-          updated_at: ep.updatedAt || Date.now(),
-          order_idx: p.episodes.indexOf(ep),
-          comments: ep.comments && ep.comments.length ? JSON.stringify(ep.comments) : null
-        }));
+        const epData = dirtyEps.map((ep, i) => {
+          const data = {
+            id: ep.id,
+            project_id: p.id,
+            user_id: currentUser.id,
+            type: ep.type,
+            title: ep.title,
+            status: ep.status || 'idea',
+            created_at: ep.createdAt || Date.now(),
+            updated_at: ep.updatedAt || Date.now(),
+            order_idx: p.episodes.indexOf(ep),
+            comments: ep.comments && ep.comments.length ? JSON.stringify(ep.comments) : null
+          };
+          if (ep.body !== undefined) data.body = ep.body;
+          if (ep.plan !== undefined) data.plan = ep.plan;
+          return data;
+        });
         const { error: epErr } = await sb.from('novel_episodes').upsert(epData);
         if (epErr) {
           if (epErr.message && epErr.message.includes('plan')) {
@@ -2372,6 +2376,30 @@ $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quil
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
+$('#emergencyRescueBtn').onclick = () => {
+  const p = currentProject();
+  if (!p) return;
+  let count = 0;
+  p.episodes.forEach(ep => {
+    if ((!ep.body || ep.body.trim().length === 0) && ep.versions && ep.versions.length > 0) {
+      const latest = ep.versions.reduce((max, v) => v.time > max.time ? v : max, ep.versions[0]);
+      if (latest && latest.body) {
+        ep.body = latest.body;
+        ep._dirty = true;
+        count++;
+      }
+    }
+  });
+  if (count > 0) {
+    showToast(`✅ ${count}개의 회차 본문이 로컬 백업에서 복원되었습니다!`);
+    touchProject();
+    queueSaveFS();
+    forceSaveAllSupabase();
+    renderEpisode();
+  } else {
+    showToast('복원할 수 있는 백업 본문이 없습니다.');
+  }
+};
 $('#closeDrawerBtn').onclick = togglePlanDrawer;
 
 $('#tabPlanBtn').onclick = () => {
