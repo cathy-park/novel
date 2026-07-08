@@ -1935,6 +1935,10 @@ async function openAttachedPdf(sectionId) {
 }
 
 // ─── 비트시트 배포 함수 ─────────────────────────────────────
+function removeBeatSheetFromPlan(planStr) {
+  if (!planStr) return '';
+  return planStr.replace(/(?:^|\n)### 📋 비트시트 —[\s\S]*?(?:\n\n---\n\n|$)/g, '').trim();
+}
 function parseBeatSheet(text) {
   // ## 헤더 기준으로 파싱
   const blocks = [];
@@ -2002,6 +2006,7 @@ function distributeBeatSheet(sectionId) {
       created++;
     }
     if (ep) {
+      if (ep.plan) ep.plan = removeBeatSheetFromPlan(ep.plan);
       const beatMd = `### 📋 비트시트 — ${block.header}\n${block.body}`;
       ep.plan = beatMd + (ep.plan ? '\n\n---\n\n' + ep.plan : '');
       if (p.selectedEpisodeId === ep.id && !$('#workspaceView').classList.contains('hidden')) {
@@ -2070,7 +2075,21 @@ function renderProjectPlan() {
     };
     requestAnimationFrame(()=>autosizePlanSection(t));
   });
-  $$('[data-del]').forEach(b=>b.onclick=()=>{ if(confirm('항목을 삭제할까요?')){ p.planSections=p.planSections.filter(x=>x.id!==b.dataset.del); touchProject(); queueSaveFS(); renderProjectPlan(); }});
+  $$('[data-del]').forEach(b=>b.onclick=()=>{ 
+    if(confirm('항목을 삭제할까요?')){ 
+      const delId = b.dataset.del;
+      const sec = p.planSections.find(x=>x.id===delId);
+      if (sec && sec.type === 'beatsheet') {
+        if(confirm('이 비트시트로 각 회차에 배포되었던 내용도 모두 삭제할까요?\n(회차 기획에 배포된 비트시트만 안전하게 지워집니다)')) {
+          p.episodes.forEach(ep => {
+            if (ep.plan) ep.plan = removeBeatSheetFromPlan(ep.plan);
+          });
+        }
+      }
+      p.planSections=p.planSections.filter(x=>x.id!==delId); 
+      touchProject(); queueSaveFS(); renderProjectPlan(); 
+    }
+  });
   $$('[data-distribute-beat]').forEach(b=>b.onclick=()=>distributeBeatSheet(b.dataset.distributeBeat));
   $$('[data-open-pdf]').forEach(b=>b.onclick=()=>openAttachedPdf(b.dataset.openPdf));
 }
