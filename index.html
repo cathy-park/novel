@@ -2841,7 +2841,7 @@ $('#savePublishSettingsBtn').onclick = () => {
 };
 
 $('#exportPODBtn').onclick = exportPODPdf;
-function processEpisodeBody(html, epTitle) {
+function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
   const div = document.createElement('div');
   div.innerHTML = html;
@@ -2908,6 +2908,19 @@ function processEpisodeBody(html, epTitle) {
     }
   }
 
+  // 4. 종이책용 연속된 빈 줄 정리 (2개 이상의 빈 줄을 1개로 압축)
+  if (isForPublishing) {
+    let emptyCount = 0;
+    Array.from(div.children).forEach(child => {
+      if (child.tagName === 'P' && !child.textContent.trim() && !child.querySelector('img')) {
+        emptyCount++;
+        if (emptyCount > 1) child.remove();
+      } else {
+        emptyCount = 0;
+      }
+    });
+  }
+
   return { body: div.innerHTML, hasTitle };
 }
 
@@ -2968,8 +2981,8 @@ ${mainStyles}
   }
   body {
     font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: 10.5pt;
-    line-height: 1.75;
+    font-size: 10pt;
+    line-height: 1.65;
     color: #111;
     background: #fff;
     text-align: justify;
@@ -3029,7 +3042,7 @@ ${mainStyles}
   .toc-list li a {
     text-decoration: none;
     color: inherit;
-    font-size: 10.5pt;
+    font-size: 10pt;
   }
   .toc-title { order: -1; }
   .toc-page-num { order: 1; }
@@ -3047,7 +3060,7 @@ ${mainStyles}
     text-align: center;
   }
   .chapter-content p {
-    text-indent: 10.5pt;
+    text-indent: 10pt;
     margin: 0;
     word-break: keep-all;
   }
@@ -3085,7 +3098,8 @@ ${mainStyles}
     <ul class="toc-list">
 `;
     loadedEps.forEach((ep, i) => {
-      html += `<li><span class="toc-title"><a href="#ep-${ep.id}">${escapeHtml(ep.title)}</a></span><span class="toc-page-num"><a href="#ep-${ep.id}"></a></span></li>`;
+      const displayTitle = getEpisodeDisplayTitle(ep, p);
+      html += `<li><span class="toc-title"><a href="#ep-${ep.id}">${escapeHtml(displayTitle)}</a></span><a href="#ep-${ep.id}" class="toc-page-num"></a></li>`;
     });
     html += `
     </ul>
@@ -3095,12 +3109,13 @@ ${mainStyles}
 
   // 4. 본문
   loadedEps.forEach((ep, i) => {
-    const processed = processEpisodeBody(ep.body, ep.title);
+    const processed = processEpisodeBody(ep.body, ep.title, true);
     const renderTitle = pubSet.showTitle && !processed.hasTitle;
+    const displayTitle = getEpisodeDisplayTitle(ep, p);
     
     html += `
   <div class="chapter" id="ep-${ep.id}">
-    ${renderTitle ? `<div class="chapter-title">${escapeHtml(ep.title)}</div>` : ''}
+    ${renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : ''}
     <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
   });
