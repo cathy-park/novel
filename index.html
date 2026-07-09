@@ -3118,6 +3118,16 @@ ${mainStyles}
     margin: 0 !important;
     word-break: keep-all;
   }
+  .chapter-content h1, .chapter-content h2, .chapter-content h3 {
+    margin-top: 1.5em !important;
+    margin-bottom: 1em !important;
+    line-height: 1.4;
+  }
+  .chapter-content p:has(.ql-size-huge),
+  .chapter-content p:has(.ql-size-large) {
+    margin-top: 1.5em !important;
+    margin-bottom: 1em !important;
+  }
   /* Remove overrides that break print */
   html, body { height: auto !important; overflow: visible !important; }
   .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
