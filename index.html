@@ -1858,7 +1858,7 @@ async function openProject(id) {
 function orderedEpisodes(p=currentProject()) {
   const fm = p.episodes.filter(e=>e.type==='frontmatter');
   const pr = p.episodes.filter(e=>e.type==='prologue');
-  const ch = p.episodes.filter(e=>e.type==='chapter');
+  const ch = p.episodes.filter(e=>e.type==='chapter' || !['frontmatter', 'prologue', 'epilogue', 'backmatter'].includes(e.type));
   const ep = p.episodes.filter(e=>e.type==='epilogue');
   const bm = p.episodes.filter(e=>e.type==='backmatter');
   return [...fm, ...pr, ...ch, ...ep, ...bm];
@@ -1866,17 +1866,14 @@ function orderedEpisodes(p=currentProject()) {
 function reorderEpisode(targetId) {
   if(!draggedId || draggedId===targetId) return;
   const p = currentProject();
-  const dragged = p.episodes.find(e=>e.id===draggedId);
-  const target = p.episodes.find(e=>e.id===targetId);
-  if(!dragged || !target || dragged.type!=='chapter' || target.type!=='chapter') { draggedId=null; return; }
+  const fIdx = p.episodes.findIndex(e=>e.id===draggedId);
+  const tIdx = p.episodes.findIndex(e=>e.id===targetId);
+  if(fIdx < 0 || tIdx < 0) { draggedId=null; return; }
   
-  const ch = p.episodes.filter(e=>e.type==='chapter');
-  const fIdx = ch.findIndex(e=>e.id===draggedId);
-  const tIdx = ch.findIndex(e=>e.id===targetId);
-  const [m] = ch.splice(fIdx, 1);
-  ch.splice(tIdx, 0, m);
+  const [m] = p.episodes.splice(fIdx, 1);
+  p.episodes.splice(tIdx, 0, m);
   
-  p.episodes = [...p.episodes.filter(e=>e.type==='prologue'), ...ch, ...p.episodes.filter(e=>e.type==='epilogue')];
+  p.episodes = orderedEpisodes(p);
   p.episodes.forEach(e => e._dirty = true);
   touchProject(); queueSaveFS(); renderEpisodeList(); draggedId=null;
 }
@@ -1949,16 +1946,14 @@ function renderEpisodeList() {
     
     const row = document.createElement('div');
     row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
-    row.draggable = isChap;
-    row.innerHTML = `<span class="drag" title="\ub4dc\ub798\uadf8\ud558\uc5ec \uc21c\uc11c \ubcc0\uacbd">\u22ee</span><div class="episode-main"><strong><span style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">${badgeHtml}<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dispTitle)}</span></span></strong><span>${stats(ep.body).withSpaces.toLocaleString()}\uc790</span></div>` + 
-                    (isChap ? `<button class="icon-btn delete-ep-btn" title="\uc0ad\uc81c" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')" style="opacity:0; transition:opacity .15s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '');
+    row.draggable = true;
+    row.innerHTML = `<span class="drag" title="드래그하여 순서 변경">⋮</span><div class="episode-main"><strong><span style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">${badgeHtml}<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dispTitle)}</span></span></strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
+                    `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')" style="opacity:0; transition:opacity .15s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
     row.querySelector('.episode-main').onclick = ()=>selectEpisode(ep.id);
-    if(ep.type==='chapter') {
-      row.ondragstart = ()=>{ draggedId=ep.id; row.classList.add('dragging'); };
-      row.ondragover = e=>e.preventDefault();
-      row.ondrop = e=>{ e.preventDefault(); reorderEpisode(ep.id); };
-      row.ondragend = ()=>row.classList.remove('dragging');
-    }
+    row.ondragstart = ()=>{ draggedId=ep.id; row.classList.add('dragging'); };
+    row.ondragover = e=>e.preventDefault();
+    row.ondrop = e=>{ e.preventDefault(); reorderEpisode(ep.id); };
+    row.ondragend = ()=>row.classList.remove('dragging');
     $('#episodeList').appendChild(row);
   });
   requestAnimationFrame(()=>{ const el = $('.episode-row.active'); if(el) el.scrollIntoView({block:'nearest'}); });
