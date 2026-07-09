@@ -1078,7 +1078,8 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="max-width:880px; margin:0 auto 20px; display:flex; justify-content:space-between; align-items:center;">
         <div><h1 id="manuscriptTitle" style="display:none;"></h1><p id="manuscriptMeta" style="margin:4px 0 0;color:var(--c-sub);font-size:12px;"></p></div>
         <div style="display:flex; gap:8px;">
-          <button id="exportPODBtn" class="primary" style="background:#2E2A25;" type="button">🖨️ A5 출판용 PDF</button>
+          <button id="openPublishSettingsBtn" class="ghost" style="background:#444; color:#fff;" type="button">⚙️ 설정</button>
+          <button id="exportPODBtn" class="primary" style="background:#2E2A25;" type="button">🖨️ 출판용 PDF</button>
           <button id="copyManuscriptFull" class="primary" type="button">전체 본문 복사</button>
           <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
         </div>
@@ -1115,6 +1116,35 @@ window.addEventListener('unhandledrejection', function(e) {
 <label class="modal-field"><span>작품 상태</span><select id="newProjectStatus" class="input"><option value="serializing">연재 중</option><option value="completed">완결</option></select></label>
 <label class="modal-field"><span>표지 컬러</span><div id="newProjectColors" class="cover-colors" style="margin-top:4px;"></div></label>
 <div class="modal-actions"><button class="ghost" data-close="newProjectModal">취소</button><button id="createProjectBtn" class="primary">작품 만들기</button></div></div></div>
+
+<div id="publishSettingsModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <div><span class="kicker">설정</span><h2>출판용 PDF 템플릿 설정</h2></div>
+      <button class="icon-btn" data-close="publishSettingsModal">×</button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <label style="font-size:12px; font-weight:600; color:var(--c-sub);">용지 크기</label>
+        <select id="pubPaperSize" style="padding:10px; border-radius:6px; border:1px solid #E2E2E2; outline:none; background:var(--c-bg); color:var(--c-ink);">
+          <option value="A5">A5 (신국판/국판 크기 - 148×210mm)</option>
+          <option value="B6">B6 (문고판 크기 - 128×182mm)</option>
+        </select>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <label style="font-size:12px; font-weight:600; color:var(--c-sub);">템플릿 옵션</label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubIncludeCover"> <span>서재의 작품 표지를 첫 장에 포함</span></label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubAutoTOC"> <span>원고 목차(Table of Contents) 페이지 자동 생성</span></label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubShowTitle"> <span>본문 시작 전에 회차 제목(예: 1화) 자동으로 삽입</span></label>
+        <p style="font-size:11px; color:#A0AAB5; margin:0 0 0 22px;">※ 본문 첫 줄에 이미 회차 제목을 적어두셨다면 위 옵션을 끄셔야 제목이 두 번 중복해서 나오지 않습니다.</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" data-close="publishSettingsModal">취소</button>
+      <button id="savePublishSettingsBtn" class="primary">저장하기</button>
+    </div>
+  </div>
+</div>
 
 <div id="searchModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">전체 검색</span><h2>현재 작품에서 찾기</h2></div><button class="icon-btn" data-close="searchModal">×</button></div>
 <input id="searchInput" class="input" style="width:100%" placeholder="인물, 단서, 문장을 검색하세요" autocomplete="off"/>
@@ -2783,6 +2813,33 @@ $('#copyManuscriptFull').onclick = () => {
   const mdText = orderedEpisodes().filter(e => cleanText(e.body)).map(e => getMarkdownForEpisode(e)).join('\n\n\n');
   copyText(mdText, '전체 본문을 복사했어요. (마크다운)');
 };
+
+// Publish Settings Logic
+function getPublishSettings(p) {
+  return p.publishSettings || { paperSize: 'A5', includeCover: true, autoTOC: true, showTitle: false };
+}
+$('#openPublishSettingsBtn').onclick = () => {
+  const p = currentProject(); if(!p) return;
+  const set = getPublishSettings(p);
+  $('#pubPaperSize').value = set.paperSize;
+  $('#pubIncludeCover').checked = set.includeCover;
+  $('#pubAutoTOC').checked = set.autoTOC;
+  $('#pubShowTitle').checked = set.showTitle;
+  openModal('publishSettingsModal');
+};
+$('#savePublishSettingsBtn').onclick = () => {
+  const p = currentProject(); if(!p) return;
+  p.publishSettings = {
+    paperSize: $('#pubPaperSize').value,
+    includeCover: $('#pubIncludeCover').checked,
+    autoTOC: $('#pubAutoTOC').checked,
+    showTitle: $('#pubShowTitle').checked
+  };
+  touchProject(); queueSaveFS();
+  closeModal('publishSettingsModal');
+  showToast('출판 설정이 저장되었습니다.');
+};
+
 $('#exportPODBtn').onclick = exportPODPdf;
 function processEpisodeBody(html, epTitle) {
   if (!html) return { body: '', hasTitle: false };
@@ -2879,13 +2936,14 @@ async function exportPODPdf() {
   showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
   
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  const pubSet = getPublishSettings(p);
   
   let html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(p.title)} - 출판용 원고</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
 <style>
 ${mainStyles}
@@ -2893,23 +2951,41 @@ ${mainStyles}
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
 <style>
   @page {
-    size: A5;
+    size: ${pubSet.paperSize};
     margin: 20mm 15mm 20mm 15mm;
     @bottom-center {
       content: counter(page);
       font-size: 9pt;
-      font-family: 'Noto Serif KR', serif;
+      font-family: 'KoPub Batang', 'Noto Serif KR', serif;
     }
   }
   @page:first {
     @bottom-center { content: none; }
   }
+  @page cover {
+    margin: 0;
+    @bottom-center { content: none; }
+  }
   body {
-    font-family: 'Noto Serif KR', serif;
-    font-size: 10pt;
-    line-height: 1.8;
+    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+    font-size: 10.5pt;
+    line-height: 1.75;
     color: #111;
     background: #fff;
+    text-align: justify;
+    word-break: keep-all;
+  }
+  .cover-page {
+    page: cover;
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
+    background-color: ${p.coverColor || '#2c2c2c'};
+    color: #fff;
   }
   .title-page {
     break-after: page;
@@ -2921,6 +2997,45 @@ ${mainStyles}
     text-align: center;
   }
   .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
+  .toc-page {
+    break-after: page;
+    padding-top: 40px;
+  }
+  .toc-page h2 {
+    font-size: 16pt;
+    font-weight: 700;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 20px;
+  }
+  .toc-list li {
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .toc-list li::before {
+    content: '';
+    flex: 1;
+    border-bottom: 1px dotted #ccc;
+    margin: 0 10px;
+    position: relative;
+    top: -4px;
+  }
+  .toc-list li a {
+    text-decoration: none;
+    color: inherit;
+    font-size: 10.5pt;
+  }
+  .toc-title { order: -1; }
+  .toc-page-num { order: 1; }
+  .toc-page-num::after {
+    content: target-counter(attr(href), page);
+  }
   .chapter {
     break-before: page;
     margin-top: 40px;
@@ -2932,7 +3047,7 @@ ${mainStyles}
     text-align: center;
   }
   .chapter-content p {
-    text-indent: 10pt;
+    text-indent: 10.5pt;
     margin: 0;
     word-break: keep-all;
   }
@@ -2942,16 +3057,50 @@ ${mainStyles}
 </style>
 </head>
 <body>
+`;
+
+  // 1. 표지 (옵션)
+  if (pubSet.includeCover) {
+    html += `<div class="cover-page">`;
+    if (p.cover) {
+      html += `<img src="${p.cover}" style="width:100%; height:100vh; object-fit:cover; display:block;">`;
+    } else {
+      html += `<h1 style="color:#fff; font-size:28pt;">${escapeHtml(p.title)}</h1>`;
+    }
+    html += `</div>`;
+  }
+
+  // 2. 제목 페이지
+  html += `
   <div class="title-page">
     <h1>${escapeHtml(p.title)}</h1>
   </div>
 `;
 
+  // 3. 목차 (옵션)
+  if (pubSet.autoTOC && loadedEps.length > 0) {
+    html += `
+  <div class="toc-page">
+    <h2>목차</h2>
+    <ul class="toc-list">
+`;
+    loadedEps.forEach((ep, i) => {
+      html += `<li><span class="toc-title"><a href="#ep-${ep.id}">${escapeHtml(ep.title)}</a></span><span class="toc-page-num"><a href="#ep-${ep.id}"></a></span></li>`;
+    });
+    html += `
+    </ul>
+  </div>
+`;
+  }
+
+  // 4. 본문
   loadedEps.forEach((ep, i) => {
     const processed = processEpisodeBody(ep.body, ep.title);
+    const renderTitle = pubSet.showTitle && !processed.hasTitle;
+    
     html += `
-  <div class="chapter">
-    ${processed.hasTitle ? '' : `<div class="chapter-title">${escapeHtml(ep.title)}</div>`}
+  <div class="chapter" id="ep-${ep.id}">
+    ${renderTitle ? `<div class="chapter-title">${escapeHtml(ep.title)}</div>` : ''}
     <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
   });
