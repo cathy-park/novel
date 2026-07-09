@@ -491,6 +491,29 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor p.n-status::before, .n-status::before { content: '\25C7' !important; display: inline-block !important; font-size: 11px !important; color: #5E9C76 !important; margin-right: 8px !important; }
 .ql-editor p.n-status + p.n-status, .n-status + .n-status { font-weight: 500 !important; color: #4A5A53 !important; }
 
+/* ⑩ 입력칸 (n-input) */
+.ql-editor p.n-input, .ql-editor .n-input, .n-input {
+  display: block !important;
+  text-align: left !important;
+  background: #FFFFFF !important;
+  border: 1px solid #D4D7E0 !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  margin: 20px 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  color: #17141F !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02) !important;
+  line-height: 1.7 !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-input:empty::after, .ql-editor p.n-input:has(> br:only-child)::after {
+  content: "여기에 입력하세요..." !important;
+  color: #A0AAB5 !important;
+  font-style: italic !important;
+  pointer-events: none !important;
+}
+
 /* ==========================================
    빈 블록 Placeholder 안내 문구 (에디터 내에서만)
    ========================================== */
@@ -535,6 +558,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email"]::before { content: '✉ 이메일'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="doc"]::before { content: '📄 문서 · 서신'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="input"]::before { content: '✍️ 입력칸'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 메시지'; }
@@ -546,6 +570,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email"]::before { content: '✉ 이메일'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="input"]::before { content: '✍️ 입력칸'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
 .ql-snow .ql-toolbar button.ql-divider,
@@ -1908,7 +1933,7 @@ function renderEpisode() {
       modules: {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
-          [{ 'narrative': [false, 'msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc'] }],
+          [{ 'narrative': [false, 'msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc', 'input'] }],
           ['bold', 'italic', 'underline', 'strike', 'ui', 'divider'],
           ['clean']
         ]
@@ -1923,15 +1948,16 @@ function renderEpisode() {
     });
 
     setTimeout(() => {
-      const toolbarGroups = document.querySelectorAll('.ql-toolbar .ql-formats');
-      if (toolbarGroups.length >= 3 && !document.querySelector('.ql-ui')) {
-        const btn = document.createElement('button');
-        btn.className = 'ql-ui';
-        btn.title = 'UI 강조 (확인, 선택 등)';
-        toolbarGroups[2].appendChild(btn);
+      const uiBtn = document.querySelector('button.ql-ui');
+      if (uiBtn) {
+        uiBtn.title = 'UI 강조 (확인, 선택 등)';
+        uiBtn.innerHTML = '<span style="font-size:12px; font-weight:700; color:#444; line-height:24px; display:inline-block;">UI</span>';
       }
       const divBtn = document.querySelector('button.ql-divider');
-      if (divBtn) divBtn.title = '장면 전환 (구분선)';
+      if (divBtn) {
+        divBtn.title = '장면 전환 (구분선)';
+        divBtn.innerHTML = '<span style="font-size:14px; font-weight:700; color:#444; line-height:24px; display:inline-block;">―</span>';
+      }
     }, 100);
 
     quill.on('text-change', (delta, oldDelta, source) => {
