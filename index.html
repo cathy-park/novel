@@ -249,98 +249,129 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   border-bottom-left-radius: 2px !important;
 }
 
+/* ==========================================
+   시스템 패밀리 그룹핑 공통 로직 (sys, log, alert, record, status)
+   ========================================== */
+.ql-editor p.n-sys + p.n-sys, .n-sys + .n-sys,
+.ql-editor p.n-log + p.n-log, .n-log + .n-log,
+.ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert,
+.ql-editor p.n-record + p.n-record, .n-record + .n-record,
+.ql-editor p.n-status + p.n-status, .n-status + .n-status {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  padding-top: 4px !important;
+}
+/* 두 번째 줄부터 아이콘 숨김 */
+.ql-editor p.n-sys + p.n-sys::before, .n-sys + .n-sys::before,
+.ql-editor p.n-alert + p.n-alert::before, .n-alert + .n-alert::before,
+.ql-editor p.n-status + p.n-status::before, .n-status + .n-status::before {
+  content: none !important;
+}
+/* 두 번째 줄 들여쓰기 보정 */
+.ql-editor p.n-sys + p.n-sys, .n-sys + .n-sys { padding-left: 35px !important; }
+.ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert { padding-left: 42px !important; }
+.ql-editor p.n-status + p.n-status, .n-status + .n-status { padding-left: 40px !important; }
+
+/* 그룹 마지막 줄 둥근 모서리 및 하단 여백 복원 */
+.ql-editor p.n-sys:not(:has(+ p.n-sys)), .ql-editor p.n-sys + p.n-sys:not(:has(+ p.n-sys)), .n-sys:not(:has(+ .n-sys)), .n-sys + .n-sys:not(:has(+ .n-sys)),
+.ql-editor p.n-log:not(:has(+ p.n-log)), .ql-editor p.n-log + p.n-log:not(:has(+ p.n-log)), .n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),
+.ql-editor p.n-alert:not(:has(+ p.n-alert)), .ql-editor p.n-alert + p.n-alert:not(:has(+ p.n-alert)), .n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),
+.ql-editor p.n-record:not(:has(+ p.n-record)), .ql-editor p.n-record + p.n-record:not(:has(+ p.n-record)), .n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),
+.ql-editor p.n-status:not(:has(+ p.n-status)), .ql-editor p.n-status + p.n-status:not(:has(+ p.n-status)), .n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+  padding-bottom: 14px !important;
+  margin-bottom: 20px !important;
+}
+
 /* ② 시스템 문구 (n-sys) */
-.ql-editor p.n-sys,
-.ql-editor .n-sys,
-.n-sys {
+.ql-editor p.n-sys, .ql-editor .n-sys, .n-sys {
   display: block !important;
   text-align: left !important;
+  background: #F2F7F4 !important;
+  border: none !important;
+  border-left: 4px solid #5E9C76 !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
   color: #4A5A53 !important;
   font-size: 0.95em !important;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   font-weight: 500 !important;
   line-height: 1.8 !important;
-  padding: 14px 18px !important;
-  margin: 20px 0 !important;
   text-indent: 0 !important;
-  background: #F2F7F4 !important;
-  border-radius: 8px !important;
-  border: none !important;
 }
-.ql-editor p.n-sys::before,
-.ql-editor .n-sys::before,
-.n-sys::before {
+.ql-editor p.n-sys::before, .n-sys::before {
   content: '\25C7' !important;
   display: inline-block !important;
   font-size: 11px !important;
-  color: #92B4A3 !important;
+  color: #5E9C76 !important;
   margin-right: 8px !important;
-  background: none !important;
-  padding: 0 !important;
 }
 
 /* ③ 시스템 로그 (n-log) */
-.ql-editor p.n-log,
-.ql-editor .n-log,
-.n-log {
+.ql-editor p.n-log, .ql-editor .n-log, .n-log {
   display: block !important;
-  background: #F5F5F4 !important;
+  text-align: left !important;
+  background: #F4F5F7 !important;
   border: none !important;
-  border-left: 2px solid #C4C2BC !important;
-  padding: 12px 16px !important;
-  margin: 20px 0 !important;
+  border-left: 4px solid #A0A6AB !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
   font-family: 'Menlo', 'Consolas', 'Monaco', monospace !important;
   font-size: 0.95em !important;
   line-height: 1.8 !important;
   color: #4A4A4A !important;
   white-space: pre-wrap !important;
   text-indent: 0 !important;
-  border-radius: 0 !important;
 }
 
 /* ④ 알림·경고 (n-alert) */
-.ql-editor p.n-alert,
-.ql-editor .n-alert,
-.n-alert {
+.ql-editor p.n-alert, .ql-editor .n-alert, .n-alert {
   display: block !important;
-  background: #FEF4F3 !important;
-  border: 1px solid #E8C3BE !important;
-  border-radius: 5px !important;
-  padding: 12px 16px 12px 42px !important;
-  margin: 20px 0 !important;
+  text-align: left !important;
+  background: #FEF4F4 !important;
+  border: none !important;
+  border-left: 4px solid #E06C6C !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 42px !important;
+  margin: 20px 0 0 0 !important;
   position: relative !important;
   font-size: 0.95em !important;
   color: #464646 !important;
-  line-height: 1.75 !important;
+  line-height: 1.8 !important;
   text-indent: 0 !important;
 }
-.ql-editor p.n-alert::before,
-.ql-editor .n-alert::before,
-.n-alert::before {
+.ql-editor p.n-alert::before, .n-alert::before {
   content: '⚠️' !important;
   position: absolute !important;
   left: 14px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+  top: 14px !important;
   font-size: 14px !important;
-  color: #C0524A !important;
-  line-height: 1 !important;
-  background: transparent !important;
+  line-height: 1.8 !important;
 }
 
 /* ⑤ 기록·게시물 (n-record) */
-.ql-editor p.n-record,
-.ql-editor .n-record,
-.n-record {
+.ql-editor p.n-record, .ql-editor .n-record, .n-record {
   display: block !important;
-  background: #F4F8FD !important;
+  text-align: left !important;
+  background: #F2F6FC !important;
   border: none !important;
-  border-left: 3px solid #95AED0 !important;
-  border-radius: 4px !important;
-  border-top-left-radius: 0 !important;
+  border-left: 4px solid #6B9ED9 !important;
+  border-radius: 6px !important;
   border-bottom-left-radius: 0 !important;
-  padding: 14px 18px !important;
-  margin: 20px 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   font-size: 0.95em !important;
   line-height: 1.9 !important;
@@ -350,9 +381,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 }
 
 /* ⑥ 이메일 (n-email) */
-.ql-editor p.n-email,
-.ql-editor .n-email,
-.n-email {
+.ql-editor p.n-email, .ql-editor .n-email, .n-email {
   display: block !important;
   text-align: left !important;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
@@ -363,7 +392,6 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   line-height: 1.7 !important;
   text-indent: 0 !important;
   color: #333333 !important;
-  
   border-top: 4px solid #6B5CE7 !important;
   border-bottom: none !important;
   border-top-left-radius: 6px !important;
@@ -373,41 +401,19 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 16px 20px 4px 20px !important;
   margin: 20px 0 0 0 !important;
 }
-.ql-editor p.n-email::before,
-.n-email::before {
-  content: '✉' !important;
-  display: inline-block !important;
-  font-size: 14px !important;
-  color: #6B5CE7 !important;
-  margin-right: 8px !important;
-}
-.ql-editor p.n-email + p.n-email,
-.n-email + .n-email {
-  padding: 4px 20px 4px 38px !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  border-top: none !important;
-  border-bottom: none !important;
-  border-radius: 0 !important;
-}
-.ql-editor p.n-email + p.n-email::before,
-.n-email + .n-email::before {
-  content: none !important;
-}
-.ql-editor p.n-email:not(:has(+ p.n-email)),
-.ql-editor p.n-email + p.n-email:not(:has(+ p.n-email)),
-.n-email:not(:has(+ .n-email)),
-.n-email + .n-email:not(:has(+ .n-email)) {
+.ql-editor p.n-email::before, .n-email::before { content: '✉' !important; display: inline-block !important; font-size: 14px !important; color: #6B5CE7 !important; margin-right: 8px !important; }
+.ql-editor p.n-email + p.n-email, .n-email + .n-email { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
+.ql-editor p.n-email + p.n-email::before, .n-email + .n-email::before { content: none !important; }
+.ql-editor p.n-email:not(:has(+ p.n-email)), .ql-editor p.n-email + p.n-email:not(:has(+ p.n-email)), .n-email:not(:has(+ .n-email)), .n-email + .n-email:not(:has(+ .n-email)) {
   border-bottom-left-radius: 6px !important;
   border-bottom-right-radius: 6px !important;
   border-bottom: 1px solid #E0E2E7 !important;
   padding-bottom: 16px !important;
+  margin-bottom: 20px !important;
 }
 
 /* ⑦ 문서/서신 (n-doc) */
-.ql-editor p.n-doc,
-.ql-editor .n-doc,
-.n-doc {
+.ql-editor p.n-doc, .ql-editor .n-doc, .n-doc {
   display: block !important;
   text-align: left !important;
   font-family: 'Noto Serif KR', 'KoPub Batang', serif !important;
@@ -418,7 +424,6 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   line-height: 1.7 !important;
   text-indent: 0 !important;
   color: #222222 !important;
-  
   border-top: 4px solid #95AED0 !important;
   border-bottom: none !important;
   border-top-left-radius: 6px !important;
@@ -428,41 +433,19 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 16px 20px 4px 20px !important;
   margin: 20px 0 0 0 !important;
 }
-.ql-editor p.n-doc::before,
-.n-doc::before {
-  content: '📄' !important;
-  display: inline-block !important;
-  font-size: 14px !important;
-  color: #95AED0 !important;
-  margin-right: 8px !important;
-}
-.ql-editor p.n-doc + p.n-doc,
-.n-doc + .n-doc {
-  padding: 4px 20px 4px 38px !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  border-top: none !important;
-  border-bottom: none !important;
-  border-radius: 0 !important;
-}
-.ql-editor p.n-doc + p.n-doc::before,
-.n-doc + .n-doc::before {
-  content: none !important;
-}
-.ql-editor p.n-doc:not(:has(+ p.n-doc)),
-.ql-editor p.n-doc + p.n-doc:not(:has(+ p.n-doc)),
-.n-doc:not(:has(+ .n-doc)),
-.n-doc + .n-doc:not(:has(+ .n-doc)) {
+.ql-editor p.n-doc::before, .n-doc::before { content: '📄' !important; display: inline-block !important; font-size: 14px !important; color: #95AED0 !important; margin-right: 8px !important; }
+.ql-editor p.n-doc + p.n-doc, .n-doc + .n-doc { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
+.ql-editor p.n-doc + p.n-doc::before, .n-doc + .n-doc::before { content: none !important; }
+.ql-editor p.n-doc:not(:has(+ p.n-doc)), .ql-editor p.n-doc + p.n-doc:not(:has(+ p.n-doc)), .n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) {
   border-bottom-left-radius: 6px !important;
   border-bottom-right-radius: 6px !important;
   border-bottom: 1px solid #D6D6D6 !important;
   padding-bottom: 16px !important;
+  margin-bottom: 20px !important;
 }
 
 /* ⑧ 휴대폰 알림 (n-noti) */
-.ql-editor p.n-noti,
-.ql-editor .n-noti,
-.n-noti {
+.ql-editor p.n-noti, .ql-editor .n-noti, .n-noti {
   display: block !important;
   max-width: 70% !important;
   margin: 16px 0 !important;
@@ -478,104 +461,48 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   position: relative !important;
   color: #4A4011 !important;
 }
-.ql-editor p.n-noti::before,
-.n-noti::before {
-  content: '🔔' !important;
-  position: absolute !important;
-  left: 14px !important;
-  top: 13px !important;
-  font-size: 14px !important;
-}
-.ql-editor p.n-noti:has(+ p.n-noti),
-.n-noti:has(+ .n-noti) {
-  margin-bottom: 4px !important;
-  border-bottom-left-radius: 6px !important;
-}
-.ql-editor p.n-noti + p.n-noti,
-.n-noti + .n-noti {
-  margin-top: 0 !important;
-  border-top-left-radius: 6px !important;
-}
-.ql-editor p.n-noti + p.n-noti:not(:has(+ p.n-noti)),
-.n-noti + .n-noti:not(:has(+ .n-noti)) {
-  border-bottom-left-radius: 2px !important;
-}
-.ql-editor p.n-noti + p.n-noti::before,
-.n-noti + .n-noti::before {
-  content: none !important;
-}
-.ql-editor p.n-noti + p.n-noti,
-.n-noti + .n-noti {
-  padding-left: 18px !important;
-}
+.ql-editor p.n-noti::before, .n-noti::before { content: '🔔' !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
+.ql-editor p.n-noti:has(+ p.n-noti), .n-noti:has(+ .n-noti) { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; }
+.ql-editor p.n-noti + p.n-noti, .n-noti + .n-noti { margin-top: 0 !important; border-top-left-radius: 6px !important; }
+.ql-editor p.n-noti + p.n-noti:not(:has(+ p.n-noti)), .n-noti + .n-noti:not(:has(+ .n-noti)) { border-bottom-left-radius: 2px !important; }
+.ql-editor p.n-noti + p.n-noti::before, .n-noti + .n-noti::before { content: none !important; }
+.ql-editor p.n-noti + p.n-noti, .n-noti + .n-noti { padding-left: 18px !important; }
 
-/* 복사/붙여넣기 등으로 내부 스팬(span)에 스타일이 꼬여도 하나로 강제 고정 */
-.ql-editor p.n-record *,
-.ql-editor .n-record *,
-.n-record * {
-  font-family: inherit !important;
-  font-size: inherit !important;
-}
-
-/* ⑥ 상태창 / 선택지 (n-status) */
-.ql-editor p.n-status,
-.ql-editor .n-status,
-.n-status {
+/* ⑨ 상태창 / 선택지 (n-status) */
+.ql-editor p.n-status, .ql-editor .n-status, .n-status {
   display: block !important;
   text-align: left !important;
-  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
-  font-size: 0.92em !important;
-  background: #F2F7F4 !important;
+  background: #252525 !important;
   border: none !important;
-  border-radius: 8px !important;
-  line-height: 1.8 !important;
-  text-indent: 0 !important;
-
-  /* 첫 줄 기본 스타일 */
-  font-weight: 700 !important;
-  color: #384A42 !important;
-  padding: 16px 20px 4px 20px !important;
-  margin: 20px 0 0 0 !important;
+  border-left: 4px solid #4CAF50 !important;
+  border-radius: 6px !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.92em !important;
+  color: #E2E2E2 !important;
+  font-weight: 700 !important;
+  line-height: 1.8 !important;
+  text-indent: 0 !important;
 }
-/* 첫 줄 다이아몬드 아이콘 */
-.ql-editor p.n-status::before,
-.n-status::before {
-  content: '\25C7' !important;
-  display: inline-block !important;
-  font-size: 12px !important;
-  color: #92B4A3 !important;
-  margin-right: 8px !important;
-}
+.ql-editor p.n-status::before, .n-status::before { content: '\25C7' !important; display: inline-block !important; font-size: 12px !important; color: #4CAF50 !important; margin-right: 8px !important; }
+.ql-editor p.n-status + p.n-status, .n-status + .n-status { font-weight: 500 !important; color: #B0B0B0 !important; }
 
-/* 두 번째 줄부터 (내용) */
-.ql-editor p.n-status + p.n-status,
-.n-status + .n-status {
-  font-weight: 500 !important;
-  color: #4A5A53 !important;
-  padding: 4px 20px 4px 40px !important; /* 다이아몬드 너비만큼 들여쓰기 */
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
-}
-/* 두 번째 줄부터 다이아몬드 숨김 */
-.ql-editor p.n-status + p.n-status::before,
-.n-status + .n-status::before {
-  content: none !important;
-}
+/* ==========================================
+   빈 블록 Placeholder 안내 문구 (에디터 내에서만)
+   ========================================== */
+.ql-editor p.n-msg:empty::after, .ql-editor p.n-msg:has(> br:only-child)::after { content: "메시지 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-sys:empty::after, .ql-editor p.n-sys:has(> br:only-child)::after { content: "시스템 문구 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-log:empty::after, .ql-editor p.n-log:has(> br:only-child)::after { content: "시스템 로그 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-alert:empty::after, .ql-editor p.n-alert:has(> br:only-child)::after { content: "알림/경고 내용 입력..." !important; color: #E89E9E !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-record:empty::after, .ql-editor p.n-record:has(> br:only-child)::after { content: "기록/게시물 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-email:empty::after, .ql-editor p.n-email:has(> br:only-child)::after { content: "이메일 내용 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-doc:empty::after, .ql-editor p.n-doc:has(> br:only-child)::after { content: "문서 내용 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-noti:empty::after, .ql-editor p.n-noti:has(> br:only-child)::after { content: "알림 내용 입력..." !important; color: #A0A0A0 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-status:empty::after, .ql-editor p.n-status:has(> br:only-child)::after { content: "상태창 내용 입력..." !important; color: #888888 !important; font-style: italic !important; pointer-events: none !important; }
 
-/* 마지막 줄 처리 (둥근 모서리와 하단 여백 복구) */
-.ql-editor p.n-status:not(:has(+ p.n-status)),
-.ql-editor p.n-status + p.n-status:not(:has(+ p.n-status)),
-.n-status:not(:has(+ .n-status)),
-.n-status + .n-status:not(:has(+ .n-status)) {
-  border-bottom-left-radius: 8px !important;
-  border-bottom-right-radius: 8px !important;
-  padding-bottom: 16px !important;
-  margin-bottom: 20px !important;
-}
 
 /* ⑦ UI 인라인 칩 (n-ui) */
 .ql-editor .n-ui,
@@ -620,22 +547,36 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
-.ql-editor hr {
-  border: none;
-  border-top: 1px solid #D4D7E0;
-  margin: 32px auto;
-  width: 80px;
+.ql-snow .ql-toolbar button.ql-divider,
+.ql-snow .ql-toolbar button.ql-ui {
+  width: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.ql-snow .ql-toolbar button.ql-divider::after {
+  content: "―" !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #444 !important;
+  display: block !important;
+}
+.ql-snow .ql-toolbar button.ql-ui::after {
+  content: "UI" !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #444 !important;
+  display: block !important;
+}
+.ql-snow .ql-toolbar button.ql-divider:hover::after,
+.ql-snow .ql-toolbar button.ql-ui:hover::after,
+.ql-snow .ql-toolbar button.ql-divider.ql-active::after,
+.ql-snow .ql-toolbar button.ql-ui.ql-active::after {
+  color: #06c !important;
 }
 
-.ql-snow .ql-toolbar button.ql-ui { width: 28px; }
-.ql-snow .ql-toolbar button.ql-ui::after { content: "UI"; font-size: 13px; font-weight: 700; color: #444; }
-.ql-snow .ql-toolbar button.ql-ui.ql-active::after { color: #06c; }
-
-.ql-snow .ql-toolbar button.ql-divider { width: 28px; }
-.ql-snow .ql-toolbar button.ql-divider::after { content: "―"; font-size: 14px; font-weight: 700; color: #444; }
-.ql-snow .ql-toolbar button.ql-divider:hover::after { color: #06c; }
-
 /* Plan Drawer */
+.ql-editor hr { border: none; border-top: 1px solid #D4D7E0; margin: 32px auto; width: 80px; }
 .plan-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 440px; background: var(--c-surface); border-left: 1px solid var(--c-line); box-shadow: var(--shadow-lg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 40; display: flex; flex-direction: column; }
 .plan-drawer.open { transform: translateX(0); }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--c-line); }
