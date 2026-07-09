@@ -2843,8 +2843,15 @@ $('#savePublishSettingsBtn').onclick = () => {
 $('#exportPODBtn').onclick = exportPODPdf;
 function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
+  
+  // <br> 태그를 문단 분리(</p><p>)로 정규화하여 빈 줄 감지를 정확하게 함
+  let normalizedHtml = html;
+  if (isForPublishing) {
+    normalizedHtml = html.replace(/<br\s*\/?>/gi, '</p><p>');
+  }
+  
   const div = document.createElement('div');
-  div.innerHTML = html;
+  div.innerHTML = normalizedHtml;
 
   // 1. 빈 리스트 삭제
   div.querySelectorAll('li').forEach(li => {
@@ -2912,7 +2919,8 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (isForPublishing) {
     let emptyNodes = [];
     Array.from(div.children).forEach(child => {
-      if (child.tagName === 'P' && !child.textContent.trim() && !child.querySelector('img')) {
+      // 빈 문자열이거나 nbsp(\u00A0) 등만 있는 문단 감지
+      if (child.tagName === 'P' && !child.textContent.replace(/[\s\u00A0\u200B-\u200D\uFEFF]/g, '').trim() && !child.querySelector('img')) {
         emptyNodes.push(child);
       } else {
         if (emptyNodes.length === 1) {
@@ -3035,26 +3043,28 @@ ${mainStyles}
   }
   .toc-list li {
     margin-bottom: 12px;
-  }
-  .toc-list li a {
     display: flex;
     align-items: baseline;
-    text-decoration: none;
-    color: inherit;
     font-size: 10pt;
   }
-  .toc-list li a::before {
-    content: '';
+  .toc-title {
+    color: inherit;
+    text-decoration: none;
+  }
+  .toc-dots {
     flex: 1;
     border-bottom: 1px dotted #ccc;
     margin: 0 10px;
     position: relative;
     top: -4px;
   }
-  .toc-list li a::after {
+  .toc-page-num {
+    text-decoration: none;
+    color: inherit;
+  }
+  .toc-page-num::after {
     content: target-counter(attr(href), page);
   }
-  .toc-title { order: -1; }
   .chapter {
     break-before: page;
     margin-top: 40px;
@@ -3105,7 +3115,11 @@ ${mainStyles}
 `;
     loadedEps.forEach((ep, i) => {
       const displayTitle = getEpisodeDisplayTitle(ep, p);
-      html += `<li><a href="#ep-${ep.id}"><span class="toc-title">${escapeHtml(displayTitle)}</span></a></li>`;
+      html += `<li>
+        <a href="#ep-${ep.id}" class="toc-title">${escapeHtml(displayTitle)}</a>
+        <span class="toc-dots"></span>
+        <a href="#ep-${ep.id}" class="toc-page-num"></a>
+      </li>`;
     });
     html += `
     </ul>
