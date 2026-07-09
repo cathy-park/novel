@@ -395,7 +395,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   display: block !important;
   max-width: 70% !important;
   margin: 16px 0 !important;
-  background: #F3E8FF !important;
+  background: #FAF5FF !important;
   border: none !important;
   border-radius: 18px 18px 18px 2px !important;
   padding: 12px 18px 12px 38px !important;
@@ -1567,12 +1567,19 @@ async function deleteEpisode(epId) {
   const idx = p.episodes.findIndex(e=>e.id===epId);
   if(idx===-1) return;
   
+  const deletedEp = p.episodes[idx];
   p.episodes.splice(idx, 1);
   if(p.selectedEpisodeId === epId) p.selectedEpisodeId = p.episodes[0]?.id || null;
   
   // Supabase Delete
   if(currentUser) {
-    await sb.from('novel_episodes').delete().eq('id', epId);
+    const { error } = await sb.from('novel_episodes').delete().eq('id', epId);
+    if (error) {
+      console.error('Failed to delete episode:', error);
+      showToast('❌ 서버에서 회차를 삭제하는 데 실패했습니다.');
+      p.episodes.splice(idx, 0, deletedEp); // Rollback
+      return;
+    }
   }
   
   touchProject();
