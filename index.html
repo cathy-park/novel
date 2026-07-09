@@ -2078,6 +2078,23 @@ function renderEpisode() {
       touchProject(); updateBodyStats(); queueSaveFS();
       // 성능 최적화: 타이핑 중 에피소드 목록 전체 리렌더 제거 (자수만 업데이트)
     });
+
+    quill.root.addEventListener('click', (e) => {
+      let target = e.target.closest('.n-field');
+      if (target) {
+        let blot = Quill.find(target);
+        if (blot) {
+          while(blot.parent && blot.parent.domNode !== quill.root) {
+            blot = blot.parent;
+          }
+          let index = quill.getIndex(blot);
+          let length = blot.length();
+          setTimeout(() => {
+            quill.setSelection(index + length - 1, 0, Quill.sources.USER);
+          }, 0);
+        }
+      }
+    });
   }
   
   if (quill.root.innerHTML !== (ep.body||'<p><br></p>')) {
