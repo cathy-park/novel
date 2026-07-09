@@ -2908,17 +2908,25 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
     }
   }
 
-  // 4. 종이책용 연속된 빈 줄 정리 (2개 이상의 빈 줄을 1개로 압축)
+  // 4. 종이책용 연속된 빈 줄 정리 (웹소설식 1칸 띄어쓰기 완전 제거)
   if (isForPublishing) {
-    let emptyCount = 0;
+    let emptyNodes = [];
     Array.from(div.children).forEach(child => {
       if (child.tagName === 'P' && !child.textContent.trim() && !child.querySelector('img')) {
-        emptyCount++;
-        if (emptyCount > 1) child.remove();
+        emptyNodes.push(child);
       } else {
-        emptyCount = 0;
+        if (emptyNodes.length === 1) {
+          emptyNodes[0].remove(); // 단일 빈 줄은 일반 문단 바꿈이므로 제거
+        } else if (emptyNodes.length > 1) {
+          // 2개 이상의 빈 줄은 장면 전환(Scene break)이므로 1개만 남기고 모두 제거
+          for (let i = 1; i < emptyNodes.length; i++) {
+            emptyNodes[i].remove();
+          }
+        }
+        emptyNodes = [];
       }
     });
+    emptyNodes.forEach(node => node.remove()); // 마지막 빈 줄 제거
   }
 
   return { body: div.innerHTML, hasTitle };
@@ -3027,11 +3035,15 @@ ${mainStyles}
   }
   .toc-list li {
     margin-bottom: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
   }
-  .toc-list li::before {
+  .toc-list li a {
+    display: flex;
+    align-items: baseline;
+    text-decoration: none;
+    color: inherit;
+    font-size: 10pt;
+  }
+  .toc-list li a::before {
     content: '';
     flex: 1;
     border-bottom: 1px dotted #ccc;
@@ -3039,16 +3051,10 @@ ${mainStyles}
     position: relative;
     top: -4px;
   }
-  .toc-list li a {
-    text-decoration: none;
-    color: inherit;
-    font-size: 10pt;
-  }
-  .toc-title { order: -1; }
-  .toc-page-num { order: 1; }
-  .toc-page-num::after {
+  .toc-list li a::after {
     content: target-counter(attr(href), page);
   }
+  .toc-title { order: -1; }
   .chapter {
     break-before: page;
     margin-top: 40px;
@@ -3099,7 +3105,7 @@ ${mainStyles}
 `;
     loadedEps.forEach((ep, i) => {
       const displayTitle = getEpisodeDisplayTitle(ep, p);
-      html += `<li><span class="toc-title"><a href="#ep-${ep.id}">${escapeHtml(displayTitle)}</a></span><a href="#ep-${ep.id}" class="toc-page-num"></a></li>`;
+      html += `<li><a href="#ep-${ep.id}"><span class="toc-title">${escapeHtml(displayTitle)}</span></a></li>`;
     });
     html += `
     </ul>
