@@ -2080,14 +2080,15 @@ function addFrontMatter() {
   persistEditor(); 
   const p=currentProject(); 
   if(!p) return; 
-  const ep=defaultEpisode('backmatter', 1); 
-  ep.title = '판권지 (출판 정보)'; 
+  const ep=defaultEpisode('frontmatter', 1); 
+  ep.title = '부속 페이지 (속표지/판권지)'; 
   ep.body = '<p style="text-align: center;"><strong>(도서명)</strong></p><p style="text-align: center;"><br></p><p style="text-align: center;">지은이: (저자명)</p><p style="text-align: center;">발행일: 2026년 00월 00일</p><p style="text-align: center;">출판사: (출판사명)</p><p style="text-align: center;"><br></p><p style="text-align: center;">ⓒ 2026 (저자명). All rights reserved.</p>'; 
   p.episodes.push(ep); 
   p.selectedEpisodeId=ep.id; 
   p.episodes=orderedEpisodes(p); 
   touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); 
-  showToast('부속 페이지 템플릿을 추가했습니다. 목록 위아래로 끌어다 놓아 순서를 변경하세요.'); 
+  setTimeout(() => { const el = $('.episode-row.active'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);
+  showToast('부속 페이지를 맨 위에 추가했습니다. 위아래로 끌어다 놓아 순서를 변경하세요.'); 
 }
 $('#addFrontMatterBtn').onclick = addFrontMatter;
 
