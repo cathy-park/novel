@@ -620,9 +620,20 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
+.ql-editor hr {
+  border: none;
+  border-top: 1px solid #D4D7E0;
+  margin: 32px auto;
+  width: 80px;
+}
+
 .ql-snow .ql-toolbar button.ql-ui { width: 28px; }
 .ql-snow .ql-toolbar button.ql-ui::after { content: "UI"; font-size: 13px; font-weight: 700; color: #444; }
 .ql-snow .ql-toolbar button.ql-ui.ql-active::after { color: #06c; }
+
+.ql-snow .ql-toolbar button.ql-divider { width: 28px; }
+.ql-snow .ql-toolbar button.ql-divider::after { content: "―"; font-size: 14px; font-weight: 700; color: #444; }
+.ql-snow .ql-toolbar button.ql-divider:hover::after { color: #06c; }
 
 /* Plan Drawer */
 .plan-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 440px; background: var(--c-surface); border-left: 1px solid var(--c-line); box-shadow: var(--shadow-lg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 40; display: flex; flex-direction: column; }
@@ -1928,6 +1939,13 @@ function renderEpisode() {
     });
     Quill.register(NarrativeClass, true);
 
+    // 구분선(Divider) 블록 등록
+    const BlockEmbed = Quill.import('blots/block/embed');
+    class DividerBlot extends BlockEmbed {}
+    DividerBlot.blotName = 'divider';
+    DividerBlot.tagName = 'hr';
+    Quill.register(DividerBlot);
+
     // UI 인라인 포맷 등록
     const Inline = Quill.import('blots/inline');
     class UiBlot extends Inline {
@@ -1949,10 +1967,17 @@ function renderEpisode() {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           [{ 'narrative': [false, 'msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc'] }],
-          ['bold', 'italic', 'underline', 'strike', 'ui'],
+          ['bold', 'italic', 'underline', 'strike', 'ui', 'divider'],
           ['clean']
         ]
       }
+    });
+
+    quill.getModule('toolbar').addHandler('divider', function() {
+      let range = quill.getSelection(true);
+      quill.insertText(range.index, '\n', Quill.sources.USER);
+      quill.insertEmbed(range.index + 1, 'divider', true, Quill.sources.USER);
+      quill.setSelection(range.index + 2, Quill.sources.SILENT);
     });
 
     setTimeout(() => {
@@ -1963,6 +1988,8 @@ function renderEpisode() {
         btn.title = 'UI 강조 (확인, 선택 등)';
         toolbarGroups[2].appendChild(btn);
       }
+      const divBtn = document.querySelector('button.ql-divider');
+      if (divBtn) divBtn.title = '장면 전환 (구분선)';
     }, 100);
 
     quill.on('text-change', (delta, oldDelta, source) => {
