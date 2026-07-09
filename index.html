@@ -2048,6 +2048,21 @@ function renderEpisode() {
       touchProject(); updateBodyStats(); queueSaveFS();
       // 성능 최적화: 타이핑 중 에피소드 목록 전체 리렌더 제거 (자수만 업데이트)
     });
+
+    quill.on('selection-change', (range, oldRange, source) => {
+      if (range && source === 'user') {
+        const [block, offset] = quill.getLine(range.index);
+        if (block && block.domNode && block.domNode.classList.contains('n-field')) {
+          const length = block.length();
+          if (range.length === 0 && offset < length - 1) {
+            const blockStart = quill.getIndex(block);
+            setTimeout(() => {
+              quill.setSelection(blockStart + length - 1, 0, Quill.sources.USER);
+            }, 0);
+          }
+        }
+      }
+    });
   }
   
   if (quill.root.innerHTML !== (ep.body||'<p><br></p>')) {
