@@ -256,7 +256,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   display: block !important;
   text-align: left !important;
   color: #4A5A53 !important;
-  font-size: 0.9em !important;
+  font-size: 0.95em !important;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   font-weight: 500 !important;
   line-height: 1.8 !important;
@@ -290,7 +290,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 12px 16px !important;
   margin: 20px 0 !important;
   font-family: 'Menlo', 'Consolas', 'Monaco', monospace !important;
-  font-size: 12.5px !important;
+  font-size: 0.95em !important;
   line-height: 1.8 !important;
   color: #4A4A4A !important;
   white-space: pre-wrap !important;
@@ -309,7 +309,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 12px 16px 12px 42px !important;
   margin: 20px 0 !important;
   position: relative !important;
-  font-size: 0.94em !important;
+  font-size: 0.95em !important;
   color: #464646 !important;
   line-height: 1.75 !important;
   text-indent: 0 !important;
@@ -342,11 +342,46 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 14px 18px !important;
   margin: 20px 0 !important;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
-  font-size: 0.96em !important;
+  font-size: 0.95em !important;
   line-height: 1.9 !important;
   color: #505050 !important;
   font-style: normal !important;
   text-indent: 0 !important;
+}
+
+/* ⑥ 이메일 (n-email) */
+.ql-editor p.n-email,
+.ql-editor .n-email,
+.n-email {
+  display: block !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E0E2E7 !important;
+  border-top: 4px solid #6B5CE7 !important;
+  border-radius: 6px !important;
+  padding: 16px 20px !important;
+  margin: 20px 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  line-height: 1.7 !important;
+  color: #333333 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02) !important;
+}
+
+/* ⑦ 문서/서신 (n-doc) */
+.ql-editor p.n-doc,
+.ql-editor .n-doc,
+.n-doc {
+  display: block !important;
+  background: #FAFAFA !important;
+  border: 1px solid #D6D6D6 !important;
+  border-radius: 2px !important;
+  padding: 20px 24px !important;
+  margin: 24px 0 !important;
+  font-family: 'Noto Serif KR', 'KoPub Batang', serif !important;
+  font-size: 0.95em !important;
+  line-height: 1.8 !important;
+  color: #222222 !important;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.05) !important;
 }
 /* 복사/붙여넣기 등으로 내부 스팬(span)에 스타일이 꼬여도 하나로 강제 고정 */
 .ql-editor p.n-record *,
@@ -443,6 +478,8 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠ 알림 · 경고'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email"]::before { content: '✉ 이메일'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="doc"]::before { content: '📄 문서 · 서신'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 메시지'; }
@@ -451,6 +488,8 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠ 알림 · 경고'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email"]::before { content: '✉ 이메일'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
 .ql-snow .ql-toolbar button.ql-ui { width: 28px; }
@@ -1757,7 +1796,7 @@ function renderEpisode() {
     const ClassAttributor = Parchment.Attributor.Class;
     const NarrativeClass = new ClassAttributor('narrative', 'n', {
       scope: Parchment.Scope.BLOCK,
-      whitelist: ['msg', 'sys', 'log', 'alert', 'record', 'status']
+      whitelist: ['msg', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc']
     });
     Quill.register(NarrativeClass, true);
 
@@ -1781,7 +1820,7 @@ function renderEpisode() {
       modules: {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
-          [{ 'narrative': [false, 'msg', 'sys', 'log', 'alert', 'record', 'status'] }],
+          [{ 'narrative': [false, 'msg', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc'] }],
           ['bold', 'italic', 'underline', 'strike', 'ui'],
           ['clean']
         ]
