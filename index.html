@@ -3071,34 +3071,23 @@ ${mainStyles}
     list-style: none;
     padding: 0;
     margin: 0 20px;
+    overflow-x: hidden;
   }
   .toc-list li {
     margin-bottom: 12px;
-    display: flex;
-    align-items: baseline;
     font-size: 10pt;
   }
   .toc-title {
     color: inherit;
     text-decoration: none;
+    display: block;
+  }
+  .toc-title::after {
+    content: leader('.') target-counter(attr(href), page);
   }
   .toc-prefix {
     color: #888;
     margin-right: 6px;
-  }
-  .toc-dots {
-    flex: 1;
-    border-bottom: 1px dotted #ccc;
-    margin: 0 10px;
-    position: relative;
-    top: -4px;
-  }
-  .toc-page-num {
-    text-decoration: none;
-    color: inherit;
-  }
-  a[href].toc-page-num::after {
-    content: target-counter(attr(href), page);
   }
   .chapter {
     break-before: page;
@@ -3184,8 +3173,6 @@ ${mainStyles}
       const displayTitleHtml = getEpisodeDisplayTitle(ep, p, true);
       html += `<li>
         <a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a>
-        <span class="toc-dots"></span>
-        <a href="#ep-${ep.id}" class="toc-page-num"></a>
       </li>`;
     });
     html += `
