@@ -251,9 +251,8 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 }
 
 /* ==========================================
-   시스템 패밀리 그룹핑 공통 로직 (sys, log, alert, record, status)
+   시스템 패밀리 그룹핑 공통 로직 (log, alert, record, status)
    ========================================== */
-.ql-editor p.n-sys + p.n-sys, .n-sys + .n-sys,
 .ql-editor p.n-log + p.n-log, .n-log + .n-log,
 .ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert,
 .ql-editor p.n-record + p.n-record, .n-record + .n-record,
@@ -265,18 +264,15 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding-top: 4px !important;
 }
 /* 두 번째 줄부터 아이콘 숨김 */
-.ql-editor p.n-sys + p.n-sys::before, .n-sys + .n-sys::before,
 .ql-editor p.n-alert + p.n-alert::before, .n-alert + .n-alert::before,
 .ql-editor p.n-status + p.n-status::before, .n-status + .n-status::before {
   content: none !important;
 }
 /* 두 번째 줄 들여쓰기 보정 */
-.ql-editor p.n-sys + p.n-sys, .n-sys + .n-sys { padding-left: 35px !important; }
 .ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert { padding-left: 42px !important; }
 .ql-editor p.n-status + p.n-status, .n-status + .n-status { padding-left: 40px !important; }
 
 /* 그룹 마지막 줄 둥근 모서리 및 하단 여백 복원 */
-.ql-editor p.n-sys:not(:has(+ p.n-sys)), .ql-editor p.n-sys + p.n-sys:not(:has(+ p.n-sys)), .n-sys:not(:has(+ .n-sys)), .n-sys + .n-sys:not(:has(+ .n-sys)),
 .ql-editor p.n-log:not(:has(+ p.n-log)), .ql-editor p.n-log + p.n-log:not(:has(+ p.n-log)), .n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),
 .ql-editor p.n-alert:not(:has(+ p.n-alert)), .ql-editor p.n-alert + p.n-alert:not(:has(+ p.n-alert)), .n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),
 .ql-editor p.n-record:not(:has(+ p.n-record)), .ql-editor p.n-record + p.n-record:not(:has(+ p.n-record)), .n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),
@@ -295,8 +291,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   border: none !important;
   border-left: 4px solid #5E9C76 !important;
   border-radius: 6px !important;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px !important;
   padding: 14px 18px 4px 18px !important;
   margin: 20px 0 0 0 !important;
   color: #4A5A53 !important;
@@ -402,7 +397,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 16px 20px 4px 20px !important;
   margin: 20px 0 0 0 !important;
 }
-.ql-editor p.n-email::before, .n-email::before { content: '✉' !important; display: inline-block !important; font-size: 14px !important; color: #6B5CE7 !important; margin-right: 8px !important; }
+.ql-editor p.n-email::before, .n-email::before { content: '📧' !important; display: inline-block !important; font-size: 14px !important; margin-right: 8px !important; }
 .ql-editor p.n-email + p.n-email, .n-email + .n-email { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
 .ql-editor p.n-email + p.n-email::before, .n-email + .n-email::before { content: none !important; }
 .ql-editor p.n-email:not(:has(+ p.n-email)), .ql-editor p.n-email + p.n-email:not(:has(+ p.n-email)), .n-email:not(:has(+ .n-email)), .n-email + .n-email:not(:has(+ .n-email)) {
@@ -549,15 +544,17 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 }
 
 /* Quill Toolbar Narrative Dropdown */
+.ql-snow .ql-picker.ql-narrative .ql-picker-label,
+.ql-snow .ql-picker.ql-narrative .ql-picker-item { font-family: 'Tossface', Pretendard, sans-serif !important; }
 .ql-snow .ql-picker.ql-narrative { width: 140px; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg"]::before { content: '💬 메시지'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="sys"]::before { content: '◇ 시스템 문구'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="log"]::before { content: '>_ 시스템 로그'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠ 알림 · 경고'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠️ 알림 · 경고'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email"]::before { content: '✉ 이메일'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email"]::before { content: '📧 이메일'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="doc"]::before { content: '📄 문서 · 서신'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="input"]::before { content: '✍️ 입력칸'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
@@ -566,10 +563,10 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="sys"]::before { content: '◇ 시스템 문구'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="log"]::before { content: '>_ 시스템 로그'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠ 알림 · 경고'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠️ 알림 · 경고'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email"]::before { content: '✉ 이메일'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email"]::before { content: '📧 이메일'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="input"]::before { content: '✍️ 입력칸'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
