@@ -53,7 +53,7 @@
   --r-lg: 12px;
   --r-xl: 16px;
   --r-pill: 999px;
-  --font: 'Tossface', Pretendard, "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font: Pretendard, "Apple SD Gothic Neo", 'Tossface', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --sidebar: 290px;
 }
 * { box-sizing: border-box; }
@@ -1903,7 +1903,7 @@ function renderEpisode() {
     const ClassAttributor = Parchment.Attributor.Class;
     const NarrativeClass = new ClassAttributor('narrative', 'n', {
       scope: Parchment.Scope.BLOCK,
-      whitelist: ['msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc']
+      whitelist: ['msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'doc', 'input']
     });
     Quill.register(NarrativeClass, true);
 
