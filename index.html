@@ -1182,7 +1182,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <input id="attachPdfRawInput" type="file" accept="application/pdf" hidden />
 <input id="planImportFileInput" type="file" accept="application/pdf,.md,.txt,.docx" hidden />
 <input id="coverInput" type="file" accept="image/*" hidden />
-<input id="importInput" type="file" accept="application/json" hidden />
+<input id="importInput" type="file" accept=".json,.gz,application/json" hidden />
 <div id="toast" class="toast" role="status"></div>
 
 <script>
@@ -2059,17 +2059,6 @@ async function exportBackup() {
   const jsonString = JSON.stringify(state, null, 2);
   let blob = new Blob([jsonString], {type:'application/json'});
   let filename = `야니의_소설창고_backup_${new Date().toISOString().slice(0,10)}.json`;
-  
-  // CompressionStream을 지원하는 브라우저인 경우 gzip 압축
-  if (window.CompressionStream) {
-    try {
-      const stream = new Response(blob).body.pipeThrough(new CompressionStream('gzip'));
-      blob = await new Response(stream).blob();
-      filename += '.gz';
-    } catch(e) {
-      console.warn('압축 실패, 원본 JSON으로 다운로드합니다.', e);
-    }
-  }
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
@@ -2947,7 +2936,8 @@ ${mainStyles}
     margin: 0;
     word-break: keep-all;
   }
-  /* Remove ql-editor specific overrides that break print */
+  /* Remove overrides that break print */
+  html, body { height: auto !important; overflow: visible !important; }
   .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
 </style>
 </head>
