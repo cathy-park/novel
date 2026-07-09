@@ -449,7 +449,6 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor p.n-email-body:not(:has(+ p.n-email-body)), .ql-editor p.n-email-body + p.n-email-body:not(:has(+ p.n-email-body)), .n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) {
   border-bottom-left-radius: 6px !important;
   border-bottom-right-radius: 6px !important;
-  border: none !important;
   padding-bottom: 16px !important;
   margin-bottom: 20px !important;
 }
@@ -481,7 +480,6 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor p.n-doc:not(:has(+ p.n-doc)), .ql-editor p.n-doc + p.n-doc:not(:has(+ p.n-doc)), .n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) {
   border-bottom-left-radius: 6px !important;
   border-bottom-right-radius: 6px !important;
-  border: none !important;
   padding-bottom: 16px !important;
   margin-bottom: 20px !important;
 }
@@ -545,7 +543,6 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   font-size: 0.95em !important;
   color: #17141F !important;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02) !important;
   caret-color: #5E9C76 !important;
   line-height: 1.7 !important;
   text-indent: 0 !important;
@@ -2006,7 +2003,7 @@ function renderEpisode() {
     const ClassAttributor = Parchment.Attributor.Class;
     const NarrativeClass = new ClassAttributor('narrative', 'n', {
       scope: Parchment.Scope.BLOCK,
-      whitelist: ['msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field']
+      whitelist: ['msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo']
     });
     Quill.register(NarrativeClass, true);
 
@@ -2076,22 +2073,6 @@ function renderEpisode() {
       ep._dirty = true;
       touchProject(); updateBodyStats(); queueSaveFS();
       // 성능 최적화: 타이핑 중 에피소드 목록 전체 리렌더 제거 (자수만 업데이트)
-    });
-
-    quill.on('selection-change', (range, oldRange, source) => {
-      if (range && source === 'user') {
-        const [block, offset] = quill.getLine(range.index);
-        if (block && block.domNode && block.domNode.classList.contains('n-field')) {
-          const length = block.length();
-          if (range.length === 0 && offset < length - 1) {
-            const blockStart = quill.getIndex(block);
-            setTimeout(() => {
-              quill.focus();
-              quill.setSelection(blockStart + length - 1, 0, Quill.sources.USER);
-            }, 0);
-          }
-        }
-      }
     });
   }
   
