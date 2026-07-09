@@ -580,6 +580,22 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   font-size: 14px !important;
   margin-right: 8px !important;
 }
+.ql-editor p.n-memo:has(+ p.n-memo), .n-memo:has(+ .n-memo) {
+  margin-bottom: 0 !important;
+  padding-bottom: 4px !important;
+  background: #FEF7D5 !important;
+  border-bottom-left-radius: 0 !important;
+}
+.ql-editor p.n-memo + p.n-memo, .n-memo + .n-memo {
+  margin-top: 0 !important;
+  padding-top: 4px !important;
+  padding-left: 42px !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+.ql-editor p.n-memo + p.n-memo::before, .n-memo + .n-memo::before {
+  content: none !important;
+}
 .ql-editor p.n-memo:empty::after, .ql-editor p.n-memo:has(> br:only-child)::after {
   content: "메모 입력..." !important; color: #C6BA81 !important; font-style: italic !important; pointer-events: none !important;
 }
