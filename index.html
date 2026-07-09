@@ -1856,10 +1856,12 @@ async function openProject(id) {
 
 // Order Logic
 function orderedEpisodes(p=currentProject()) {
+  const fm = p.episodes.filter(e=>e.type==='frontmatter');
   const pr = p.episodes.filter(e=>e.type==='prologue');
   const ch = p.episodes.filter(e=>e.type==='chapter');
   const ep = p.episodes.filter(e=>e.type==='epilogue');
-  return [...pr, ...ch, ...ep];
+  const bm = p.episodes.filter(e=>e.type==='backmatter');
+  return [...fm, ...pr, ...ch, ...ep, ...bm];
 }
 function reorderEpisode(targetId) {
   if(!draggedId || draggedId===targetId) return;
