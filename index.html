@@ -1011,7 +1011,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <label>작품명</label><input id="projectTitle" class="project-title-input" />
       <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
     </div>
-    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
+    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addFrontMatterBtn" class="icon-btn" type="button" title="부속/판권지 추가" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">+ 부속 추가</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
     <div id="episodeList" class="episode-list"></div>
     <div class="sidebar-foot">
       <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
@@ -1889,16 +1889,27 @@ function renderWorkspace() {
 
 
 
-function getEpisodeDisplayTitle(ep, p) {
-  if (ep.type === 'prologue') return ep.title ? `프롤로그 ${ep.title}` : '프롤로그';
-  if (ep.type === 'epilogue') return ep.title ? `에필로그 ${ep.title}` : '에필로그';
-  let chapterIndex = 1;
-  const eps = p.episodes.slice().sort((a,b) => a.order - b.order);
-  for (const e of eps) {
-    if (e.id === ep.id) break;
-    if (e.type === 'chapter') chapterIndex++;
+function getEpisodeDisplayTitle(ep, p, asHtml = false) {
+  if (ep.type === 'frontmatter' || ep.type === 'backmatter') return asHtml ? escapeHtml(ep.title) : ep.title;
+  let prefix = '';
+  if (ep.type === 'prologue') prefix = '프롤로그';
+  else if (ep.type === 'epilogue') prefix = '에필로그';
+  else {
+    let chapterIndex = 1;
+    const eps = p.episodes.slice().sort((a,b) => a.order - b.order);
+    for (const e of eps) {
+      if (e.id === ep.id) break;
+      if (e.type === 'chapter') chapterIndex++;
+    }
+    prefix = `${chapterIndex}화`;
   }
-  return ep.title ? `${chapterIndex}화 ${ep.title}` : `${chapterIndex}화`;
+  
+  if (asHtml) {
+    const prefixSpan = `<span class="toc-prefix">${prefix}</span>`;
+    return ep.title ? `${prefixSpan} ${escapeHtml(ep.title)}` : prefixSpan;
+  } else {
+    return ep.title ? `${prefix} ${ep.title}` : prefix;
+  }
 }
 
 function renderEpisodeList() {
@@ -2062,6 +2073,21 @@ function updateProjectStats() { const p=currentProject(); if(!p) return; const t
 function updateBodyStats() { const s=stats(quill?quill.getText():$('#bodyEditor').innerText||''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
 function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) queueSaveFS(); restoreEditorScroll(); }
 function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 불길한 징조)'); if(title===null) return; const t = title.trim(); persistEditor(); const p=currentProject(); const ep=defaultEpisode('chapter', 1); ep.title = t; if(t.includes('프롤로그')) ep.type='prologue'; else if(t.includes('에필로그')) ep.type='epilogue'; p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('회차를 추가했어요.'); }
+
+function addFrontMatter() { 
+  persistEditor(); 
+  const p=currentProject(); 
+  if(!p) return; 
+  const ep=defaultEpisode('backmatter', 1); 
+  ep.title = '판권지 (출판 정보)'; 
+  ep.body = '<p style="text-align: center;"><strong>(도서명)</strong></p><p style="text-align: center;"><br></p><p style="text-align: center;">지은이: (저자명)</p><p style="text-align: center;">발행일: 2026년 00월 00일</p><p style="text-align: center;">출판사: (출판사명)</p><p style="text-align: center;"><br></p><p style="text-align: center;">ⓒ 2026 (저자명). All rights reserved.</p>'; 
+  p.episodes.push(ep); 
+  p.selectedEpisodeId=ep.id; 
+  p.episodes=orderedEpisodes(p); 
+  touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); 
+  showToast('부속 페이지 템플릿을 추가했습니다. 목록 위아래로 끌어다 놓아 순서를 변경하세요.'); 
+}
+$('#addFrontMatterBtn').onclick = addFrontMatter;
 
 function togglePlanDrawer() {
   saveEditorScroll();
@@ -3006,7 +3032,7 @@ ${mainStyles}
   }
   .cover-page {
     page: cover;
-    break-after: page;
+    break-after: right;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -3017,6 +3043,7 @@ ${mainStyles}
     color: #fff;
   }
   .title-page {
+    break-before: right;
     break-after: page;
     display: flex;
     flex-direction: column;
@@ -3027,6 +3054,7 @@ ${mainStyles}
   }
   .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
   .toc-page {
+    break-before: right;
     break-after: page;
     padding-top: 40px;
   }
@@ -3051,6 +3079,10 @@ ${mainStyles}
     color: inherit;
     text-decoration: none;
   }
+  .toc-prefix {
+    color: #888;
+    margin-right: 6px;
+  }
   .toc-dots {
     flex: 1;
     border-bottom: 1px dotted #ccc;
@@ -3062,12 +3094,15 @@ ${mainStyles}
     text-decoration: none;
     color: inherit;
   }
-  .toc-page-num::after {
+  a[href].toc-page-num::after {
     content: target-counter(attr(href), page);
   }
   .chapter {
     break-before: page;
     margin-top: 40px;
+  }
+  .chapter.matter-page {
+    break-before: right;
   }
   .chapter-title {
     font-size: 14pt;
@@ -3076,8 +3111,8 @@ ${mainStyles}
     text-align: center;
   }
   .chapter-content p {
-    text-indent: 10pt;
-    margin: 0;
+    text-indent: 10pt !important;
+    margin: 0 !important;
     word-break: keep-all;
   }
   /* Remove overrides that break print */
@@ -3087,6 +3122,12 @@ ${mainStyles}
 </head>
 <body>
 `;
+
+  let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
+  
+  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
+  const afterTocEps = loadedEps.slice(firstMainIdx);
 
   // 1. 표지 (옵션)
   if (pubSet.includeCover) {
@@ -3099,24 +3140,37 @@ ${mainStyles}
     html += `</div>`;
   }
 
-  // 2. 제목 페이지
-  html += `
+  // 2. 목차 전 부속 (사용자가 추가한 앞부속)
+  beforeTocEps.forEach(ep => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    html += `
+  <div class="chapter matter-page" id="ep-${ep.id}">
+    <div class="chapter-content ql-editor">${processed.body}</div>
+  </div>`;
+  });
+
+  // 3. 제목 페이지 (자동 생성)
+  // 사용자가 직접 앞부속을 만들지 않았을 때만 제목 페이지를 생성
+  if (beforeTocEps.length === 0) {
+    html += `
   <div class="title-page">
     <h1>${escapeHtml(p.title)}</h1>
   </div>
 `;
+  }
 
-  // 3. 목차 (옵션)
-  if (pubSet.autoTOC && loadedEps.length > 0) {
+  // 4. 목차 (옵션) - 부속 타입 제외
+  const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
+  if (pubSet.autoTOC && tocEps.length > 0) {
     html += `
   <div class="toc-page">
     <h2>목차</h2>
     <ul class="toc-list">
 `;
-    loadedEps.forEach((ep, i) => {
-      const displayTitle = getEpisodeDisplayTitle(ep, p);
+    tocEps.forEach((ep, i) => {
+      const displayTitleHtml = getEpisodeDisplayTitle(ep, p, true);
       html += `<li>
-        <a href="#ep-${ep.id}" class="toc-title">${escapeHtml(displayTitle)}</a>
+        <a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a>
         <span class="toc-dots"></span>
         <a href="#ep-${ep.id}" class="toc-page-num"></a>
       </li>`;
@@ -3127,14 +3181,15 @@ ${mainStyles}
 `;
   }
 
-  // 4. 본문
-  loadedEps.forEach((ep, i) => {
+  // 5. 본문 (목차 이후의 회차 및 뒷부속)
+  afterTocEps.forEach((ep, i) => {
     const processed = processEpisodeBody(ep.body, ep.title, true);
-    const renderTitle = pubSet.showTitle && !processed.hasTitle;
+    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
     const displayTitle = getEpisodeDisplayTitle(ep, p);
     
     html += `
-  <div class="chapter" id="ep-${ep.id}">
+  <div class="chapter ${isMatter ? 'matter-page' : ''}" id="ep-${ep.id}">
     ${renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : ''}
     <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
