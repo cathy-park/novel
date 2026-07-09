@@ -564,15 +564,17 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 16px 20px !important;
   margin: 20px 0 !important;
   border-radius: 2px !important;
-  box-shadow: 2px 4px 8px rgba(0,0,0,0.06) !important;
   position: relative !important;
   text-indent: 0 !important;
   border: none !important;
-  background: linear-gradient(135deg, #FEF7D5 0%, #FEF7D5 calc(100% - 16px), transparent calc(100% - 16px)) !important;
+  background: 
+    linear-gradient(to top left, #E6DFA5 0%, #E6DFA5 50%, transparent 50%) bottom right / 22px 22px no-repeat,
+    linear-gradient(-45deg, transparent 15px, #FEF7D5 0) !important;
 }
 .ql-editor p.n-memo::before, .n-memo::before {
   content: '📝' !important;
   display: inline-block !important;
+  font-family: 'Tossface', sans-serif !important;
   font-size: 14px !important;
   margin-right: 8px !important;
 }
