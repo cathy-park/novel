@@ -266,6 +266,14 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   font-family: 'Tossface', 'Pretendard', sans-serif !important;
 }
 
+/* 아이콘 숨김 처리 (no-icon-true) */
+.ql-editor p.no-icon-true::before { content: none !important; }
+.ql-editor p.n-email-body.no-icon-true { padding-left: 38px !important; }
+.ql-editor p.n-doc.no-icon-true { padding-left: 38px !important; }
+.ql-editor p.n-noti.no-icon-true { padding-left: 38px !important; }
+.ql-editor p.n-msg.no-icon-true { padding-left: 20px !important; }
+.ql-editor p.n-email.no-icon-true { padding-left: 18px !important; }
+
 /* ==========================================
    시스템 패밀리 그룹핑 공통 로직 (log, alert, record, status)
    ========================================== */
@@ -612,6 +620,8 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="field"]::before { content: '✍️ 입력칸'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
+.ql-snow .ql-toolbar button.ql-hideicon::before { content: '🚫'; font-size: 14px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
+.ql-snow .ql-toolbar button.ql-hideicon.ql-active::before { background: rgba(0,0,0,0.1); border-radius: 4px; }
 .ql-snow .ql-toolbar button.ql-divider,
 .ql-snow .ql-toolbar button.ql-ui {
   width: 28px !important;
@@ -1933,6 +1943,12 @@ function renderEpisode() {
     });
     Quill.register(NarrativeClass, true);
 
+    const HideIconClass = new ClassAttributor('hideicon', 'no-icon', {
+      scope: Parchment.Scope.BLOCK,
+      whitelist: ['true']
+    });
+    Quill.register(HideIconClass, true);
+
     // 구분선(Divider) 블록 등록
     const BlockEmbed = Quill.import('blots/block/embed');
     class DividerBlot extends BlockEmbed {}
@@ -1961,7 +1977,7 @@ function renderEpisode() {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           [{ 'narrative': [false, 'msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field'] }],
-          ['bold', 'italic', 'underline', 'strike', 'ui', 'divider'],
+          ['bold', 'italic', 'underline', 'strike', 'ui', 'hideicon', 'divider'],
           ['clean']
         ]
       }
@@ -2671,6 +2687,11 @@ function getMarkdownForEpisode(ep) {
   md = md.replace(/<p class="n-record"[^>]*>([\s\S]*?)<\/p>/g, '> [기록] $1\n\n');
   md = md.replace(/<p class="n-status"[^>]*>([\s\S]*?)<\/p>/g, '> [상태창] $1\n\n');
   md = md.replace(/<p class="n-log"[^>]*>([\s\S]*?)<\/p>/g, '```log\n$1\n```\n\n');
+  md = md.replace(/<p class="n-noti"[^>]*>([\s\S]*?)<\/p>/g, '> [휴대폰] $1\n\n');
+  md = md.replace(/<p class="n-email"[^>]*>([\s\S]*?)<\/p>/g, '> [이메일 알림] $1\n\n');
+  md = md.replace(/<p class="n-email-body"[^>]*>([\s\S]*?)<\/p>/g, '> [이메일 본문] $1\n\n');
+  md = md.replace(/<p class="n-doc"[^>]*>([\s\S]*?)<\/p>/g, '> [서신] $1\n\n');
+  md = md.replace(/<p class="n-field"[^>]*>([\s\S]*?)<\/p>/g, '> [입력칸] $1\n\n');
   
   // 헤더
   md = md.replace(/<h1>([\s\S]*?)<\/h1>/g, '# $1\n\n');
