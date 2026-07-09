@@ -2889,12 +2889,18 @@ async function exportPODPdf() {
   
   showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
   
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  
   let html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(p.title)} - 출판용 원고</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
+<style>
+${mainStyles}
+</style>
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
 <style>
   @page {
@@ -2914,6 +2920,7 @@ async function exportPODPdf() {
     font-size: 10pt;
     line-height: 1.8;
     color: #111;
+    background: #fff;
   }
   .title-page {
     break-after: page;
@@ -2940,94 +2947,8 @@ async function exportPODPdf() {
     margin: 0;
     word-break: keep-all;
   }
-  /* Narrative Blocks for PDF \u2014 v3 (\uc774\ubbf8\uc9c0 \uac00\uc774\ub4dc \ub3d9\uc77c \uc801\uc6a9) */
-  .n-msg {
-    display: block !important;
-    max-width: 68% !important;
-    margin: 20px 0 !important;
-    background: #EEEEEC !important;
-    border: none !important;
-    border-radius: 8px !important;
-    padding: 14px 18px !important;
-    font-size: 0.95em !important;
-    line-height: 1.85 !important;
-    text-align: left !important;
-    text-indent: 0 !important;
-  }
-  .msg-first, .msg-middle {
-    margin-bottom: 0 !important;
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-  }
-  .msg-last, .msg-middle {
-    margin-top: 0 !important;
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
-  }
-  .n-sys {
-    display: block !important;
-    text-align: center !important;
-    color: #686868 !important;
-    font-size: 0.9em !important;
-    font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
-    font-weight: 500 !important;
-    line-height: 1.8 !important;
-    padding: 0 !important;
-    margin: 24px 0 !important;
-    text-indent: 0 !important;
-    background: transparent !important;
-    border: none !important;
-  }
-  .n-sys::before {
-    content: '\u25c7' !important;
-    display: block !important;
-    font-size: 10px !important;
-    color: #BEBBB5 !important;
-    margin-bottom: 6px !important;
-    background: none !important;
-    padding: 0 !important;
-  }
-  .n-log {
-    display: block; background: #F5F5F4;
-    border-left: 2px solid #C4C2BC;
-    padding: 12px 16px; margin: 18px 0;
-    font-family: 'Menlo','Consolas','Monaco',monospace;
-    font-size: 11pt; line-height: 1.8; color: #4A4A4A;
-    white-space: pre-wrap; text-indent: 0 !important;
-  }
-  .n-alert {
-    display: block; background: #FEF4F3;
-    border: 1px solid #E8C3BE; border-radius: 5px;
-    padding: 12px 16px 12px 42px; margin: 18px 0;
-    position: relative; font-size: 0.94em; color: #464646;
-    line-height: 1.75; text-indent: 0 !important;
-  }
-  .n-alert::before {
-    content: '\u26A0\uFE0F'; position: absolute; left: 14px; top: 13px;
-    font-size: 12px; color: #C0524A; line-height: 1;
-  }
-  .n-record {
-    display: block; background: transparent;
-    border-left: 2.5px solid #CCCAC5;
-    padding: 2px 0 2px 20px; margin: 18px 0;
-    font-size: 0.96em; line-height: 1.9; color: #505050;
-    font-style: normal; text-indent: 0 !important;
-  }
-  .n-ui {
-    display: inline-block !important;
-    font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
-    font-weight: 500 !important;
-    font-size: 0.86em !important;
-    color: #3A3A3A !important;
-    background: #F0F0F0 !important;
-    border: 1px solid #E0E0E0 !important;
-    border-radius: 4px !important;
-    padding: 2px 6px !important;
-    margin: 0 2px !important;
-    line-height: 1.2 !important;
-    box-decoration-break: clone !important;
-    -webkit-box-decoration-break: clone !important;
-  }
+  /* Remove ql-editor specific overrides that break print */
+  .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
 </style>
 </head>
 <body>
@@ -3041,7 +2962,7 @@ async function exportPODPdf() {
     html += `
   <div class="chapter">
     ${processed.hasTitle ? '' : `<div class="chapter-title">${escapeHtml(ep.title)}</div>`}
-    <div class="chapter-content">${processed.body}</div>
+    <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
   });
 
