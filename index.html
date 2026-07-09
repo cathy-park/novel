@@ -347,6 +347,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor p.n-alert, .ql-editor .n-alert, .n-alert {
   display: block !important;
   text-align: left !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   background: #FEF4F4 !important;
   border: none !important;
   border-left: 4px solid #E06C6C !important;
@@ -965,7 +966,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <label>작품명</label><input id="projectTitle" class="project-title-input" />
       <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
     </div>
-    <div class="section-title"><span>원고</span><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div>
+    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
     <div id="episodeList" class="episode-list"></div>
     <div class="sidebar-foot">
       <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
@@ -2499,6 +2500,28 @@ $$('.filter-btn').forEach(b=>b.onclick=()=>{ libraryFilter=b.dataset.filter; ren
 $('#projectTitle').oninput = () => { const p=currentProject(); p.title=$('#projectTitle').value||'제목 없는 작품'; $('#projectBreadcrumb').textContent=p.title; touchProject(); queueSaveFS(); };
 $('#projectStatus').onchange = () => { currentProject().status=$('#projectStatus').value; touchProject(); queueSaveFS(); };
 $('#addEpisodeBtn').onclick = addEpisode;
+$('#cleanEmptyEpsBtn').onclick = async () => {
+  const p = currentProject(); if(!p) return;
+  const ghosts = p.episodes.filter(e => !e.body || e.body.replace(/<[^>]*>?/gm, '').trim() === '');
+  if(ghosts.length === 0) { showToast('정리할 빈 회차가 없습니다.'); return; }
+  if(!confirm(`본문 내용이 없는 빈 회차 ${ghosts.length}개를 모두 삭제하시겠습니까?\n(기획 및 메모가 적힌 회차도 본문이 없으면 삭제됩니다)`)) return;
+  $('#saveStatus').textContent = '빈 회차 정리 중...';
+  let deleted = 0;
+  for (const ep of ghosts) {
+    if (ep.id === p.selectedEpisodeId) continue;
+    const idx = p.episodes.findIndex(x => x.id === ep.id);
+    if (idx > -1) {
+      p.episodes.splice(idx, 1);
+      if (currentUser) {
+        const { error } = await sb.from('novel_episodes').delete().eq('id', ep.id);
+        if (error) console.error('Failed to delete ghost ep:', error);
+      }
+      deleted++;
+    }
+  }
+  touchProject(); queueSaveFS(); renderEpisodeList();
+  showToast(`${deleted}개의 빈 회차가 깔끔하게 정리되었습니다! 🧹`);
+};
 $('#episodeTitle').oninput = () => { const ep=currentEpisode(); ep.title=$('#episodeTitle').value; $('#episodeBreadcrumb').textContent=$('#episodeTitle').value||'제목 없는 회차'; ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
 $('#episodeType').onchange = () => { const ep=currentEpisode(); ep.type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
 
