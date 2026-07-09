@@ -990,11 +990,8 @@ window.addEventListener('unhandledrejection', function(e) {
       <div class="breadcrumb"><span id="projectBreadcrumb"></span><span class="slash">/</span><strong id="episodeBreadcrumb"></strong></div>
       <div class="top-actions">
         <span id="saveStatus" class="save-status">저장됨</span>
-        <button id="emergencyRestoreBtn" class="ghost" type="button" style="color: #e53935; font-weight: 600;">🚨 최신 백업 복원</button>
         <button id="openPCEbookBtn" class="ghost" type="button">📖 이북 뷰어</button>
         <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
-        <button id="versionBtn" class="ghost" type="button">버전 기록</button>
-        <button id="toggleFocusBtn" class="ghost" type="button" title="집중 모드 (⌘.)">집중 ⌘.</button>
       </div>
     </header>
 
@@ -1166,7 +1163,7 @@ if ('serviceWorker' in navigator) {
 }
 
 
-const VERSION_LIMIT = 5, VERSION_INTERVAL = 5*60*1000;
+
 const DEFAULT_COVER_COLOR = '#6B5CE7';
 const COVER_COLORS = ['#17141F','#6B5CE7','#6D9DF6','#5CB6C9','#46A57F','#F39AB9','#F5B86C','#B4A5FF','#8C91A5','#E4E6ED'];
 
@@ -1215,6 +1212,7 @@ async function initApp() {
   sb.auth.onAuthStateChange(async (event, session) => {
     console.log('Auth event:', event);
     if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session && !currentUser) {
+      localStorage.removeItem('novel_emergency_backup'); // 불필요해진 로컬 백업 삭제
       showToast('로그인 성공! 서재를 불러옵니다...');
       currentUser = session.user;
       $('#welcomeScreen').style.display = 'none';
@@ -1441,19 +1439,6 @@ async function loadStateSupabase() {
   
   
   if (projectsData && projectsData.length > 0) {
-    // 버전을 로컬 백업에서 복원!
-    try {
-      const localDataStr = localStorage.getItem('novel_emergency_backup');
-      if (localDataStr) {
-        const localState = JSON.parse(localDataStr);
-        for (const pRow of projectsData) {
-          const lp = localState.find(x => x.id === pRow.id);
-          if (lp && lp.episodes) {
-            pRow._localEpisodes = lp.episodes; // 임시 저장
-          }
-        }
-      }
-    } catch(e) {}
 
   // 2. Episodes 로드 (body, plan, comments 제외하여 지연 로딩)
   const { data: episodesData, error: eErr } = await sb.from('novel_episodes')
@@ -1484,7 +1469,6 @@ async function loadStateSupabase() {
           status: e.status,
           createdAt: e.created_at,
           updatedAt: e.updated_at,
-          versions: (pRow._localEpisodes?.find(x => x.id === e.id)?.versions || []).slice(0, 5),
           order: e.order_idx,
           _dirty: false
         })).sort((a,b) => a.order - b.order); // 서버의 order_idx로 정렬
@@ -1522,10 +1506,7 @@ function queueSaveFS() {
   if(!currentUser) return;
   if($('#saveStatus')) $('#saveStatus').textContent='저장 중…';
   
-  // 서버 에러나 오프라인에 대비한 로컬 2중 백업 (버전 기록 포함 완벽 보존)
-  try {
-    localStorage.setItem('novel_emergency_backup', JSON.stringify(state.projects));
-  } catch(e) { console.warn('Local backup failed', e); }
+
 
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => forceSaveAllSupabase(), 1500);
@@ -1975,7 +1956,7 @@ function renderEpisode() {
       const ep = currentEpisode();
       ep.body = quill.root.innerHTML;
       ep._dirty = true;
-      maybeVersion(ep); touchProject(); updateBodyStats(); queueSaveFS();
+      touchProject(); updateBodyStats(); queueSaveFS();
       // 성능 최적화: 타이핑 중 에피소드 목록 전체 리렌더 제거 (자수만 업데이트)
     });
   }
@@ -2009,16 +1990,7 @@ function togglePlanDrawer() {
   restoreEditorScroll();
 }
 
-function maybeVersion(ep, force=false) {
-  const now = Date.now();
-  if(!force && now-(ep.lastVersionAt||0) < VERSION_INTERVAL) return;
-  if(!cleanText(ep.body)) return;
-  ep.versions = ep.versions || [];
-  if(ep.versions[0]?.body === ep.body) return;
-  ep.versions.unshift({ id: uid('ver'), createdAt: now, body: ep.body });
-  ep.versions = ep.versions.slice(0, VERSION_LIMIT);
-  ep.lastVersionAt = now;
-}
+
 
 // Export / Import
 async function exportBackup() {
@@ -2564,7 +2536,7 @@ $('#planEditor').onblur = () => {
     ? marked.parse($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.')
     : escapeHtml($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.');
 };
-$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; ep._dirty = true; maybeVersion(ep); touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
+$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; ep._dirty = true; touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
@@ -2727,43 +2699,7 @@ $('#searchInput').oninput = () => {
 };
 
 // Versions
-$('#versionBtn').onclick = () => {
-  persistEditor(); const ep=currentEpisode(); maybeVersion(ep, true); queueSaveFS();
-  $('#versionList').innerHTML = (ep.versions||[]).map(v=>{
-    const prev = escapeHtml(cleanText(v.body).slice(0,60));
-    return `<div class="version-item"><div><strong>${new Date(v.createdAt).toLocaleString('ko-KR')}</strong><span>${stats(v.body).withSpaces.toLocaleString()}자 · ${prev}...</span></div><button class="ghost border" data-ver="${v.id}">복원</button></div>`;
-  }).join('');
-  $$('[data-ver]').forEach(b=>b.onclick=()=>{
-    const ep=currentEpisode(); maybeVersion(ep, true); // Backup current right before restore
-    ep.body = ep.versions.find(x=>x.id===b.dataset.ver).body;
-    queueSaveFS(); closeModal('versionModal'); renderEpisode(); showToast('이전 버전으로 복원했어요.');
-  });
-  openModal('versionModal');
-};
 
-$('#emergencyRestoreBtn').onclick = () => {
-  const ep = currentEpisode();
-  if (!ep) return;
-  if (!ep.versions || ep.versions.length === 0) {
-    alert('이 회차에 저장된 백업본이 없습니다.');
-    return;
-  }
-  // 가장 최신 백업본 가져오기 (비어있지 않은 것)
-  const validBackup = ep.versions.find(v => cleanText(v.body).length > 0);
-  if (!validBackup) {
-    alert('저장된 유효한 텍스트 데이터가 없습니다.');
-    return;
-  }
-  const backup = validBackup.body;
-  const chars = stats(backup).withSpaces;
-  if (confirm(`가장 최근에 저장된 백업본(${chars}자)을 불러오시겠습니까?\n현재 에디터의 내용은 덮어씌워집니다.`)) {
-    ep.body = backup;
-    if (quill) quill.root.innerHTML = backup;
-    queueSaveFS(true);
-    updateBodyStats();
-    showToast('안전하게 백업본이 복구되었습니다!');
-  }
-};
 
 // Manuscript
 function showEditor() { $('#manuscriptView').classList.remove('active'); $('#editorView').classList.remove('hidden'); }
