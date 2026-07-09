@@ -3112,10 +3112,12 @@ ${mainStyles}
     margin-bottom: 1em !important;
     line-height: 1.4;
   }
-  .chapter-content p:has(.ql-size-huge),
-  .chapter-content p:has(.ql-size-large) {
+  .chapter-content .ql-size-huge,
+  .chapter-content .ql-size-large {
+    display: block;
     margin-top: 1.5em !important;
     margin-bottom: 1em !important;
+    line-height: 1.4;
   }
   /* Remove overrides that break print */
   html, body { height: auto !important; overflow: visible !important; }
