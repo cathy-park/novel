@@ -251,8 +251,43 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   border-bottom-left-radius: 2px !important;
 }
 
+/* ①-2 메시지 (노랑) (n-msg-y) */
+.ql-editor p.n-msg-y,
+.ql-editor .n-msg-y,
+.n-msg-y {
+  display: block !important;
+  max-width: 70% !important;
+  margin: 16px 0 !important;
+  background: #FFF4CD !important;
+  color: #5C5230 !important;
+  border: none !important;
+  border-radius: 18px 18px 18px 2px !important;
+  padding: 12px 18px !important;
+  font-size: 0.95em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  text-indent: 0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+}
+.ql-editor p.n-msg-y:has(+ p.n-msg-y),
+.n-msg-y:has(+ .n-msg-y) {
+  margin-bottom: 4px !important;
+  border-bottom-left-radius: 6px !important;
+}
+.ql-editor p.n-msg-y + p.n-msg-y,
+.n-msg-y + .n-msg-y {
+  margin-top: 0 !important;
+  border-top-left-radius: 6px !important;
+}
+.ql-editor p.n-msg-y + p.n-msg-y:not(:has(+ p.n-msg-y)),
+.n-msg-y + .n-msg-y:not(:has(+ .n-msg-y)) {
+  border-bottom-left-radius: 2px !important;
+}
+
 /* 모든 서사 블록 아이콘에 토스페이스 강제 적용 */
 .ql-editor p.n-msg::before, .n-msg::before,
+.ql-editor p.n-msg-y::before, .n-msg-y::before,
 .ql-editor p.n-noti::before, .n-noti::before,
 .ql-editor p.n-sys::before, .n-sys::before,
 .ql-editor p.n-log::before, .n-log::before,
@@ -272,6 +307,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-editor p.n-doc.no-icon-true { padding-left: 38px !important; }
 .ql-editor p.n-noti.no-icon-true { padding-left: 38px !important; }
 .ql-editor p.n-msg.no-icon-true { padding-left: 20px !important; }
+.ql-editor p.n-msg-y.no-icon-true { padding-left: 20px !important; }
 .ql-editor p.n-email.no-icon-true { padding-left: 18px !important; }
 
 
@@ -571,6 +607,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
    빈 블록 Placeholder 안내 문구 (에디터 내에서만)
    ========================================== */
 .ql-editor p.n-msg:empty::after, .ql-editor p.n-msg:has(> br:only-child)::after { content: "메시지 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-msg-y:empty::after, .ql-editor p.n-msg-y:has(> br:only-child)::after { content: "메시지(노랑) 입력..." !important; color: #C4B282 !important; font-style: italic !important; pointer-events: none !important; }
 .ql-editor p.n-sys:empty::after, .ql-editor p.n-sys:has(> br:only-child)::after { content: "시스템 문구 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
 .ql-editor p.n-log:empty::after, .ql-editor p.n-log:has(> br:only-child)::after { content: "시스템 로그 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
 .ql-editor p.n-alert:empty::after, .ql-editor p.n-alert:has(> br:only-child)::after { content: "알림/경고 내용 입력..." !important; color: #E89E9E !important; font-style: italic !important; pointer-events: none !important; }
@@ -637,6 +674,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item { font-family: 'Tossface', Pretendard, sans-serif !important; }
 .ql-snow .ql-picker.ql-narrative { width: 140px; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg"]::before { content: '💬 메시지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg-y"]::before { content: '💬 메시지(노랑)'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="sys"]::before { content: '◇ 시스템 문구'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="log"]::before { content: '>_ 시스템 로그'; }
@@ -651,6 +689,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
 
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 메시지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg-y"]::before { content: '💬 메시지(노랑)'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="sys"]::before { content: '◇ 시스템 문구'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="log"]::before { content: '>_ 시스템 로그'; }
@@ -2021,7 +2060,7 @@ function renderEpisode() {
     const ClassAttributor = Parchment.Attributor.Class;
     const NarrativeClass = new ClassAttributor('narrative', 'n', {
       scope: Parchment.Scope.BLOCK,
-      whitelist: ['msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo']
+      whitelist: ['msg', 'msg-y', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo']
     });
     Quill.register(NarrativeClass, true);
 
@@ -2058,7 +2097,7 @@ function renderEpisode() {
       modules: {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
-          [{ 'narrative': [false, 'msg', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo'] }],
+          [{ 'narrative': [false, 'msg', 'msg-y', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo'] }],
           ['bold', 'italic', 'underline', 'strike', 'ui', 'hideicon', 'divider'],
           ['clean']
         ]
@@ -2786,6 +2825,7 @@ function getMarkdownForEpisode(ep) {
 
   // 서사 블록
   md = md.replace(/<p class="n-msg"[^>]*>([\s\S]*?)<\/p>/g, '> [메시지] $1\n\n');
+  md = md.replace(/<p class="n-msg-y"[^>]*>([\s\S]*?)<\/p>/g, '> [메시지(노랑)] $1\n\n');
   md = md.replace(/<p class="n-sys"[^>]*>([\s\S]*?)<\/p>/g, '> [시스템] $1\n\n');
   md = md.replace(/<p class="n-alert"[^>]*>([\s\S]*?)<\/p>/g, '> [알림] $1\n\n');
   md = md.replace(/<p class="n-record"[^>]*>([\s\S]*?)<\/p>/g, '> [기록] $1\n\n');
@@ -2947,7 +2987,7 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
   });
 
   // 2. 서사 블록 그룹화 (PDF용 Fallback)
-  const nClasses = ['n-msg', 'n-sys', 'n-log', 'n-alert', 'n-record', 'n-status', 'n-email', 'n-email-body', 'n-doc', 'n-noti', 'n-field', 'n-memo'];
+  const nClasses = ['n-msg', 'n-msg-y', 'n-sys', 'n-log', 'n-alert', 'n-record', 'n-status', 'n-email', 'n-email-body', 'n-doc', 'n-noti', 'n-field', 'n-memo'];
   const els = Array.from(div.children);
   for (let i = 0; i < els.length; i++) {
     const cur = els[i];
@@ -3192,6 +3232,7 @@ ${mainStyles}
     padding-bottom: 14px !important;
   }
   .chapter-content p.n-msg.pdf-group-isolated, .chapter-content p.n-msg.pdf-group-last,
+  .chapter-content p.n-msg-y.pdf-group-isolated, .chapter-content p.n-msg-y.pdf-group-last,
   .chapter-content p.n-noti.pdf-group-isolated, .chapter-content p.n-noti.pdf-group-last {
     margin-bottom: 12px !important; padding-bottom: 10px !important; border-radius: 18px 18px 18px 2px !important;
   }
@@ -3206,6 +3247,7 @@ ${mainStyles}
     padding-bottom: 4px !important;
   }
   .chapter-content p.n-msg.pdf-group-first, .chapter-content p.n-msg.pdf-group-middle,
+  .chapter-content p.n-msg-y.pdf-group-first, .chapter-content p.n-msg-y.pdf-group-middle,
   .chapter-content p.n-noti.pdf-group-first, .chapter-content p.n-noti.pdf-group-middle,
   .chapter-content p.n-email.pdf-group-first, .chapter-content p.n-email.pdf-group-middle {
     margin-bottom: 4px !important;
@@ -3223,6 +3265,7 @@ ${mainStyles}
     padding-top: 4px !important;
   }
   .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last,
+  .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last,
   .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last,
   .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last {
     border-top-left-radius: 6px !important;
