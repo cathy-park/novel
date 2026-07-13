@@ -1983,10 +1983,10 @@ window.addEventListener('unhandledrejection', function(e) {
           </div>
         </div>
 
-        <!-- 표지 미리보기 캔버스 -->
+        <!-- 표지 미리보기 이미지 -->
         <div class="pod-cover-preview-wrap" id="podPreviewCover">
           <div style="text-align:center;">
-            <canvas id="podCoverPreviewCanvas" style="max-width:100%; max-height:70vh; height:auto; display:block; box-shadow:0 8px 32px rgba(0,0,0,.25);"></canvas>
+            <img id="podCoverPreviewImage" style="max-width:100%; max-height:70vh; height:auto; display:none; box-shadow:0 8px 32px rgba(0,0,0,.25);" />
             <div style="margin-top:12px; font-size:11px; color:var(--c-muted);">표지 설정 탭에서 이미지를 업로드하거나 배경색을 변경하면 미리보기가 업데이트됩니다.</div>
           </div>
         </div>
@@ -4300,13 +4300,13 @@ async function podUpdateCoverPreview() {
   };
 
   try {
-    const canvas = await generateCoverPreview(p, tmpSet);
-    if (!canvas) return;
-    // 스튜디오 내 미리보기 캔버스 업데이트
-    const previewCanvas = $('#podCoverPreviewCanvas');
-    previewCanvas.width = canvas.width;
-    previewCanvas.height = canvas.height;
-    previewCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    const dataUrl = await generateCoverPreview(p, tmpSet);
+    if (!dataUrl) return;
+    const imgEl = $('#podCoverPreviewImage');
+    if (imgEl) {
+      imgEl.src = dataUrl;
+      imgEl.style.display = 'inline-block';
+    }
   } catch(e) {
     console.warn('Cover preview update failed', e);
   }
