@@ -1176,6 +1176,63 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   align-items: center;
   gap: 4px;
 }
+/* 출판 준비도 체크리스트 */
+.pod-progress-wrap {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--c-line);
+}
+.pod-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--c-line-mid);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.pod-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.pod-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pod-check-item {
+  font-size: 11px;
+  color: var(--c-sub);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+.pod-check-item.done {
+  color: var(--c-ink);
+  font-weight: 500;
+}
+.pod-check-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--c-line-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.pod-check-item.done .pod-check-icon {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.pod-check-item.done .pod-check-icon::after {
+  content: '✓';
+  color: #fff;
+  font-size: 9px;
+  font-weight: bold;
+}
 .pod-margin-badge {
   font-size: 9px;
   padding: 1px 5px;
@@ -1880,8 +1937,23 @@ window.addEventListener('unhandledrejection', function(e) {
           </div>
         </div>
 
-        <!-- 하단 저장 버튼 -->
-        <div style="padding:16px 18px; border-top:1px solid var(--c-line); background:var(--c-surface); position:sticky; bottom:0; z-index:2;">
+        <!-- 하단 저장 버튼 & 준비도 -->
+        <div style="padding:16px 18px; border-top:1px solid var(--c-line); background:var(--c-surface); position:sticky; bottom:0; z-index:2; display:flex; flex-direction:column; gap:12px;">
+          <div class="pod-progress-wrap">
+            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:6px;">
+              <span>출판 준비 완료도</span>
+              <span id="podProgressText" style="color:var(--primary);">0%</span>
+            </div>
+            <div class="pod-progress-bar">
+              <div id="podProgressFill" class="pod-progress-fill"></div>
+            </div>
+            <div id="podChecklistItems" class="pod-checklist">
+              <div class="pod-check-item" id="podCheck-margin"><span class="pod-check-icon"></span> 판형·여백 설정 확인</div>
+              <div class="pod-check-item" id="podCheck-cover"><span class="pod-check-icon"></span> 표지 디자인 및 업로드</div>
+              <div class="pod-check-item" id="podCheck-spine"><span class="pod-check-icon"></span> 책등 두께·폰트 설정</div>
+              <div class="pod-check-item" id="podCheck-copyright"><span class="pod-check-icon"></span> 판권지·저자 정보 입력</div>
+            </div>
+          </div>
           <button id="podSaveSettingsBtn" class="primary" style="width:100%; height:40px;" type="button">설정 저장</button>
         </div>
       </div>
@@ -4136,6 +4208,7 @@ function showPodStudio() {
   // 초기 미리보기 업데이트
   podUpdatePreview();
   podUpdateCoverPreview();
+  podUpdateProgress();
 }
 
 function hidePodStudio() {
@@ -4255,6 +4328,47 @@ async function podUpdateCoverPreview() {
     previewCanvas.getContext('2d').drawImage(canvas, 0, 0);
   } catch(e) {
     console.warn('Cover preview update failed', e);
+  }
+}
+
+// ── 출판 준비도 업데이트 ─────────────────────────────────────
+function podUpdateProgress() {
+  const p = currentProject(); if(!p) return;
+  
+  let checkedCount = 0;
+  const totalItems = 4;
+  
+  // 1. 여백 설정 확인
+  const isMarginDone = parseFloat($('#podMarginInner').value) > 0 && parseFloat($('#podMarginOuter').value) > 0;
+  if (isMarginDone) checkedCount++;
+  $('#podCheck-margin').classList.toggle('done', isMarginDone);
+  
+  // 2. 표지 디자인 및 업로드 (이미지가 있거나 색상이 기본이 아니거나 출판사 로고가 있는 경우)
+  const isCoverDone = currentFrontCoverObj !== null || $('#podCoverBgColorHex').value !== '#2c2c2c' || $('#podPublisherLogo').value !== '';
+  if (isCoverDone) checkedCount++;
+  $('#podCheck-cover').classList.toggle('done', isCoverDone);
+  
+  // 3. 책등 두께/폰트 설정
+  const isSpineDone = parseFloat($('#podSpineWidth').value) > 0;
+  if (isSpineDone) checkedCount++;
+  $('#podCheck-spine').classList.toggle('done', isSpineDone);
+  
+  // 4. 판권지 저자 정보 입력
+  const isCopyrightDone = $('#podShowCopyright').checked && $('#podAuthor').value.trim() !== '';
+  if (isCopyrightDone) checkedCount++;
+  $('#podCheck-copyright').classList.toggle('done', isCopyrightDone);
+  
+  const pct = Math.round((checkedCount / totalItems) * 100);
+  $('#podProgressText').textContent = pct + '%';
+  $('#podProgressFill').style.width = pct + '%';
+  
+  if (pct === 100) {
+    $('#podProgressText').style.color = '#00A67E';
+    $('#podProgressFill').style.background = '#00A67E';
+    $('#podProgressText').textContent = '완료! 🚀';
+  } else {
+    $('#podProgressText').style.color = 'var(--primary)';
+    $('#podProgressFill').style.background = 'var(--primary)';
   }
 }
 
@@ -4381,10 +4495,14 @@ $('#podToggleEven').addEventListener('click', () => {
   podUpdatePreview();
 });
 
-// 여백 입력 실시간 반영
+// 여백 등 입력 실시간 반영
 ['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize'].forEach(id => {
   const el = $('#' + id);
-  if(el) el.addEventListener('input', podUpdatePreview);
+  if(el) el.addEventListener('input', () => { podUpdatePreview(); podUpdateProgress(); });
+});
+['podCoverBgColorHex', 'podPublisherLogo', 'podSpineWidth', 'podShowCopyright', 'podAuthor'].forEach(id => {
+  const el = $('#' + id);
+  if(el) el.addEventListener('input', () => { podUpdateCoverPreview(); podUpdateProgress(); });
 });
 
 // 출판사 프리셋 적용
