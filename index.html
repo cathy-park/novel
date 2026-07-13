@@ -4267,11 +4267,18 @@ function podScheduleLiveRender() {
   }, 800); // 디바운스 800ms
 }
 
+
 async function renderLivePodPreview() {
   const p = currentProject();
   if(!p) return;
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if(eps.length === 0) {
+  
+  if (p.episodes.some(e => e.body === undefined)) {
+    const st = $('#podLiveRenderStatus');
+    if(st) st.textContent = '내용 데이터를 불러오는 중...';
+    await ensureProjectBodiesLoaded(p);
+  }
+  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  if(loadedEps.length === 0) {
     $('#podLiveRenderStatus').textContent = '출판할 본문 내용이 없습니다.';
     return;
   }
@@ -4280,56 +4287,8 @@ async function renderLivePodPreview() {
   const iframe = document.getElementById('podLiveIframe');
   if(!iframe) return;
   const pubSet = getPublishSettings(p);
-  // ⚠️ 핵심 수정: mainStyles(앱 전체 CSS)를 주입하지 않고
-  //    조판에 필요한 최소 CSS만 사용 → Paged.js 오염 방지
-  const innerMargin = parseFloat(pubSet.margins?.inner || 25);
-  const outerMargin = parseFloat(pubSet.margins?.outer || 18);
-
-  let html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  html, body {
-    margin: 0; padding: 0;
-    background: #fff;
-    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: ${pubSet.fontSize || 10}pt;
-    line-height: ${pubSet.lineHeight || 1.75};
-    color: #111;
-    text-align: justify;
-    word-break: keep-all;
-  }
-  @page {
-    size: ${pubSet.paperSize || 'A5'};
-    margin: ${pubSet.margins?.top||20}mm ${outerMargin}mm ${pubSet.margins?.bottom||20}mm ${innerMargin}mm;
-    @bottom-center { content: counter(page); font-size: 9pt; font-family: 'KoPub Batang', serif; }
-  }
-  @page:left  { margin-left: ${outerMargin}mm; margin-right: ${innerMargin}mm; }
-  @page:right { margin-left: ${innerMargin}mm; margin-right: ${outerMargin}mm; }
-  @page front-matter { @bottom-center { content: none; } }
-  .fm-page { page: front-matter; break-before: right; break-after: page;
-             display: flex; flex-direction: column; justify-content: center;
-             align-items: center; height: 100vh; text-align: center; }
-  .fm-page h1 { font-size: 24pt; font-weight: 700; margin-bottom: 20px; }
-  .toc-page { page: front-matter; break-before: right; break-after: page; padding-top: 40px; }
-  .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
-  .toc-list { list-style: none; padding: 0; margin: 0 20px; }
-  .toc-list li { display: flex; align-items: baseline; margin-bottom: 12px; font-size: 10pt; }
-  .toc-list .toc-ch-title { flex: 0 0 auto; }
-  .toc-list .toc-dots { flex: 1; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
-  .toc-list .toc-pnum { flex: 0 0 auto; min-width: 24px; text-align: right; }
-  .toc-list .toc-pnum::after { content: target-counter(attr(href), page); }
-  .chapter { break-before: right; }
-  .chapter-title { font-size: 14pt; font-weight: 700; margin: 40px 0 30px; text-align: center; }
-  .chapter-content p { text-indent: 10pt; margin: 0; }
-  .chapter-content .ql-editor { padding: 0; }
-  span { background-color: transparent !important; }
-</style>
-</head>
-<body>
-`;
+  
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
   // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
   const srcdocScripts = `
@@ -4348,9 +4307,10 @@ function runPaged() {
         if (!p.pageNode) return;
         var el = p.pageNode;
         var pgNum = el.dataset.pageNumber || el.getAttribute('data-page-number') || '';
-        var hasToc = el.querySelector('.toc-page, .fm-page');
+        var fmBlock = el.querySelector('.matter-page');
+        var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
         var chTitle = el.querySelector('.chapter-title');
-        var label = hasToc ? (el.querySelector('.toc-page') ? '목차' : '속표지') : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
+        var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
         map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
       });
       try { window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*'); } catch(err) {}
@@ -4369,38 +4329,78 @@ function runPaged() {
 runPaged();
 <\/script>`;
 
-  // ── 1. 속표지 (Front Matter) ───────────────────────────────────
-  const activeFm = (window.fmBlocks || pubSet.fmBlocks || []).filter(b => b.active);
-  const fmTitleVal = window.fmBlocks?.find(b => b.type === 'half_title' || b.type === 'title_page')?.content?.title || p.title || '제목 없음';
-  const fmSubVal   = window.fmBlocks?.find(b => b.type === 'title_page')?.content?.subtitle || ($('#podAuthor')?.value || '저자') + ' 지음';
-  const fmPubVal   = window.fmBlocks?.find(b => b.type === 'title_page' || b.type === 'copyright')?.content?.publisher || '출판사';
-  html += `<div class="fm-page"><h1>${escapeHtml(fmTitleVal)}</h1><div style="margin-bottom:40px;opacity:0.7;">${escapeHtml(fmSubVal)}</div><div style="font-weight:700;">${escapeHtml(fmPubVal)}</div></div>`;
+  let html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+${mainStyles}
+</style>
+<style>
+  html, body { background: transparent !important; }
+  @page front-matter { @bottom-center { content: none; } }
+  .bg-colored { page: front-matter; }
+  @page {
+    size: ${pubSet.paperSize || 'A5'};
+    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
+    @bottom-center { content: counter(page); font-size: 9pt; font-family: 'KoPub Batang', 'Noto Serif KR', serif; }
+  }
+  @page:left { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm; }
+  @page:right { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm; }
+  @page:first { @bottom-center { content: none; } }
+  @page cover { margin: 0; @bottom-center { content: none; } }
+  body {
+    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+    font-size: ${pubSet.fontSize||10}pt;
+    line-height: ${pubSet.lineHeight||1.75};
+    color: #111; background: transparent !important; text-align: justify; word-break: keep-all;
+  }
+  .ql-align-center { text-align: center !important; }
+  .ql-align-right { text-align: right !important; }
+  .ql-align-justify { text-align: justify !important; }
+  .cover-page { page: cover; break-after: right; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; width: 100%; background-color: ${p.coverColor || '#2c2c2c'}; color: #fff; }
+  .title-page { break-before: right; break-after: page; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
+  .toc-page { break-before: right; break-after: page; padding-top: 40px; }
+  .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
+  .toc-list { list-style: none; padding: 0; margin: 0 20px; overflow-x: hidden; }
+  .toc-list li { margin-bottom: 12px; font-size: 10pt; display: flex; align-items: baseline; }
+  .toc-list li .toc-title { flex: 0 0 auto; }
+  .toc-list li .toc-page-ref { color: inherit; text-decoration: none; flex: 0 0 auto; }
+  .toc-list li .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
+  .toc-list li .toc-page-ref::after { content: target-counter(attr(href), page); }
+  .chapter { break-before: page; margin-top: 40px; }
+  .chapter.matter-page { break-before: right; }
+  .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
+  .chapter-content span { background-color: transparent !important; }
+  .chapter-content p { text-indent: 10pt !important; margin: 0 !important; word-break: keep-all; }
+  .chapter-content h1, .chapter-content h3 { margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
+  .chapter-content h2 { margin-top: 1.5em !important; margin-bottom: 2.75em !important; line-height: 1.4; }
+  .chapter-content .ql-size-huge, .chapter-content .ql-size-large { display: block; margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
+  .chapter-content p.pdf-group-isolated, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-isolated, .chapter-content .pdf-group-last { margin-bottom: 24px !important; border-bottom-left-radius: 6px !important; border-bottom-right-radius: 6px !important; padding-bottom: 14px !important; }
+  .chapter-content p.n-msg.pdf-group-isolated, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-isolated, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-isolated, .chapter-content p.n-noti.pdf-group-last { margin-bottom: 12px !important; padding-bottom: 10px !important; border-radius: 18px 18px 18px 2px !important; }
+  .chapter-content p.pdf-group-first, .chapter-content p.pdf-group-middle, .chapter-content .pdf-group-first, .chapter-content .pdf-group-middle { margin-bottom: 0 !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; padding-bottom: 4px !important; }
+  .chapter-content p.n-msg.pdf-group-first, .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-first, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-noti.pdf-group-first, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-email.pdf-group-first, .chapter-content p.n-email.pdf-group-middle { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; padding-bottom: 10px !important; }
+  .chapter-content p.pdf-group-middle, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-middle, .chapter-content .pdf-group-last { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; padding-top: 4px !important; }
+  .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last, .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last { border-top-left-radius: 6px !important; padding-top: 10px !important; }
+  .chapter-content p.n-email-body.pdf-group-middle, .chapter-content p.n-email-body.pdf-group-last, .chapter-content p.n-doc.pdf-group-middle, .chapter-content p.n-doc.pdf-group-last { padding-left: 38px !important; }
+  html, body { height: auto !important; overflow: visible !important; }
+  .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
+</style>
+</head>
+<body>
+`;
 
-  // ── 2. 목차 (ep.id 기반 앵커 — exportPODPdf와 통일) ──────────────
-  html += `<div class="toc-page"><h2>차 례</h2><ul class="toc-list">`;
-  eps.forEach((e) => {
-    const t = cleanText(e.title) || '(제목 없음)';
-    html += `<li><span class="toc-ch-title">${escapeHtml(t)}</span><span class="toc-dots"></span><a class="toc-pnum" href="#ep-${e.id}">&#8203;</a></li>`;
-  });
-  html += `</ul></div>`;
+  html += generatePODBodyContent(p, pubSet, loadedEps);
 
-  // ── 3. 본문 조립 (ep.id 기반 id 부여 — TOC 앵커와 반드시 일치) ────
-  eps.forEach((e) => {
-    const t = cleanText(e.title) || '';
-    html += `<div class="chapter" id="ep-${e.id}">`;
-    if(t) html += `<div class="chapter-title">${escapeHtml(t)}</div>`;
-    html += `<div class="chapter-content ql-editor">${e.body || ''}</div></div>`;
-  });
-
-  // ★ 핵심: body 콘텐츠 뒤에 스크립트 블록 삽입 (DOM 파싱 완료 후 실행 보장)
   html += srcdocScripts;
   html += `</body></html>`;
 
-  // ── iframe 갱신: removeAttribute로 완전 초기화 후 srcdoc 재주입 ──
   iframe.removeAttribute('srcdoc');
-  // 10ms 딜레이: removeAttribute 이후 브라우저가 iframe을 리셋할 시간 확보
   setTimeout(() => { iframe.srcdoc = html; }, 10);
 }
+
 
 // ── pagedjs-rendered 메시지 수신 → 트리 업데이트 ──────────────────
 window.addEventListener('message', (e) => {
@@ -4745,31 +4745,18 @@ function renderPodPageTree() {
       data.sublabel,
       data.accent,
       () => {
-        if (data.type === 'fm') {
-          window.fmActiveBlockIdx = data.fmIdx;
-          // 전면부 탭 활성화
-          $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-          const pb = document.querySelector('.pod-preview-tab[data-preview="fm"]');
-          if(pb) pb.classList.add('active');
-          $('#podPreviewInner').style.display = 'none';
-          $('#podPreviewFm').style.display = 'flex';
-          $('#podPreviewCover').classList.remove('active');
-          $('#podPageToggleWrap').style.display = 'none';
-          if (typeof podUpdateFmPreview === 'function') podUpdateFmPreview();
-        } else {
-          // 내지 탭 활성화 + 해당 페이지로 스크롤
-          $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-          const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-          if(pb) pb.classList.add('active');
-          $('#podPreviewInner').style.display = 'flex';
-          $('#podPreviewFm').style.display = 'none';
-          $('#podPreviewCover').classList.remove('active');
-          $('#podPageToggleWrap').style.display = 'flex';
-          // postMessage로 iframe 내부에 스크롤 요청
-          const liveIframe = document.getElementById('podLiveIframe');
-          if (liveIframe?.contentWindow) {
-            liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
-          }
+        // 모든 트리 노드(전면부, 내지) 클릭 시 내지 프리뷰(Paged.js)로 전환 후 스크롤
+        $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
+        const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
+        if(pb) pb.classList.add('active');
+        $('#podPreviewInner').style.display = 'flex';
+        $('#podPreviewFm').style.display = 'none';
+        $('#podPreviewCover').classList.remove('active');
+        $('#podPageToggleWrap').style.display = 'flex';
+        // postMessage로 iframe 내부에 스크롤 요청
+        const liveIframe = document.getElementById('podLiveIframe');
+        if (liveIframe?.contentWindow) {
+          liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
         }
         // 활성 표시
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
@@ -5799,6 +5786,112 @@ async function exportPODCover() {
   link.click();
 }
 
+
+function generatePODBodyContent(p, pubSet, loadedEps) {
+  const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
+let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+
+  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
+  
+  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
+  const afterTocEps = loadedEps.slice(firstMainIdx);
+
+  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
+  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
+    ? pubSet.fmBlocks : (window.fmBlocks || []);
+
+  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
+  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
+  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
+  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
+
+  let htmlFm = '';
+  fmBlocksForRender.filter(b => b.active).forEach(block => {
+    const s = block.style || {};
+    const c = block.content || {};
+    const type = block.type;
+
+    const pTitle  = escapeHtml(c.title || p.title || '');
+    const pSub    = escapeHtml(c.subtitle || '');
+    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
+    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
+    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
+    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
+    const pQuote  = escapeHtml(c.quoteAuthor || '');
+
+    const bgColor = s.bgColor || '#ffffff';
+    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
+    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
+
+    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
+    const titleSz = `font-size:${s.fontSize||20}pt;`;
+    const jc = s.alignY || 'center';
+    const ai = s.alignX || 'center';
+    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
+
+    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
+    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
+    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
+
+    const hideTxt = s.hideText ? 'display:none !important;' : '';
+    const podLogo = pubSet.coverOptions?.logo || '';
+    const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
+
+    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;${bgPrintCss}${rel}`;
+
+    if (type === 'half_title') {
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+    } else if (type === 'title_page') {
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
+    } else if (type === 'dedication') {
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+    } else if (type === 'epigraph') {
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    } else if (type === 'copyright') {
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    } else if (type === 'toc') {
+      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
+      if (pubSet.autoTOC !== false && tocEps.length > 0) {
+        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
+        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
+        tocHtml += `</ul></div></div>`;
+        htmlFm += tocHtml;
+      }
+    } else if (type === 'blank') {
+      htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:right;height:100vh;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
+    }
+  });
+
+  let bodyHtml = htmlFm;
+
+
+  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
+  beforeTocEps.forEach(ep => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    bodyHtml += `
+  <div class="chapter matter-page" style="break-before: right;">
+    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
+  </div>`;
+  });
+
+  // 5. 본문 (목차 이후의 회차 및 뒷부속)
+  afterTocEps.forEach((ep, i) => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
+    const displayTitle = getEpisodeDisplayTitle(ep, p);
+    
+    bodyHtml += `
+  <div class="chapter ${isMatter ? 'matter-page' : ''}">
+    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
+    <div class="chapter-content ql-editor">${processed.body}</div>
+  </div>`;
+  });
+
+
+  return bodyHtml;
+}
+
 async function exportPODPdf(isSilent = false) {
   const p = currentProject();
   if(!p) return;
@@ -6082,105 +6175,7 @@ ${mainStyles}
     } catch (err) { console.warn('Cover rendering skipped:', err); }
   }
 
-  let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
-
-  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
-  
-  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
-  const afterTocEps = loadedEps.slice(firstMainIdx);
-
-  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
-  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
-    ? pubSet.fmBlocks : (window.fmBlocks || []);
-
-  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
-  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
-  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
-  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
-
-  let htmlFm = '';
-  fmBlocksForRender.filter(b => b.active).forEach(block => {
-    const s = block.style || {};
-    const c = block.content || {};
-    const type = block.type;
-
-    const pTitle  = escapeHtml(c.title || p.title || '');
-    const pSub    = escapeHtml(c.subtitle || '');
-    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
-    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
-    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
-    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
-    const pQuote  = escapeHtml(c.quoteAuthor || '');
-
-    const bgColor = s.bgColor || '#ffffff';
-    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
-    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
-
-    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
-    const titleSz = `font-size:${s.fontSize||20}pt;`;
-    const jc = s.alignY || 'center';
-    const ai = s.alignX || 'center';
-    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
-
-    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
-    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
-    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
-
-    const hideTxt = s.hideText ? 'display:none !important;' : '';
-    const podLogo = pubSet.coverOptions?.logo || '';
-    const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
-
-    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;${bgPrintCss}${rel}`;
-
-    if (type === 'half_title') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
-    } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
-    } else if (type === 'dedication') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
-    } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
-    } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
-    } else if (type === 'toc') {
-      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
-      if (pubSet.autoTOC !== false && tocEps.length > 0) {
-        let tocHtml = `<div class="chapter matter-page toc-page" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
-        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
-        tocHtml += `</ul></div></div>`;
-        htmlFm += tocHtml;
-      }
-    } else if (type === 'blank') {
-      htmlFm += `<div class="chapter matter-page" style="break-before:right;height:100vh;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
-    }
-  });
-
-  html += htmlFm;
-
-
-  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
-  beforeTocEps.forEach(ep => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    html += `
-  <div class="chapter matter-page" style="break-before: right;">
-    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
-  </div>`;
-  });
-
-  // 5. 본문 (목차 이후의 회차 및 뒷부속)
-  afterTocEps.forEach((ep, i) => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
-    const displayTitle = getEpisodeDisplayTitle(ep, p);
-    
-    html += `
-  <div class="chapter ${isMatter ? 'matter-page' : ''}">
-    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
-    <div class="chapter-content ql-editor">${processed.body}</div>
-  </div>`;
-  });
-
+    html += generatePODBodyContent(p, pubSet, loadedEps);
   html += `
   <script>
     class PrintHandler extends window.Paged.Handler {
