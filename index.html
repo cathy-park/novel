@@ -2499,7 +2499,7 @@ if ($('#googleLoginBtn')) {
       const { data, error } = await sb.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://novel-iota-mauve.vercel.app'
+          redirectTo: window.location.origin
         }
       });
       if(error) throw error;
