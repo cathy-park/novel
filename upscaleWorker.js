@@ -39,6 +39,7 @@ self.onmessage = async (e) => {
       
       for (let i = 0; i < passes; i++) {
         const nextTensor = await upscaler.upscale(currentTensor, {
+          output: 'tensor',
           patchSize: 128,
           padding: 2,
           progress: (prog) => {
