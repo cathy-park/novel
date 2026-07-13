@@ -2169,36 +2169,10 @@ window.addEventListener('unhandledrejection', function(e) {
           <iframe id="podFmIframe" style="border:1px solid #ddd; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.15); width:148mm; height:210mm; transition: width 0.3s, height 0.3s; transform-origin: top center;"></iframe>
         </div>
 
-        <!-- 내지 미리보기 캔버스 -->
-        <div class="pod-preview-canvas inner-tab" id="podPreviewInner">
-          <div style="position:relative;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <div class="pod-page-info" id="podPageLabel" style="margin-bottom:0;">홀수 페이지 (1, 3, 5... — 우측면)</div>
-              <select id="podPreviewMode" class="pod-input" style="width:auto; padding:2px 8px; font-size:11px; background:var(--c-bg);">
-                <option value="body">본문 조판</option>
-                <option value="title_page">본표지(Front Matter)</option>
-                <option value="copyright">판권지</option>
-              </select>
-            </div>
-            <div class="pod-page-card" id="podPageCard">
-              <!-- 재단선 가이드 -->
-              <div class="pod-guide-bleed"></div>
-              <!-- 안전영역 가이드 -->
-              <div class="pod-guide-safe"></div>
-              <!-- 제본여백 (좌/우 사선) -->
-              <div class="pod-guide-gutter left" id="podGutterLeft"></div>
-              <div class="pod-guide-gutter right" id="podGutterRight"></div>
-              <!-- 본문 텍스트 미리보기 -->
-              <div class="pod-page-content" id="podPageContent">
-                <p>여기에 원고 본문이 조판되어 표시됩니다. 여백을 조절하면 이 텍스트 영역의 크기가 실시간으로 변합니다.</p>
-                <p>상하좌우 파란 점선이 안전영역(텍스트 인쇄 범위)이며, 붉은 점선이 재단선(최종 재단 위치)입니다.</p>
-                <p>내측의 분홍 사선 영역이 제본여백(Gutter)으로, 책이 제본될 때 안으로 말려 들어가는 부분입니다.</p>
-                <p>홀수/짝수 버튼으로 페이지를 전환하면 Gutter 위치가 좌우로 대칭 전환됩니다.</p>
-              </div>
-              <!-- 페이지 번호 위치 표시 -->
-              <div class="pod-page-num">— 1 —</div>
-            </div>
-          </div>
+        <!-- 내지 라이브 미리보기 캔버스 (Paged.js 연동) -->
+        <div class="pod-preview-canvas inner-tab" id="podPreviewInner" style="display:none; flex-direction:column; align-items:center; justify-content:flex-start; width:100%; height:100%; background:var(--c-bg); padding:20px;">
+          <div style="font-size:12px; color:var(--c-muted); margin-bottom:12px;" id="podLiveRenderStatus">실시간 본문 렌더러 대기 중...</div>
+          <iframe id="podLiveIframe" style="border:1px solid #ddd; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.15); width:100%; min-height:80vh; transition: width 0.3s, height 0.3s;"></iframe>
         </div>
 
         <!-- 표지 미리보기 이미지 -->
@@ -4232,7 +4206,7 @@ async function showPodStudio() {
   $('#podStudioView').classList.add('active');
 
   // 초기 미리보기 업데이트
-  podUpdatePreview();
+  podScheduleLiveRender();
   podUpdateCoverPreview();
 }
 
@@ -4270,60 +4244,151 @@ function podEstimatePages(p) {
   return total + 8;
 }
 
-// ── 내지 미리보기 실시간 업데이트 ────────────────────────────
-let podIsOddPage = true; // true = 홀수(우측), false = 짝수(좌측)
+// ── 내지 라이브 렌더링(Paged.js) ────────────────────────────
+let podLiveRenderTimer = null;
+let podLastRenderedTotalPages = 0; // Paged.js 렌더링 후 얻은 실제 페이지 수
 
-function podUpdatePreview() {
-  const paperKey = $('#podPaperSize').value || 'A5';
-  const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
+function podScheduleLiveRender() {
+  $('#podLiveRenderStatus').textContent = '조판 재계산 중... (여백/폰트 적용 중)';
+  if (podLiveRenderTimer) clearTimeout(podLiveRenderTimer);
+  podLiveRenderTimer = setTimeout(() => {
+    renderLivePodPreview();
+  }, 800); // 디바운스 800ms
+}
 
-  // 화면 높이에 맞춰 반응형으로 커지도록 설정
-  const maxH = Math.max(400, window.innerHeight - 140);
-  const scale = maxH / paper.h;
-  podPreviewScale = scale;
-  const cardW = Math.round(paper.w * scale);
-  const cardH = Math.round(paper.h * scale);
+async function renderLivePodPreview() {
+  const p = currentProject();
+  if(!p) return;
+  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  if(eps.length === 0) {
+    $('#podLiveRenderStatus').textContent = '출판할 본문 내용이 없습니다.';
+    return;
+  }
 
-  const card = $('#podPageCard');
-  card.style.setProperty('--page-w', cardW + 'px');
-  card.style.setProperty('--page-h', cardH + 'px');
-  card.style.width = cardW + 'px';
-  card.style.height = cardH + 'px';
+  $('#podLiveRenderStatus').textContent = '조판 렌더링 진행 중... (Paged.js)';
+  const iframe = $('#podLiveIframe');
+  const pubSet = getPublishSettings(p);
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  const innerMargin = parseFloat(pubSet.margins?.inner || 25);
+  const outerMargin = parseFloat(pubSet.margins?.outer || 18);
+  
+  let html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
+<style>
+${mainStyles}
+</style>
+<style>
+  html, body { background: transparent !important; }
+  @page {
+    size: ${pubSet.paperSize};
+    margin: ${pubSet.margins?.top||20}mm ${outerMargin}mm ${pubSet.margins?.bottom||20}mm ${innerMargin}mm;
+    @bottom-center {
+      content: counter(page);
+      font-size: 9pt;
+      font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+    }
+  }
+  @page:left { margin: ${pubSet.margins?.top||20}mm ${innerMargin}mm ${pubSet.margins?.bottom||20}mm ${outerMargin}mm; }
+  @page:right { margin: ${pubSet.margins?.top||20}mm ${outerMargin}mm ${pubSet.margins?.bottom||20}mm ${innerMargin}mm; }
+  @page front-matter { @bottom-center { content: none; } }
+  .bg-colored { page: front-matter; }
+  @page:first { @bottom-center { content: none; } }
+  @page cover { margin: 0; @bottom-center { content: none; } }
+  
+  body {
+    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+    font-size: ${pubSet.fontSize||10}pt;
+    line-height: ${pubSet.lineHeight||1.75};
+    color: #111; text-align: justify; word-break: keep-all;
+  }
+  .title-page { break-before: right; break-after: page; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
+  .toc-page { break-before: right; break-after: page; padding-top: 40px; }
+  .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
+  .toc-list { list-style: none; padding: 0; margin: 0 20px; overflow-x: hidden; }
+  .toc-list li { margin-bottom: 12px; font-size: 10pt; display: flex; align-items: baseline; }
+  .toc-list li .toc-title { flex: 0 0 auto; }
+  .toc-list li .toc-page-ref { color: inherit; text-decoration: none; flex: 0 0 auto; }
+  .toc-list li .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
+  .toc-list li .toc-page-ref::after { content: target-counter(attr(href), page); }
+  .toc-prefix { color: #888; margin-right: 6px; }
+  .chapter { break-before: right; margin-top: 40px; } /* 각 챕터는 우측 페이지 시작 */
+  .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
+</style>
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></script>
+<script>
+  class CustomHandler extends Paged.Handler {
+    constructor(chunker, polisher, caller) { super(chunker, polisher, caller); }
+    afterRendered(pages) {
+      window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length }, '*');
+    }
+  }
+  Paged.registerHandlers(CustomHandler);
+</script>
+</head>
+<body>
+`;
 
-  // 여백값 읽기
-  const top    = parseFloat($('#podMarginTop').value)    || 20;
-  const bottom = parseFloat($('#podMarginBottom').value) || 20;
-  const inner  = parseFloat($('#podMarginInner').value)  || 25;
-  const outer  = parseFloat($('#podMarginOuter').value)  || 18;
-  const bleed  = parseFloat($('#podBleed').value)        || 0;
-  const fontSizePt = parseFloat($('#podFontSize').value) || 10;
-  const lineHeight = parseFloat($('#podLineHeight').value) || 1.75;
+  // 1. 속표지
+  const fmTitle = escapeHtml($('#podFmTitle')?.value || p.title || '제목 없음');
+  const fmSub = escapeHtml($('#podFmSubtitle')?.value || ($('#podAuthor')?.value || '저자') + ' 지음');
+  const fmPub = escapeHtml($('#podFmPublisher')?.value || '출판사');
+  html += \`<div class="title-page bg-colored"><h1>\${fmTitle}</h1><div style="margin-bottom:40px;">\${fmSub}</div><div>\${fmPub}</div></div>\`;
+  
+  // 2. 목차 생성 (Cross-Reference 매핑)
+  html += \`<div class="toc-page bg-colored"><h2>차 례</h2><ul class="toc-list">\`;
+  eps.forEach((e, idx) => {
+    let t = cleanText(e.title) || '(제목 없음)';
+    html += \`<li><div class="toc-title"><span class="toc-prefix">\${idx+1}</span>\${escapeHtml(t)}</div><div class="toc-dots"></div><a class="toc-page-ref" href="#chapter-\${idx}"></a></li>\`;
+  });
+  html += \`</ul></div>\`;
 
-  // 홀수/짝수에 따른 좌/우 여백 결정
-  // 홀수(우측 페이지): 내측=왼쪽, 외측=오른쪽
-  // 짝수(좌측 페이지): 내측=오른쪽, 외측=왼쪽
-  const leftMm  = podIsOddPage ? inner : outer;
-  const rightMm = podIsOddPage ? outer : inner;
+  // 3. 본문 조립
+  eps.forEach((e, idx) => {
+    let t = cleanText(e.title) || '';
+    let b = e.body || '';
+    html += \`<div class="chapter" id="chapter-\${idx}">\`;
+    if(t) html += \`<div class="chapter-title">\${escapeHtml(t)}</div>\`;
+    html += \`<div class="chapter-content">\${b}</div></div>\`;
+  });
 
-  const topPx    = mmToPreviewPx(top);
-  const bottomPx = mmToPreviewPx(bottom);
-  const leftPx   = mmToPreviewPx(leftMm);
-  const rightPx  = mmToPreviewPx(rightMm);
-  const bleedPx  = mmToPreviewPx(bleed);
-  const gutterPx = mmToPreviewPx(inner);
-  const fontSizeMm = fontSizePt * 0.352778; // 1pt = 0.352778mm
+  html += \`</body></html>\`;
+  
+  // iframe에 렌더링
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+}
 
-  // CSS variables 적용
-  card.style.setProperty('--margin-top-px',    topPx    + 'px');
-  card.style.setProperty('--margin-bottom-px', bottomPx + 'px');
-  card.style.setProperty('--margin-left-px',   leftPx   + 'px');
-  card.style.setProperty('--margin-right-px',  rightPx  + 'px');
-  card.style.setProperty('--bleed-px',         bleedPx  + 'px');
-  card.style.setProperty('--gutter-px',        gutterPx + 'px');
-  card.style.setProperty('--font-size-px',     mmToPreviewPx(fontSizeMm) + 'px');
-  card.style.setProperty('--line-height',      lineHeight);
+// iframe 렌더링 완료 메시지 수신 훅
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'pagedjs-rendered') {
+    $('#podLiveRenderStatus').textContent = \`렌더링 완료 (총 \${e.data.totalPages}쪽)\`;
+    podLastRenderedTotalPages = e.data.totalPages;
+    
+    // UI 업데이트 (책등 재계산 및 좌측 썸네일 재렌더링)
+    updateSpineThickness(podLastRenderedTotalPages);
+    renderPodPageTree(); 
+  }
+});
 
-  // 미리보기 모드 처리
+function updateSpineThickness(totalPages) {
+  const paperType = $('#podPaperType')?.value || 'standard';
+  // 종이 종류별 1장(2쪽)당 두께 대략 추정 (단위: mm)
+  // 미색 모조 80g: 약 0.1mm, 100g: 약 0.12mm 등
+  const mmPerPage = (paperType === 'premium') ? 0.06 : 0.05; 
+  const spineMm = Math.max(1, Math.round(totalPages * mmPerPage * 10) / 10);
+  
+  // 설정 패널 및 썸네일에 노출
+  const label = $('#podSpineThicknessLabel');
+  if(label) label.textContent = \`예상 책등 두께: 약 \${spineMm}mm\`;
+}
+
   const mode = $('#podPreviewMode')?.value || 'body';
   const contentEl = $('#podPageContent');
   
@@ -4672,15 +4737,14 @@ function renderPodPageTree() {
     pageNum++;
   });
 
-  // Main body (개별 페이지로 분할)
-  loadedEps.forEach(e => {
-    const len = e.body.replace(/<[^>]*>?/gm, '').length;
-    const pgs = Math.max(2, Math.ceil(len / 350));
-    for (let i = 0; i < pgs; i++) {
-      pagesData.push({ title: e.title, page: pageNum, type: 'inner' });
-      pageNum++;
-    }
-  });
+  // Main body (이전에는 글자수로 예상했으나 이제는 실제 렌더링 된 개수만큼 그림)
+  const actualPages = podLastRenderedTotalPages || 10; // 렌더링 전에는 기본 10칸 렌더링
+  let currentEpsIdx = 0;
+  for (let i = pageNum; i <= actualPages; i++) {
+    // 챕터 매핑은 대략적으로 넣음 (나중에 고도화)
+    let epsTitle = loadedEps[currentEpsIdx]?.title || '본문';
+    pagesData.push({ title: epsTitle, page: i, type: 'inner' });
+  }
 
   // [3] IntersectionObserver를 통한 가상화 렌더링
   const observer = new IntersectionObserver((entries) => {
@@ -4698,9 +4762,18 @@ function renderPodPageTree() {
               if (typeof podUpdateFmPreview === 'function') podUpdateFmPreview();
               const pb = document.querySelector('.pod-preview-tab[data-preview="fm"]'); if(pb) pb.click();
             } else {
-              window.podCurrentPage = data.page; // 뷰어 여백(Gutter) 홀짝 동기화
-              if (typeof podRenderPage === 'function') podRenderPage();
+              // 내지 라이브 뷰어 탭 열기
               const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]'); if(pb) pb.click();
+              
+              // Paged.js iframe 내의 실제 페이지로 스크롤 이동 (Event Routing)
+              const iframe = document.getElementById('podLiveIframe');
+              if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
+                const doc = iframe.contentWindow.document;
+                const pageEl = doc.querySelector(`.pagedjs_page[data-page-number="${data.page}"]`);
+                if (pageEl) {
+                  pageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }
             }
           };
           wrap.appendChild(thumb);
@@ -4721,9 +4794,24 @@ function renderPodPageTree() {
   treeEl.appendChild(grid);
   
   const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:16px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink); padding-right:12px; border-top:1px solid var(--border-color); padding-top:8px;';
-  footer.innerHTML = `내지 예상 총합: ${pageNum - 1}쪽`;
+  footer.style.cssText = 'margin-top:16px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink); padding-right:12px; border-top:1px solid var(--border-color); padding-top:8px; display:flex; flex-direction:column; gap:4px;';
+  
+  const totalLabel = document.createElement('div');
+  totalLabel.innerHTML = `내지 총합: ${podLastRenderedTotalPages}쪽`;
+  footer.appendChild(totalLabel);
+  
+  const spineLabel = document.createElement('div');
+  spineLabel.id = 'podSpineThicknessLabel';
+  spineLabel.style.color = 'var(--c-accent)';
+  spineLabel.innerHTML = `예상 책등 두께: 계산 중...`;
+  footer.appendChild(spineLabel);
+  
   treeEl.appendChild(footer);
+  
+  // 렌더링된 두께가 이미 있다면 즉시 업데이트
+  if (podLastRenderedTotalPages > 0) {
+    updateSpineThickness(podLastRenderedTotalPages);
+  }
 }
 
 // 미리보기 탭 전환
@@ -4867,19 +4955,19 @@ $('#podToggleOdd').addEventListener('click', () => {
   podIsOddPage = true;
   $('#podToggleOdd').classList.add('active');
   $('#podToggleEven').classList.remove('active');
-  podUpdatePreview();
+  podScheduleLiveRender();
 });
 $('#podToggleEven').addEventListener('click', () => {
   podIsOddPage = false;
   $('#podToggleEven').classList.add('active');
   $('#podToggleOdd').classList.remove('active');
-  podUpdatePreview();
+  podScheduleLiveRender();
 });
 
 // 여백 등 입력 실시간 반영
 ['podPreviewMode','podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
   const el = $('#' + id);
-  if(el) el.addEventListener('input', () => { podUpdatePreview(); });
+  if(el) el.addEventListener('input', () => { podScheduleLiveRender(); });
 });
 
 // 출판사 로고 선택 시 옵션 패널 보이기/숨기기
@@ -5349,7 +5437,7 @@ function renderFmList() { renderFmBlockList(); }
 // 창 크기 변경 시 미리보기 크기 업데이트
 window.addEventListener('resize', () => {
   if ($('#podStudioView') && $('#podStudioView').classList.contains('active')) {
-    podUpdatePreview();
+    podScheduleLiveRender();
   }
 });
 
@@ -5393,7 +5481,7 @@ $$('.pod-preset-btn').forEach(btn => {
     $('#podMarginInner').value  = preset.margins.inner;
     $('#podMarginOuter').value  = preset.margins.outer;
     $('#podBleed').value        = preset.margins.bleed;
-    podUpdatePreview();
+    podScheduleLiveRender();
     showToast(`${preset.name} 여백 프리셋이 적용되었습니다.`);
   });
 });
