@@ -4319,7 +4319,7 @@ ${mainStyles}
   .chapter { break-before: right; margin-top: 40px; } /* 각 챕터는 우측 페이지 시작 */
   .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
 </style>
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></script>
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
 <script>
   class CustomHandler extends Paged.Handler {
     constructor(chunker, polisher, caller) { super(chunker, polisher, caller); }
@@ -4328,7 +4328,7 @@ ${mainStyles}
     }
   }
   Paged.registerHandlers(CustomHandler);
-</script>
+</${'script'}>
 </head>
 <body>
 `;
@@ -4337,26 +4337,26 @@ ${mainStyles}
   const fmTitle = escapeHtml($('#podFmTitle')?.value || p.title || '제목 없음');
   const fmSub = escapeHtml($('#podFmSubtitle')?.value || ($('#podAuthor')?.value || '저자') + ' 지음');
   const fmPub = escapeHtml($('#podFmPublisher')?.value || '출판사');
-  html += \`<div class="title-page bg-colored"><h1>\${fmTitle}</h1><div style="margin-bottom:40px;">\${fmSub}</div><div>\${fmPub}</div></div>\`;
+  html += `<div class="title-page bg-colored"><h1>${fmTitle}</h1><div style="margin-bottom:40px;">${fmSub}</div><div>${fmPub}</div></div>`;
   
   // 2. 목차 생성 (Cross-Reference 매핑)
-  html += \`<div class="toc-page bg-colored"><h2>차 례</h2><ul class="toc-list">\`;
+  html += `<div class="toc-page bg-colored"><h2>차 례</h2><ul class="toc-list">`;
   eps.forEach((e, idx) => {
     let t = cleanText(e.title) || '(제목 없음)';
-    html += \`<li><div class="toc-title"><span class="toc-prefix">\${idx+1}</span>\${escapeHtml(t)}</div><div class="toc-dots"></div><a class="toc-page-ref" href="#chapter-\${idx}"></a></li>\`;
+    html += `<li><div class="toc-title"><span class="toc-prefix">${idx+1}</span>${escapeHtml(t)}</div><div class="toc-dots"></div><a class="toc-page-ref" href="#chapter-${idx}"></a></li>`;
   });
-  html += \`</ul></div>\`;
+  html += `</ul></div>`;
 
   // 3. 본문 조립
   eps.forEach((e, idx) => {
     let t = cleanText(e.title) || '';
     let b = e.body || '';
-    html += \`<div class="chapter" id="chapter-\${idx}">\`;
-    if(t) html += \`<div class="chapter-title">\${escapeHtml(t)}</div>\`;
-    html += \`<div class="chapter-content">\${b}</div></div>\`;
+    html += `<div class="chapter" id="chapter-${idx}">`;
+    if(t) html += `<div class="chapter-title">${escapeHtml(t)}</div>`;
+    html += `<div class="chapter-content">${b}</div></div>`;
   });
 
-  html += \`</body></html>\`;
+  html += `</body></html>`;
   
   // iframe에 렌더링
   const doc = iframe.contentWindow.document;
