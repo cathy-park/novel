@@ -4450,8 +4450,8 @@ $('#podResetSettingsBtn').addEventListener('click', () => {
 // podSaveSettings()에서 syncLegacyInputs()를 통해 동기화함.
 // exportPODPdf의 @page margin도 pubSet.margins로 동적 적용됨 (하단 별도 수정).
 
-$('#exportPODBtn').onclick = exportPODPdf;
-$('#exportPODCoverBtn').onclick = exportPODCover;
+if ($('#exportPODBtn')) $('#exportPODBtn').onclick = exportPODPdf;
+if ($('#exportPODCoverBtn')) $('#exportPODCoverBtn').onclick = exportPODCover;
 
 function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
