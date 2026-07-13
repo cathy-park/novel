@@ -4292,14 +4292,15 @@ async function renderLivePodPreview() {
 
   const paperKey = pubSet.paperSize || 'A5';
   const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
-  iframe.style.width = (paper.w * 2) + 'mm';
+  // ★ Paged.js 렌더링 버그 방지: 렌더링 중에는 단면(1장) 크기로 강제
+  iframe.style.width = paper.w + 'mm';
   iframe.style.height = paper.h + 'mm';
   
   const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
   const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-  const spreadW_px = (paper.w * 2) * (96 / 25.4);
+  const singleW_px = paper.w * (96 / 25.4);
   const paperH_px = paper.h * (96 / 25.4);
-  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / spreadW_px, (canvasH - 40) / paperH_px));
+  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / singleW_px, (canvasH - 40) / paperH_px));
   iframe.style.transform = `scale(${scale})`;
 
   // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
@@ -4502,6 +4503,21 @@ window.addEventListener('message', (e) => {
     podLastRenderedTotalPages = total;
     window.podPageMap = e.data.pageMap || []; // ★ pageMap 저장
     
+    // ★ 렌더링 완료 후 iframe 너비를 양면(스프레드) 크기로 확장
+    const iframe = document.getElementById('podLiveIframe');
+    if (iframe) {
+      const pubSet = getPublishSettings(window.novelProject);
+      const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+      iframe.style.width = (paper.w * 2) + 'mm';
+      
+      const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
+      const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
+      const spreadW_px = (paper.w * 2) * (96 / 25.4);
+      const paperH_px = paper.h * (96 / 25.4);
+      const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / spreadW_px, (canvasH - 40) / paperH_px));
+      iframe.style.transform = `scale(${newScale})`;
+    }
+
     const st = $('#podLiveRenderStatus');
     if(st) st.textContent = `렌더링 완료 ✓ 총 ${total}쪽`;
     
