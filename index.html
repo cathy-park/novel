@@ -1855,6 +1855,26 @@ window.addEventListener('unhandledrejection', function(e) {
                 <input type="text" id="podPublishDate" class="pod-input" placeholder="예: 2026년 07월 13일">
               </div>
             </div>
+
+            <div id="podFmSettings" style="display:flex; flex-direction:column; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--c-line);">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">속표지 / 본표지 설정</div>
+              <div class="pod-field">
+                <label>제목</label>
+                <input type="text" id="podFmTitle" class="pod-input" placeholder="기본값: 원고 제목">
+              </div>
+              <div class="pod-field">
+                <label>부제 / 저자명</label>
+                <input type="text" id="podFmSubtitle" class="pod-input" placeholder="기본값: [저자명] 지음">
+              </div>
+              <div class="pod-field">
+                <label>출판사 (본표지 하단)</label>
+                <input type="text" id="podFmPublisher" class="pod-input" placeholder="기본값: 퍼플">
+              </div>
+              <div class="pod-field">
+                <label>배경색 (Hex)</label>
+                <input type="text" id="podFmBgColor" class="pod-input" placeholder="예: #ffffff">
+              </div>
+            </div>
           </div>
         </div>
 
@@ -4071,6 +4091,22 @@ $('#pubShowCopyright').onchange = (e) => { $('#pubCopyrightOptions').style.displ
 function updateCoverPreviewRender() {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
+  
+  // exportPODPdf update logic would use:
+  // fmOrder: [
+  //   { id: 'half_title', name: '속표지 (책 제목)', active: true },
+  //   { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
+  //   { id: 'copyright', name: '판권지', active: true },
+  //   { id: 'toc', name: '목차', active: true }
+  // ],
+  // author:        $('#podAuthor').value,
+  // publishDate:   $('#podPublishDate').value,
+  // fmTitle:       $('#podFmTitle').value,
+  // fmSubtitle:    $('#podFmSubtitle').value,
+  // fmPublisher:   $('#podFmPublisher').value,
+  // fmBgColor:     $('#podFmBgColor').value
+  // ... and style="transform: center; .copyright { font-size: 8pt !important; }"
+
   generateCoverPreview(p, set).then(b64 => {
     $('#pubCoverImagePreview').src = b64;
     $('#pubCoverImagePreview').style.display = 'block';
@@ -4189,6 +4225,10 @@ function showPodStudio() {
   renderFmList();
   $('#podAuthor').value = set.frontMatter?.author || '';
   $('#podPublishDate').value = set.frontMatter?.publishDate || '';
+  $('#podFmTitle').value = set.frontMatter?.fmTitle || '';
+  $('#podFmSubtitle').value = set.frontMatter?.fmSubtitle || '';
+  $('#podFmPublisher').value = set.frontMatter?.fmPublisher || '';
+  $('#podFmBgColor').value = set.frontMatter?.fmBgColor || '';
 
   // 표지 설정
   $('#podCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
@@ -5154,42 +5194,56 @@ ${mainStyles}
 
   // 1. 표지 (옵션) - 표지는 분리되어 이미지로 다운로드되므로 PDF에는 포함하지 않습니다.
 
-  const pTitle = escapeHtml(p.title);
+  const pTitle = escapeHtml(pubSet.frontMatter.fmTitle || p.title);
   const pAuthor = escapeHtml(pubSet.frontMatter.author || '박소연');
   const pDate = escapeHtml(pubSet.frontMatter.publishDate || '2026년 07월 13일');
+  const fmSubtitle = escapeHtml(pubSet.frontMatter.fmSubtitle || (pAuthor + ' 지음'));
+  const fmPublisher = escapeHtml(pubSet.frontMatter.fmPublisher || '퍼플');
+  const fmBgColor = pubSet.frontMatter.fmBgColor || '#ffffff';
+  
+  // 시각적 정중앙을 위한 오프셋 계산 (오른쪽 페이지 기준: inner margin이 왼쪽에 위치)
+  const marginInner = parseFloat(pubSet.margins?.inner || 25);
+  const marginOuter = parseFloat(pubSet.margins?.outer || 18);
+  const centerOffset = (marginInner - marginOuter) / 2;
+  const transformStyle = centerOffset ? `transform: translateX(-${centerOffset}mm);` : '';
+  const bgStyle = fmBgColor && fmBgColor !== '#ffffff' ? `background-color: ${escapeHtml(fmBgColor)}; -webkit-print-color-adjust: exact; print-color-adjust: exact;` : '';
 
   // 책머리(Front Matter) 렌더링
   const fmOrder = pubSet.frontMatter?.order || [];
   fmOrder.filter(x => x.active).forEach(item => {
     if (item.id === 'half_title') {
       html += `
-  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh;">
-    <h1 style="font-size:20pt; font-weight:700;">${pTitle}</h1>
+  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
+    <div style="${transformStyle}">
+      <h1 style="font-size:20pt; font-weight:700; text-align:center;">${pTitle}</h1>
+    </div>
   </div>`;
     } else if (item.id === 'title_page') {
       html += `
-  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh;">
-    <h1 style="font-size:24pt; font-weight:700; margin-bottom:20px;">${pTitle}</h1>
-    <div style="font-size:12pt; color:#444; margin-bottom:40px;">${pAuthor} 지음</div>
-    <div style="font-size:12pt; font-weight:700;">퍼플</div>
+  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
+    <div style="display:flex; flex-direction:column; align-items:center; ${transformStyle}">
+      <h1 style="font-size:24pt; font-weight:700; margin-bottom:20px; text-align:center;">${pTitle}</h1>
+      <div style="font-size:12pt; color:#444; margin-bottom:40px; text-align:center;">${fmSubtitle}</div>
+      <div style="font-size:12pt; font-weight:700; text-align:center;">${fmPublisher}</div>
+    </div>
   </div>`;
     } else if (item.id === 'copyright') {
       html += `
-  <div class="chapter matter-page" style="break-before: right; position:relative; height:90vh;">
-    <div style="position:absolute; bottom:0; left:0; right:0; padding:10mm; font-size:9pt; font-family:'KoPub Batang', serif; text-align:left;">
-      <h2 style="font-size:14pt; margin-bottom:24px; font-weight:700;">${pTitle}</h2>
-      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:16px;">
+  <div class="chapter matter-page" style="break-before: right; position:relative; height:90vh; ${bgStyle}">
+    <div style="position:absolute; bottom:0; left:0; right:0; padding:10mm; font-size:8pt !important; font-family:'KoPub Batang', serif; text-align:left; line-height:1.6 !important;">
+      <h2 style="font-size:12pt !important; margin-bottom:20px; font-weight:700;">${pTitle}</h2>
+      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:12px;">
         <div style="color:#666;">발행일</div><div>${pDate}</div>
         <div style="color:#666;">지은이</div><div>${pAuthor}</div>
-        <div style="color:#666;">발행처</div><div>퍼플</div>
+        <div style="color:#666;">발행처</div><div>${fmPublisher}</div>
       </div>
-      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:24px;">
+      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:16px;">
         <div style="color:#666;">출판등록</div><div>제 300-2012-167 호 (2012년 09월 07일)</div>
         <div style="color:#666;">주 소</div><div>서울시 종로구 종로 1 (종로1가) 교보생명빌딩 15층 ㈜교보문고</div>
         <div style="color:#666;">대표전화</div><div>1544-1900</div>
         <div style="color:#666;">홈페이지</div><div>www.kyobobook.co.kr</div>
       </div>
-      <div style="font-size:8pt; color:#333; line-height:1.6; padding-top:16px; border-top:1px solid #ccc;">
+      <div style="font-size:7.5pt !important; color:#333; padding-top:12px; border-top:1px solid #ccc;">
         <p style="margin-bottom:4px;">ⓒ ${pAuthor} ${new Date().getFullYear()}</p>
         <p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p>
       </div>
