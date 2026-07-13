@@ -3151,11 +3151,11 @@ async function generateCoverPreview(p, set) {
     const logoH = logoImg.height * (logoW / logoImg.width);
     ctx.drawImage(logoImg, spineX + (spineW_px - logoW) / 2, fullH * 0.85 - logoH, logoW, logoH);
 
-    // 앞표지 중앙 하단 로고
-    const frontLogoW = Math.max(30, frontCoverW * 0.15);
+    // 앞표지 중앙 하단 로고 (표준 크기 20mm, 도련 포함 하단에서 15mm 위)
+    const frontLogoW = Math.round(20 * MM_TO_PX);
     const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
     const fLx = frontX + (frontCoverW - frontLogoW) / 2;
-    const fLy = fullH * 0.85 - frontLogoH;
+    const fLy = fullH - Math.round((BLEED_MM + 15) * MM_TO_PX) - frontLogoH;
     ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   } else {
     const authorFontSize = Math.min(Math.max(12, spineW_px * 0.3), spineW_px * 0.6);
@@ -3572,8 +3572,8 @@ async function exportPODCover() {
     const sLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - spineLogoH;
     ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
     
-    // 앞표지 중앙 하단 로고
-    const frontLogoW = Math.round(25 * MM_TO_PX);
+    // 앞표지 중앙 하단 로고 (표준 크기 20mm, 도련 포함 하단에서 15mm 위)
+    const frontLogoW = Math.round(20 * MM_TO_PX);
     const frontLogoH = (logoImg.height / logoImg.width) * frontLogoW;
     const fLx = frontX + (frontCoverW - frontLogoW) / 2; 
     const fLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - frontLogoH; 
