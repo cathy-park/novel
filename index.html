@@ -4587,37 +4587,6 @@ function renderPodPageTree() {
   header.innerHTML = `📚 ${escapeHtml(p.title)}`;
   treeEl.appendChild(header);
 
-  // 공통 썸네일 생성 함수
-  function createThumb(title, icon, labelBottom, labelInside) {
-    const el = document.createElement('div');
-    el.style.cssText = `
-      width: 64px;
-      height: 88px;
-      background-color: #fff;
-      border: 1px solid var(--border-color);
-      box-shadow: 1px 2px 4px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      z-index: 1;
-      padding: 6px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    `;
-    el.innerHTML = `
-      <div style="font-size:24px; margin-bottom:4px; opacity:0.8;">${icon}</div>
-      <div style="font-size:10px; font-weight:700; color:var(--c-ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${title}">${title}</div>
-      ${labelInside ? `<div style="font-size:9px; color:var(--c-muted); margin-top:auto; opacity:0.6;">${labelInside}</div>` : ''}
-      ${labelBottom ? `<div style="position:absolute; bottom:-20px; font-size:11px; color:var(--c-link); font-weight:700; background:var(--c-bg); padding:0 4px;">${labelBottom}</div>` : ''}
-    `;
-    el.onmouseenter = () => el.style.borderColor = 'var(--primary)';
-    el.onmouseleave = () => el.style.borderColor = 'var(--border-color)';
-    return el;
-  }
-
   // [1] 표지 섹션 (별도 레이어)
   const coverSection = document.createElement('div');
   coverSection.style.cssText = 'display:flex; flex-direction:column; align-items:center; margin-bottom:32px; position:relative;';
@@ -4626,13 +4595,48 @@ function renderPodPageTree() {
   coverLabel.innerText = '─ 표지 (별도 판형) ─';
   coverSection.appendChild(coverLabel);
   
-  const coverEl = createThumb('표지', '🖼', '', '앞/뒤/책등');
-  // 클릭 시 "미리보기 화면"을 표지로 전환 (좌측 설정 탭 변경 안 함)
+  const createWireframeThumb = (title, label, isCover) => {
+    const el = document.createElement('div');
+    el.className = 'pod-page-thumb-real';
+    el.style.cssText = `
+      width: 64px; height: 88px;
+      background-color: #fff; border: 1px solid var(--border-color);
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start; position: relative; z-index: 1; padding: 6px;
+      cursor: pointer; transition: border-color 0.2s;
+    `;
+    
+    // 와이어프레임 (스켈레톤) 구성
+    const skeleton = isCover ? 
+      `<div style="width:100%; height:40%; background:#eee; margin-bottom:6px; border-radius:2px;"></div>
+       <div style="width:80%; height:4px; background:#ddd; margin-bottom:4px;"></div>
+       <div style="width:60%; height:4px; background:#ddd;"></div>` :
+      `<div style="width:80%; height:6px; background:#e0e0e0; margin-bottom:8px; margin-top:4px;"></div>
+       <div style="width:100%; height:3px; background:#eee; margin-bottom:3px;"></div>
+       <div style="width:100%; height:3px; background:#eee; margin-bottom:3px;"></div>
+       <div style="width:90%; height:3px; background:#eee; margin-bottom:3px;"></div>
+       <div style="width:100%; height:3px; background:#eee; margin-bottom:3px;"></div>
+       <div style="width:70%; height:3px; background:#eee;"></div>`;
+       
+    el.innerHTML = `
+      <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center;">
+        ${skeleton}
+      </div>
+      <div style="position:absolute; bottom:-18px; font-size:10px; color:var(--c-ink); font-weight:600; background:var(--c-bg); padding:0 4px; white-space:nowrap;">${label}</div>
+      <div style="position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:10px; font-weight:700; color:var(--c-ink); opacity:0; transition:opacity 0.2s; white-space:nowrap; max-width:90%; overflow:hidden; text-overflow:ellipsis;" class="thumb-title">${title}</div>
+    `;
+    
+    el.onmouseenter = () => { el.style.borderColor = 'var(--primary)'; el.querySelector('.thumb-title').style.opacity = '1'; };
+    el.onmouseleave = () => { el.style.borderColor = 'var(--border-color)'; el.querySelector('.thumb-title').style.opacity = '0'; };
+    return el;
+  };
+
+  const coverEl = createWireframeThumb('표지', '앞/뒤', true);
   coverEl.onclick = () => { const b = document.querySelector('.pod-preview-tab[data-preview="cover"]'); if(b) b.click(); };
   coverSection.appendChild(coverEl);
   treeEl.appendChild(coverSection);
 
-  // [2] 내지 스프레드 뷰
+  // [2] 내지 스프레드 뷰 (데이터 수집)
   const innerLabel = document.createElement('div');
   innerLabel.style.cssText = 'font-size:11px; font-weight:700; color:var(--c-sub); margin-bottom:16px; width:100%; text-align:center; border-bottom:1px dashed var(--border-color); padding-bottom:4px;';
   innerLabel.innerText = '─ 내지 (본문/부속) ─';
@@ -4642,53 +4646,85 @@ function renderPodPageTree() {
   grid.style.cssText = `
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: max-content;
-    gap: 16px 12px;
+    grid-auto-rows: 104px; /* fixed height for virtualization */
+    column-gap: 12px;
+    row-gap: 0;
     padding: 10px 10px 40px 10px;
     position: relative;
     justify-items: center;
+    align-items: start;
   `;
 
   // 중앙 가이드라인 (책등)
   const centerLine = document.createElement('div');
   centerLine.style.cssText = `
-    position: absolute;
-    top: -10px; bottom: 0; left: 50%;
-    width: 2px;
-    background-color: var(--border-color);
-    z-index: 0;
+    position: absolute; top: -10px; bottom: 0; left: 50%; width: 2px; background-color: var(--border-color); z-index: 0;
   `;
   grid.appendChild(centerLine);
 
-  let pageNum = 1; // 내지의 1쪽 시작
+  const pagesData = [];
+  let pageNum = 1;
   
   // Front matter
-  activeFm.forEach(b => {
-    const meta = FM_BLOCK_META[b.type] || {name: b.type, icon: '📄'};
-    const el = createThumb(meta.name, meta.icon, String(pageNum), '1쪽');
-    if (pageNum === 1) el.style.gridColumn = '2'; // 1페이지는 우측 시작
-    el.onclick = () => { const pb = document.querySelector('.pod-preview-tab[data-preview="fm"]'); if(pb) pb.click(); };
-    grid.appendChild(el);
+  activeFm.forEach((b, idx) => {
+    const meta = FM_BLOCK_META[b.type] || {name: b.type};
+    pagesData.push({ title: meta.name, page: pageNum, type: 'fm', fmIdx: window.fmBlocks?.indexOf(b) || idx });
     pageNum++;
   });
 
-  // Main body
-  let totalBodyPages = 0;
+  // Main body (개별 페이지로 분할)
   loadedEps.forEach(e => {
     const len = e.body.replace(/<[^>]*>?/gm, '').length;
     const pgs = Math.max(2, Math.ceil(len / 350));
-    totalBodyPages += pgs;
-    
-    const endPageNum = pageNum + pgs - 1;
-    const pageLabel = pgs > 1 ? `${pageNum}-${endPageNum}` : `${pageNum}`;
-    
-    const el = createThumb(escapeHtml(e.title), '📄', pageLabel, `예상 ${pgs}쪽`);
-    if (pageNum === 1) el.style.gridColumn = '2'; // 혹시라도 전면부가 하나도 없다면 본문이 1페이지(우측)부터 시작
-    el.onclick = () => { const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]'); if(pb) pb.click(); };
-    grid.appendChild(el);
-    
-    pageNum += pgs;
+    for (let i = 0; i < pgs; i++) {
+      pagesData.push({ title: e.title, page: pageNum, type: 'inner' });
+      pageNum++;
+    }
   });
+
+  // [3] IntersectionObserver를 통한 가상화 렌더링
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(ent => {
+      if (ent.isIntersecting) {
+        const wrap = ent.target;
+        if (!wrap.hasChildNodes()) {
+          const data = pagesData[wrap.dataset.idx];
+          const isOdd = data.page % 2 !== 0;
+          const thumb = createWireframeThumb(data.title, `${data.page}쪽`, false);
+          
+          thumb.onclick = () => {
+            if (data.type === 'fm') {
+              window.fmActiveBlockIdx = data.fmIdx;
+              if (typeof podUpdateFmPreview === 'function') podUpdateFmPreview();
+              const pb = document.querySelector('.pod-preview-tab[data-preview="fm"]'); if(pb) pb.click();
+            } else {
+              window.podCurrentPage = data.page; // 뷰어 여백(Gutter) 홀짝 동기화
+              if (typeof podRenderPage === 'function') podRenderPage();
+              const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]'); if(pb) pb.click();
+            }
+          };
+          wrap.appendChild(thumb);
+        }
+      }
+    });
+  }, { root: treeEl, rootMargin: '100px' }); // 트리 스크롤러 기준, 위아래 100px 미리 로드
+
+  pagesData.forEach((data, i) => {
+    const wrap = document.createElement('div');
+    wrap.dataset.idx = i;
+    wrap.style.cssText = 'width:64px; height:88px;'; // placeholder 크기
+    if (data.page === 1) wrap.style.gridColumn = '2'; // 1페이지는 우측 시작
+    observer.observe(wrap);
+    grid.appendChild(wrap);
+  });
+
+  treeEl.appendChild(grid);
+  
+  const footer = document.createElement('div');
+  footer.style.cssText = 'margin-top:16px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink); padding-right:12px; border-top:1px solid var(--border-color); padding-top:8px;';
+  footer.innerHTML = `내지 예상 총합: ${pageNum - 1}쪽`;
+  treeEl.appendChild(footer);
+}
 
   treeEl.appendChild(grid);
   
