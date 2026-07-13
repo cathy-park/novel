@@ -4238,6 +4238,13 @@ function showPodStudio() {
   $('#podSpineWidth').value = set.coverOptions?.spineWidthMm || spineW;
   $('#podSpineCalcText').textContent = `(자동 계산: ${spineW}mm)`;
   $('#podPublisherLogo').value = set.coverOptions?.logo || '';
+  if ($('#podLogoOptions')) {
+    $('#podLogoOptions').style.display = set.coverOptions?.logo ? 'block' : 'none';
+    $('#podLogoFrontSize').value = set.coverOptions?.logoFrontSize || 20;
+    $('#podLogoFrontBottom').value = set.coverOptions?.logoFrontBottom || 15;
+    $('#podLogoSpineRatio').value = set.coverOptions?.logoSpineRatio || 60;
+    $('#podLogoSpineBottom').value = set.coverOptions?.logoSpineBottom || 15;
+  }
 
   // 기타 탭 통계
   const estPages = podEstimatePages(p);
