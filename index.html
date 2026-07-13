@@ -2015,7 +2015,14 @@ window.addEventListener('unhandledrejection', function(e) {
         <!-- 내지 미리보기 캔버스 -->
         <div class="pod-preview-canvas inner-tab" id="podPreviewInner">
           <div style="position:relative;">
-            <div class="pod-page-info" id="podPageLabel">홀수 페이지 (1, 3, 5... — 우측면)</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div class="pod-page-info" id="podPageLabel" style="margin-bottom:0;">홀수 페이지 (1, 3, 5... — 우측면)</div>
+              <select id="podPreviewMode" class="pod-input" style="width:auto; padding:2px 8px; font-size:11px; background:var(--c-bg);">
+                <option value="body">본문 조판</option>
+                <option value="title_page">본표지(Front Matter)</option>
+                <option value="copyright">판권지</option>
+              </select>
+            </div>
             <div class="pod-page-card" id="podPageCard">
               <!-- 재단선 가이드 -->
               <div class="pod-guide-bleed"></div>
@@ -4347,6 +4354,63 @@ function podUpdatePreview() {
   card.style.setProperty('--font-size-px',     mmToPreviewPx(fontSizeMm) + 'px');
   card.style.setProperty('--line-height',      lineHeight);
 
+  // 미리보기 모드 처리
+  const mode = $('#podPreviewMode')?.value || 'body';
+  const contentEl = $('#podPageContent');
+  
+  if (mode === 'body') {
+    card.style.backgroundColor = '#ffffff';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <p>여기에 원고 본문이 조판되어 표시됩니다. 여백을 조절하면 이 텍스트 영역의 크기가 실시간으로 변합니다.</p>
+        <p>상하좌우 파란 점선이 안전영역(텍스트 인쇄 범위)이며, 붉은 점선이 재단선(최종 재단 위치)입니다.</p>
+        <p>내측의 분홍 사선 영역이 제본여백(Gutter)으로, 책이 제본될 때 안으로 말려 들어가는 부분입니다.</p>
+        <p>홀수/짝수 버튼으로 페이지를 전환하면 Gutter 위치가 좌우로 대칭 전환됩니다.</p>
+      `;
+    }
+  } else if (mode === 'title_page') {
+    const fmBgColor = $('#podFmBgColor')?.value || '#ffffff';
+    card.style.backgroundColor = fmBgColor && fmBgColor.trim() !== '' ? fmBgColor : '#ffffff';
+    const pTitle = $('#podFmTitle')?.value || currentProject()?.title || '제목 없음';
+    const pSubtitle = $('#podFmSubtitle')?.value || ($('#podAuthor')?.value || '저자') + ' 지음';
+    const pPublisher = $('#podFmPublisher')?.value || '퍼플';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center;">
+          <div style="font-size:24px; font-weight:700; margin-bottom:20px;">${escapeHtml(pTitle)}</div>
+          <div style="font-size:14px; color:#444; margin-bottom:40px;">${escapeHtml(pSubtitle)}</div>
+          <div style="font-size:14px; font-weight:700;">${escapeHtml(pPublisher)}</div>
+        </div>
+      `;
+    }
+  } else if (mode === 'copyright') {
+    const fmBgColor = $('#podFmBgColor')?.value || '#ffffff';
+    card.style.backgroundColor = fmBgColor && fmBgColor.trim() !== '' ? fmBgColor : '#ffffff';
+    const pTitle = $('#podFmTitle')?.value || currentProject()?.title || '제목 없음';
+    const pAuthor = $('#podAuthor')?.value || '저자';
+    const pDate = $('#podPublishDate')?.value || '2026년 07월 13일';
+    const pPublisher = $('#podFmPublisher')?.value || '퍼플';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="position:absolute; bottom:0; left:0; right:0; font-size:10px; text-align:left; line-height:1.6;">
+          <div style="font-size:14px; margin-bottom:20px; font-weight:700;">${escapeHtml(pTitle)}</div>
+          <div style="display:grid; grid-template-columns:50px 1fr; gap:4px; margin-bottom:12px;">
+            <div style="color:#666;">발행일</div><div>${escapeHtml(pDate)}</div>
+            <div style="color:#666;">지은이</div><div>${escapeHtml(pAuthor)}</div>
+            <div style="color:#666;">발행처</div><div>${escapeHtml(pPublisher)}</div>
+          </div>
+          <div style="display:grid; grid-template-columns:50px 1fr; gap:4px; margin-bottom:16px;">
+            <div style="color:#666;">출판등록</div><div>제 300-2012-167 호</div>
+            <div style="color:#666;">주 소</div><div>교보생명빌딩 15층 ㈜교보문고</div>
+          </div>
+          <div style="font-size:9px; color:#333; padding-top:12px; border-top:1px solid #ccc;">
+            <p>ⓒ ${escapeHtml(pAuthor)} 2026</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   // 제본여백 사선 표시 — 홀수면 왼쪽, 짝수면 오른쪽
   $('#podGutterLeft').style.display  = podIsOddPage  ? 'block' : 'none';
   $('#podGutterRight').style.display = !podIsOddPage ? 'block' : 'none';
@@ -4546,7 +4610,7 @@ $('#podToggleEven').addEventListener('click', () => {
 });
 
 // 여백 등 입력 실시간 반영
-['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight'].forEach(id => {
+['podPreviewMode','podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
   const el = $('#' + id);
   if(el) el.addEventListener('input', () => { podUpdatePreview(); });
 });
@@ -4938,18 +5002,22 @@ async function exportPODCover() {
 
   // 로고 그리기 (책등 하단, 앞표지 중앙 하단)
   if (logoImg) {
-    // 책등 하단 로고 (너비를 책등에 맞추되 패딩 2mm)
-    const spineLogoW = spineW_px - Math.round(4 * MM_TO_PX); 
+    // 책등 하단 로고
+    const spineLogoRatio = (opts.logoSpineRatio || 60) / 100;
+    const spineBottomMm = opts.logoSpineBottom ?? 15;
+    const spineLogoW = spineW_px * spineLogoRatio;
     const spineLogoH = (logoImg.height / logoImg.width) * spineLogoW;
-    const sLx = spineX + Math.round(2 * MM_TO_PX);
-    const sLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - spineLogoH;
+    const sLx = spineX + (spineW_px - spineLogoW) / 2;
+    const sLy = canvas.height - Math.round((BLEED_MM + spineBottomMm) * MM_TO_PX) - spineLogoH;
     ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
     
-    // 앞표지 중앙 하단 로고 (표준 크기 20mm, 도련 포함 하단에서 15mm 위)
-    const frontLogoW = Math.round(20 * MM_TO_PX);
-    const frontLogoH = (logoImg.height / logoImg.width) * frontLogoW;
+    // 앞표지 중앙 하단 로고
+    const frontLogoW_mm = opts.logoFrontSize ?? 20;
+    const frontBottomMm = opts.logoFrontBottom ?? 15;
+    const frontLogoW = Math.round(frontLogoW_mm * MM_TO_PX);
+    const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
     const fLx = frontX + (frontCoverW - frontLogoW) / 2; 
-    const fLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - frontLogoH; 
+    const fLy = canvas.height - Math.round((BLEED_MM + frontBottomMm) * MM_TO_PX) - frontLogoH; 
     ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   }
 
