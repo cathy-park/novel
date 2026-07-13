@@ -3050,11 +3050,22 @@ function getPublishSettings(p) {
 }
 
 function calculateSpineWidth(p) {
-  // 간단한 추산식: 총 글자수 / 500자 (1페이지) * 0.05mm (페이지당 두께)
   const eps = p.episodes || [];
-  const totalChars = eps.reduce((sum, e) => sum + (e.body ? e.body.replace(/<[^>]*>?/gm, '').length : 0), 0);
-  const estimatedPages = Math.max(10, Math.ceil(totalChars / 500));
-  return Math.max(1, Math.round(estimatedPages * 0.05 * 10) / 10); // 소수점 1자리
+  let estimatedPages = 0;
+  
+  for (const e of eps) {
+    if (!e.body) continue;
+    const textLen = e.body.replace(/<[^>]*>?/gm, '').length;
+    // 한 회차당 대략 350자 = 1페이지로 계산 (문단 나누기 등 고려)
+    let epPages = Math.max(2, Math.ceil(textLen / 350));
+    estimatedPages += epPages;
+  }
+  
+  // 목차, 표제지, 판권지 등 앞뒤 부속 약 10페이지 추가
+  estimatedPages += 10;
+  
+  // 두께 = 페이지 수 * 0.05mm
+  return Math.max(1, Math.round(estimatedPages * 0.05 * 10) / 10);
 }
 
 const MM_TO_PX_300DPI = 300 / 25.4;
@@ -3139,6 +3150,13 @@ async function generateCoverPreview(p, set) {
     const logoW = spineW_px * 0.6;
     const logoH = logoImg.height * (logoW / logoImg.width);
     ctx.drawImage(logoImg, spineX + (spineW_px - logoW) / 2, fullH * 0.85 - logoH, logoW, logoH);
+
+    // 앞표지 중앙 하단 로고
+    const frontLogoW = Math.max(30, frontCoverW * 0.15);
+    const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
+    const fLx = frontX + (frontCoverW - frontLogoW) / 2;
+    const fLy = fullH * 0.85 - frontLogoH;
+    ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   } else {
     const authorFontSize = Math.min(Math.max(12, spineW_px * 0.3), spineW_px * 0.6);
     ctx.font = `normal ${authorFontSize}px ${spineFont}`;
@@ -3545,7 +3563,7 @@ async function exportPODCover() {
   
   ctx.restore();
 
-  // 로고 그리기 (책등 하단, 앞표지 우측 하단)
+  // 로고 그리기 (책등 하단, 앞표지 중앙 하단)
   if (logoImg) {
     // 책등 하단 로고 (너비를 책등에 맞추되 패딩 2mm)
     const spineLogoW = spineW_px - Math.round(4 * MM_TO_PX); 
@@ -3554,12 +3572,12 @@ async function exportPODCover() {
     const sLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - spineLogoH;
     ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
     
-    // 뒷표지 하단 로고
-    const backLogoW = Math.round(25 * MM_TO_PX);
-    const backLogoH = (logoImg.height / logoImg.width) * backLogoW;
-    const bLx = backCoverW - Math.round(15 * MM_TO_PX) - backLogoW; // 우측 여백 15mm
-    const bLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - backLogoH; // 하단 여백 15mm
-    ctx.drawImage(logoImg, bLx, bLy, backLogoW, backLogoH);
+    // 앞표지 중앙 하단 로고
+    const frontLogoW = Math.round(25 * MM_TO_PX);
+    const frontLogoH = (logoImg.height / logoImg.width) * frontLogoW;
+    const fLx = frontX + (frontCoverW - frontLogoW) / 2; 
+    const fLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - frontLogoH; 
+    ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   }
 
   // 다운로드
