@@ -2277,6 +2277,14 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
     
     <label class="modal-field">
+      <span>업스케일 대상</span>
+      <select id="upscaleTarget" class="pod-input" style="padding:8px; margin-bottom: 12px;">
+        <option value="front">현재 등록된 앞표지 원본</option>
+        <option value="spread">전체 완료된 표지 (앞/뒤/책등 최종본) ⚠️ 처리 시간 오래 걸림</option>
+      </select>
+    </label>
+
+    <label class="modal-field">
       <span>배율 선택</span>
       <select id="upscaleScale" class="pod-input" style="padding:8px;">
         <option value="2">2x (기본)</option>
@@ -4943,11 +4951,7 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
   return { body: div.innerHTML, hasTitle };
 }
 
-async function exportPODCover() {
-  const p = currentProject(); if(!p) return;
-  const set = getPublishSettings(p);
-  const opts = set.coverOptions || {};
-  
+async function generatePODCoverCanvas(p, set, opts) {
   const MM_TO_PX = 300 / 25.4;
   const BLEED_MM = 3; // 사방 도련 3mm
   
@@ -5030,7 +5034,7 @@ async function exportPODCover() {
   const spineFont = $('#pubSpineFont').value || "'KoPub Batang', serif";
   
   ctx.save();
-  ctx.fillStyle = (opts.bgColor || '#2c2c2c').toLowerCase() === '#ffffff' ? '#000' : '#fff'; // 배경이 흰색이면 검은 글씨
+  ctx.fillStyle = (opts.bgColor || '#2c2c2c').toLowerCase() === '#ffffff' ? '#000' : '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
@@ -5041,13 +5045,13 @@ async function exportPODCover() {
   for (let i = 0; i < title.length; i++) {
     if (title[i] === ' ') { startY += titleFontSize * 0.5; continue; }
     ctx.fillText(title[i], spineX + spineW_px / 2, startY);
-    startY += titleFontSize * 1.1; // 줄간격
+    startY += titleFontSize * 1.1;
   }
   
   const authorFontSize = Math.min(Math.round(3 * MM_TO_PX), spineW_px * 0.6);
   ctx.font = `normal ${authorFontSize}px ${spineFont}`;
   
-  startY += Math.round(10 * MM_TO_PX); // 제목과 저자 사이 여백
+  startY += Math.round(10 * MM_TO_PX);
   for (let i = 0; i < author.length; i++) {
     if (author[i] === ' ') { startY += authorFontSize * 0.5; continue; }
     ctx.fillText(author[i], spineX + spineW_px / 2, startY);
@@ -5056,9 +5060,8 @@ async function exportPODCover() {
   
   ctx.restore();
 
-  // 로고 그리기 (책등 하단, 앞표지 중앙 하단)
+  // 로고 그리기
   if (logoImg) {
-    // 책등 하단 로고
     const spineLogoRatio = (opts.logoSpineRatio || 60) / 100;
     const spineBottomMm = opts.logoSpineBottom ?? 15;
     const spineLogoW = spineW_px * spineLogoRatio;
@@ -5067,7 +5070,6 @@ async function exportPODCover() {
     const sLy = canvas.height - Math.round((BLEED_MM + spineBottomMm) * MM_TO_PX) - spineLogoH;
     ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
     
-    // 앞표지 중앙 하단 로고
     const frontLogoW_mm = opts.logoFrontSize ?? 7;
     const frontBottomMm = opts.logoFrontBottom ?? 15;
     const frontLogoW = Math.round(frontLogoW_mm * MM_TO_PX);
@@ -5076,6 +5078,17 @@ async function exportPODCover() {
     const fLy = canvas.height - Math.round((BLEED_MM + frontBottomMm) * MM_TO_PX) - frontLogoH; 
     ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   }
+  
+  return canvas;
+}
+
+async function exportPODCover() {
+  const p = currentProject(); if(!p) return;
+  const set = getPublishSettings(p);
+  const opts = set.coverOptions || {};
+  const canvas = await generatePODCoverCanvas(p, set, opts);
+  
+
 
   // 다운로드
   const link = document.createElement('a');
@@ -6015,6 +6028,7 @@ $('#ebookNext').onclick = () => {
 // --- 로컬 AI 표지 업스케일링 ---
 let upscaleWorker = null;
 
+
 function openUpscaleModal() {
   const p = currentProject();
   if (!p || (!currentFrontCoverObj && !currentBackCoverObj)) {
@@ -6027,13 +6041,37 @@ function openUpscaleModal() {
   $('#upscaleProgressBox').style.display = 'none';
   $('#upscaleFoot').style.display = 'flex';
   
-  // 기본 타겟은 앞표지
-  const imgToUpscale = currentFrontCoverObj || currentBackCoverObj;
-  
-  $('#upscaleStartBtn').onclick = () => startUpscale(imgToUpscale.src);
+  $('#upscaleStartBtn').onclick = async () => {
+    const targetType = $('#upscaleTarget').value;
+    
+    if (targetType === 'spread') {
+      // 전체 표지 스프레드 생성
+      const set = getPublishSettings(p);
+      const opts = set.coverOptions || {};
+      
+      $('#upscaleFoot').style.display = 'none';
+      $('#upscaleProgressBox').style.display = 'block';
+      $('#upscaleProgressBar').style.width = '10%';
+      $('#upscaleStatusText').innerText = '전체 표지 이미지를 생성 중입니다...';
+      
+      try {
+        const canvas = await generatePODCoverCanvas(p, set, opts);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        startUpscale(dataUrl, targetType);
+      } catch (err) {
+        alert('표지 생성 중 오류 발생: ' + err.message);
+        $('#upscaleFoot').style.display = 'flex';
+        $('#upscaleProgressBox').style.display = 'none';
+      }
+    } else {
+      // 기본 타겟은 앞표지
+      const imgToUpscale = currentFrontCoverObj || currentBackCoverObj;
+      startUpscale(imgToUpscale.src, targetType);
+    }
+  };
 }
 
-function startUpscale(imageDataUrl) {
+function startUpscale(imageDataUrl, targetType) {
   if (!upscaleWorker) {
     upscaleWorker = new Worker('upscaleWorker.js');
     
@@ -6050,8 +6088,16 @@ function startUpscale(imageDataUrl) {
         $('#upscaleResultBox').style.display = 'block';
         $('#upscaleResultPreview').src = resultDataUrl;
         window.upscaleResultUrl = resultDataUrl;
+        
         $('#upscaleFoot').style.display = 'flex'; // Cancel 버튼 다시 표시
         $('#upscaleStartBtn').style.display = 'none'; // 시작 버튼 숨김
+        
+        // spread 대상이면 "앞표지에 적용" 버튼을 숨김
+        if (targetType === 'spread') {
+          $('#upscaleApplyFrontBtn').style.display = 'none';
+        } else {
+          $('#upscaleApplyFrontBtn').style.display = 'block';
+        }
       } else if (type === 'ERROR') {
         alert('업스케일링 중 오류가 발생했습니다: ' + error);
         $('#upscaleProgressBox').style.display = 'none';
