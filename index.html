@@ -2447,6 +2447,8 @@ let isAppInitialized = false;
 let isFocusMode = false;
 let isPlanDrawerOpen = false;
 let episodeScrollState = new Map();
+let currentFrontCoverObj = null;
+let currentBackCoverObj = null;
 
 function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
 function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: '', status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
