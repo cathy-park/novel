@@ -1022,10 +1022,463 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ep-badge.prologue { background: #F3E8FF; color: #7E22CE; }
 .ep-badge.chapter { background: #E0F2FE; color: #0369A1; }
 .ep-badge.epilogue { background: #DCFCE7; color: #15803D; }
-</style>
 
+/* ==============================
+   POD Publishing Studio (Phase 1)
+   ============================== */
+
+/* 스튜디오 전체 레이아웃 */
+#podStudioView {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--c-bg);
+}
+#podStudioView.active { display: flex; }
+
+/* 스튜디오 상단 툴바 */
+.pod-studio-toolbar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--c-line);
+  background: var(--c-surface);
+  gap: 12px;
+}
+.pod-studio-toolbar-left { display: flex; align-items: center; gap: 12px; }
+.pod-studio-toolbar-right { display: flex; align-items: center; gap: 8px; }
+.pod-studio-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--c-ink);
+  letter-spacing: -0.02em;
+}
+.pod-studio-breadcrumb {
+  font-size: 12px;
+  color: var(--c-muted);
+  font-weight: 500;
+}
+
+/* 스튜디오 바디 (설정 패널 + 미리보기) */
+.pod-studio-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  overflow: hidden;
+}
+
+/* 설정 패널 (좌측) */
+.pod-settings-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--c-line);
+  overflow-y: auto;
+  background: var(--c-surface);
+}
+.pod-settings-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--c-line);
+  position: sticky;
+  top: 0;
+  background: var(--c-surface);
+  z-index: 2;
+}
+.pod-settings-tab {
+  flex: 1;
+  padding: 12px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-muted);
+  text-align: center;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  border-bottom: 2px solid transparent;
+  transition: .16s;
+}
+.pod-settings-tab.active {
+  color: var(--c-accent);
+  border-bottom-color: var(--c-accent);
+}
+.pod-settings-pane {
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  padding: 20px 18px;
+}
+.pod-settings-pane.active { display: flex; }
+
+/* 설정 섹션 */
+.pod-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--c-line);
+}
+.pod-section:last-child { border-bottom: 0; }
+.pod-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--c-muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.pod-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pod-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-sub);
+}
+.pod-input {
+  padding: 8px 10px;
+  font-size: 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  outline: none;
+  transition: border-color .16s;
+  width: 100%;
+  font-family: inherit;
+}
+.pod-input:focus { border-color: var(--c-accent); }
+.pod-input[type="number"] { -moz-appearance: textfield; }
+.pod-input[type="number"]::-webkit-inner-spin-button,
+.pod-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+/* 여백 그리드 (4방향 입력) */
+.pod-margin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pod-margin-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pod-margin-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-sub);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pod-margin-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+.pod-margin-badge.gutter { background: #FFE4E8; color: #C94F68; }
+.pod-margin-badge.safe { background: #E8F4FF; color: #1D70C2; }
+.pod-margin-badge.bleed { background: #FFF3E0; color: #B46A20; }
+.pod-mm-input-wrap {
+  position: relative;
+}
+.pod-mm-input-wrap input {
+  width: 100%;
+  padding: 7px 28px 7px 8px;
+  font-size: 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  outline: none;
+  transition: border-color .16s;
+  font-family: inherit;
+  -moz-appearance: textfield;
+}
+.pod-mm-input-wrap input::-webkit-inner-spin-button,
+.pod-mm-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.pod-mm-input-wrap input:focus { border-color: var(--c-accent); }
+.pod-mm-suffix {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--c-muted);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* 체크박스 라벨 */
+.pod-check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-body);
+}
+.pod-check-label input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--c-accent); }
+
+/* 프리셋 버튼 행 */
+.pod-preset-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pod-preset-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--c-surface);
+  color: var(--c-sub);
+  cursor: pointer;
+  transition: .16s;
+}
+.pod-preset-btn:hover { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-bg); }
+.pod-preset-btn.active { border-color: var(--c-accent); color: var(--c-accent-dk); background: var(--c-accent-lt); }
+
+/* 미리보기 패널 (우측) */
+.pod-preview-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #E8E8EC;
+}
+.pod-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-line-mid);
+  background: #DDDDE4;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.pod-preview-tabs {
+  display: flex;
+  gap: 4px;
+}
+.pod-preview-tab {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--c-sub);
+  transition: .16s;
+}
+.pod-preview-tab.active { background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-xs); }
+.pod-preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pod-page-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.pod-page-toggle button {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-sub);
+  cursor: pointer;
+  transition: .16s;
+}
+.pod-page-toggle button.active {
+  background: var(--c-accent);
+  color: #fff;
+}
+.pod-guide-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--c-sub);
+}
+.pod-guide-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.pod-guide-dot::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+.pod-guide-dot.bleed::before { border: 1.5px dashed #FF6B6B; }
+.pod-guide-dot.safe::before { border: 1.5px dashed #3B82F6; }
+.pod-guide-dot.gutter::before { background: #E879A088; }
+
+/* 미리보기 캔버스 영역 */
+.pod-preview-canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px;
+}
+.pod-preview-canvas.cover-tab { display: none; }
+.pod-preview-canvas.inner-tab { display: flex; }
+
+/* 실제 페이지 카드 */
+.pod-page-card {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2), 0 2px 8px rgba(0,0,0,.12);
+  border-radius: 1px;
+  flex-shrink: 0;
+  /* 크기는 JS에서 CSS variables로 제어 */
+  width: var(--page-w, 260px);
+  height: var(--page-h, 368px);
+  overflow: hidden;
+}
+
+/* 가이드라인 레이어들 */
+.pod-guide-bleed {
+  position: absolute;
+  inset: calc(-1 * var(--bleed-px, 0px));
+  border: 1.5px dashed #FF6B6B99;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 1px;
+}
+.pod-guide-safe {
+  position: absolute;
+  top: var(--margin-top-px, 40px);
+  bottom: var(--margin-bottom-px, 40px);
+  left: var(--margin-left-px, 30px);
+  right: var(--margin-right-px, 30px);
+  border: 1.5px dashed #3B82F699;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 1px;
+}
+.pod-guide-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--gutter-px, 20px);
+  background: repeating-linear-gradient(
+    -45deg,
+    #E879A01A,
+    #E879A01A 3px,
+    transparent 3px,
+    transparent 8px
+  );
+  pointer-events: none;
+  z-index: 9;
+}
+.pod-guide-gutter.left { left: 0; }
+.pod-guide-gutter.right { right: 0; display: none; }
+
+/* 텍스트 컨텐츠 영역 미리보기 */
+.pod-page-content {
+  position: absolute;
+  top: var(--margin-top-px, 40px);
+  bottom: var(--margin-bottom-px, 40px);
+  left: var(--margin-left-px, 30px);
+  right: var(--margin-right-px, 30px);
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 1.75;
+  color: #333;
+  font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+}
+.pod-page-content p {
+  margin: 0 0 4px;
+  text-indent: 10px;
+  font-size: 7px;
+  color: #444;
+  word-break: keep-all;
+}
+.pod-page-num {
+  position: absolute;
+  bottom: calc(var(--margin-bottom-px, 40px) / 2);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 6px;
+  color: #999;
+  font-family: serif;
+}
+
+/* 페이지 정보 배지 */
+.pod-page-info {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--c-muted);
+  white-space: nowrap;
+  background: #E8E8EC;
+  padding: 2px 8px;
+  border-radius: 99px;
+  z-index: 20;
+  pointer-events: none;
+  top: -24px;
+}
+
+/* 표지 미리보기 */
+.pod-cover-preview-wrap {
+  flex: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px;
+}
+.pod-cover-preview-wrap.active { display: flex; }
+
+/* 하단 액션 바 */
+.pod-action-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--c-line-mid);
+  background: #DDDDE4;
+}
+
+/* 반응형 */
+@media (max-width: 900px) {
+  .pod-studio-body { grid-template-columns: 1fr; }
+  .pod-preview-panel { display: none; }
+  .pod-settings-panel { border-right: 0; }
+}
+
+
+</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <script>
 window.addEventListener('error', function(e) {
   setTimeout(() => showToast('에러: ' + e.message), 1000);
@@ -1161,9 +1614,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="max-width:880px; margin:0 auto 20px; display:flex; justify-content:space-between; align-items:center;">
         <div><h1 id="manuscriptTitle" style="display:none;"></h1><p id="manuscriptMeta" style="margin:4px 0 0;color:var(--c-sub);font-size:12px;"></p></div>
         <div style="display:flex; gap:8px;">
-          <button id="openPublishSettingsBtn" class="ghost" style="background:#444; color:#fff;" type="button">⚙️ 설정</button>
-          <button id="exportPODCoverBtn" class="primary" style="background:#4E342E;" type="button">🎨 표지 다운로드(JPG)</button>
-          <button id="exportPODBtn" class="primary" style="background:#2E2A25;" type="button">🖨️ 내지 인쇄(PDF)</button>
+          <button id="openPublishSettingsBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
           <button id="copyManuscriptFull" class="primary" type="button">전체 본문 복사</button>
           <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
         </div>
@@ -1171,6 +1622,315 @@ window.addEventListener('unhandledrejection', function(e) {
       <div id="manuscriptContent" class="manuscript"></div>
     </section>
   </main>
+
+  <!-- =====================================================
+       POD Publishing Studio — Phase 1 Split View
+       ===================================================== -->
+  <div id="podStudioView">
+    <!-- 상단 툴바 -->
+    <div class="pod-studio-toolbar">
+      <div class="pod-studio-toolbar-left">
+        <button id="backFromPodStudio" class="icon-btn" title="돌아가기" style="font-size:20px;">←</button>
+        <div>
+          <div class="pod-studio-title">📐 출판 스튜디오</div>
+          <div class="pod-studio-breadcrumb" id="podStudioBreadcrumb">작품을 선택하세요</div>
+        </div>
+      </div>
+      <div class="pod-studio-toolbar-right">
+        <button id="podExportCoverBtn" class="secondary" type="button" style="font-size:12px;">🎨 표지 JPG 저장</button>
+        <button id="podExportPdfBtn" class="primary" style="background:#2E2A25; font-size:12px;" type="button">🖨️ 내지 PDF 인쇄</button>
+      </div>
+    </div>
+
+    <!-- 바디 (설정 패널 + 미리보기) -->
+    <div class="pod-studio-body">
+
+      <!-- ─── 좌측: 설정 패널 ─── -->
+      <div class="pod-settings-panel">
+        <!-- 탭 헤더 -->
+        <div class="pod-settings-tabs">
+          <button class="pod-settings-tab active" data-pane="inner">📄 내지 설정</button>
+          <button class="pod-settings-tab" data-pane="cover">🎨 표지 설정</button>
+          <button class="pod-settings-tab" data-pane="extra">⚙️ 기타</button>
+        </div>
+
+        <!-- ── 내지 설정 탭 ── -->
+        <div class="pod-settings-pane active" id="podPane-inner">
+
+          <!-- 판형 + 출판사 프리셋 -->
+          <div class="pod-section">
+            <div class="pod-section-title">판형</div>
+            <div class="pod-field">
+              <label>용지 크기</label>
+              <select id="podPaperSize" class="pod-input">
+                <option value="A5">A5 — 신국판/국판 (148 × 210 mm)</option>
+                <option value="B6">B6 — 문고판 (128 × 182 mm)</option>
+              </select>
+            </div>
+            <div class="pod-field">
+              <label>출판사 프리셋 <span style="color:var(--c-muted);font-weight:400;">(선택 시 여백 자동 적용)</span></label>
+              <div class="pod-preset-row">
+                <button class="pod-preset-btn" data-preset="purple">교보 퍼플</button>
+                <button class="pod-preset-btn" data-preset="bookcube">부크크</button>
+                <button class="pod-preset-btn" data-preset="onehyphen">원하이프레스</button>
+                <button class="pod-preset-btn" data-preset="custom">직접 입력</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 내지 여백 (핵심) -->
+          <div class="pod-section">
+            <div class="pod-section-title">내지 여백</div>
+            <div style="font-size:11px;color:var(--c-muted);line-height:1.5;margin-bottom:4px;">
+              우측 미리보기에 <span style="color:#FF6B6B;font-weight:700;">재단선</span>과 <span style="color:#3B82F6;font-weight:700;">안전영역</span>이 실시간으로 표시됩니다.
+            </div>
+            <div class="pod-margin-grid">
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">상단 (Top)</div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginTop" value="20" min="5" max="50" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">하단 (Bottom)</div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginBottom" value="20" min="5" max="50" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">
+                  내측 (Gutter)
+                  <span class="pod-margin-badge gutter">제본</span>
+                </div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginInner" value="25" min="10" max="60" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">
+                  외측 (Outer)
+                  <span class="pod-margin-badge safe">외곽</span>
+                </div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginOuter" value="18" min="5" max="50" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+            </div>
+            <div class="pod-margin-item" style="margin-top:4px;">
+              <div class="pod-margin-label">
+                재단선 (Bleed)
+                <span class="pod-margin-badge bleed">사방</span>
+              </div>
+              <div class="pod-mm-input-wrap" style="width:50%;">
+                <input type="number" id="podBleed" value="3" min="0" max="5" step="0.5">
+                <span class="pod-mm-suffix">mm</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 본문 서식 -->
+          <div class="pod-section">
+            <div class="pod-section-title">본문 서식</div>
+            <div class="pod-field">
+              <label>본문 폰트 크기 (pt)</label>
+              <div class="pod-mm-input-wrap" style="width:50%;">
+                <input type="number" id="podFontSize" value="10" min="8" max="14" step="0.5" class="">
+                <span class="pod-mm-suffix">pt</span>
+              </div>
+            </div>
+            <div class="pod-field">
+              <label>줄간격</label>
+              <select id="podLineHeight" class="pod-input">
+                <option value="1.6">1.6 (좁게)</option>
+                <option value="1.75" selected>1.75 (기본)</option>
+                <option value="1.9">1.9 (넓게)</option>
+                <option value="2.0">2.0 (매우 넓게)</option>
+              </select>
+            </div>
+            <label class="pod-check-label">
+              <input type="checkbox" id="podAutoTOC" checked> 목차 자동 생성
+            </label>
+            <label class="pod-check-label">
+              <input type="checkbox" id="podShowTitle"> 회차 제목 자동 삽입
+            </label>
+          </div>
+
+          <!-- 판권지 -->
+          <div class="pod-section">
+            <div class="pod-section-title">판권지</div>
+            <label class="pod-check-label">
+              <input type="checkbox" id="podShowCopyright"> 판권지 페이지 추가
+            </label>
+            <div id="podCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:4px;">
+              <div class="pod-field">
+                <label>지은이 (저자명)</label>
+                <input type="text" id="podAuthor" class="pod-input" placeholder="예: 박소연">
+              </div>
+              <div class="pod-field">
+                <label>발행일</label>
+                <input type="text" id="podPublishDate" class="pod-input" placeholder="예: 2026년 07월 13일">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 표지 설정 탭 ── -->
+        <div class="pod-settings-pane" id="podPane-cover">
+
+          <!-- 책등 -->
+          <div class="pod-section">
+            <div class="pod-section-title">책등 (Spine)</div>
+            <div class="pod-field">
+              <label>책등 두께</label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="pod-mm-input-wrap" style="width:60%;">
+                  <input type="number" id="podSpineWidth" min="1" step="0.5" class="">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+                <span id="podSpineCalcText" style="font-size:11px; color:var(--c-muted);"></span>
+              </div>
+            </div>
+            <div class="pod-field">
+              <label>책등 폰트</label>
+              <select id="podSpineFont" class="pod-input">
+                <option value="'KoPub Batang', serif">KoPub 바탕 (명조)</option>
+                <option value="'Noto Serif KR', serif">Noto Serif (바탕)</option>
+                <option value="'Noto Sans KR', sans-serif">Noto Sans (고딕)</option>
+                <option value="Pretendard, sans-serif">Pretendard</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 표지 이미지 -->
+          <div class="pod-section">
+            <div class="pod-section-title">표지 이미지</div>
+            <div class="pod-field">
+              <label>앞표지 업로드 (우측)</label>
+              <input type="file" id="podFrontCoverInput" accept="image/png, image/jpeg" class="pod-input" style="padding:4px;">
+            </div>
+            <div class="pod-field">
+              <label>뒷표지 업로드 (좌측)</label>
+              <input type="file" id="podBackCoverInput" accept="image/png, image/jpeg" class="pod-input" style="padding:4px;">
+            </div>
+          </div>
+
+          <!-- 배경 + 로고 -->
+          <div class="pod-section">
+            <div class="pod-section-title">배경 & 로고</div>
+            <div class="pod-field">
+              <label>전체 배경색 (빈 영역)</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="color" id="podCoverBgColor" value="#2c2c2c" style="width:36px; height:36px; border:1px solid var(--c-line); border-radius:6px; cursor:pointer; padding:2px;">
+                <input type="text" id="podCoverBgColorHex" value="#2c2c2c" class="pod-input" style="flex:1; max-width:100px;">
+              </div>
+            </div>
+            <div class="pod-field">
+              <label>출판사 로고</label>
+              <select id="podPublisherLogo" class="pod-input">
+                <option value="">없음</option>
+                <option value="pod_logo/흑백_타입(한글ver).png">퍼플 흑백 (한글)</option>
+                <option value="pod_logo/흑백_타입(영문ver).png">퍼플 흑백 (영문)</option>
+                <option value="pod_logo/흰색_타입(한글ver).png">퍼플 흰색 (한글)</option>
+                <option value="pod_logo/흰색_타입(영문ver).png">퍼플 흰색 (영문)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 미리보기 -->
+          <div class="pod-section">
+            <div class="pod-section-title">표지 미리보기</div>
+            <img id="podCoverImagePreview" src="" style="display:none; width:100%; height:auto; max-height:300px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
+            <div id="podCoverCanvasWrap" style="width:100%; overflow:hidden; border-radius:4px; background:#f0f0f0; min-height:80px; display:flex; align-items:center; justify-content:center;">
+              <canvas id="podCoverCanvas" style="max-width:100%; height:auto; display:block;"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 기타 탭 ── -->
+        <div class="pod-settings-pane" id="podPane-extra">
+          <div class="pod-section">
+            <div class="pod-section-title">책 두께 계산기</div>
+            <div style="font-size:12px;color:var(--c-body);line-height:1.7;">
+              <div>총 예상 페이지수: <strong id="podEstPages">—</strong> 페이지</div>
+              <div>책등 두께 (자동): <strong id="podEstSpine">—</strong> mm</div>
+              <div style="margin-top:8px;font-size:11px;color:var(--c-muted);">※ 1페이지 ≈ 350자 기준 추정값입니다. 실제 인쇄 시 달라질 수 있습니다.</div>
+            </div>
+          </div>
+          <div class="pod-section">
+            <div class="pod-section-title">설정 초기화</div>
+            <button id="podResetSettingsBtn" class="danger" style="width:100%;" type="button">⚠️ 출판 설정 초기화</button>
+          </div>
+        </div>
+
+        <!-- 하단 저장 버튼 -->
+        <div style="padding:16px 18px; border-top:1px solid var(--c-line); background:var(--c-surface); position:sticky; bottom:0; z-index:2;">
+          <button id="podSaveSettingsBtn" class="primary" style="width:100%; height:40px;" type="button">설정 저장</button>
+        </div>
+      </div>
+
+      <!-- ─── 우측: 미리보기 패널 ─── -->
+      <div class="pod-preview-panel">
+        <!-- 미리보기 툴바 -->
+        <div class="pod-preview-toolbar">
+          <div class="pod-preview-tabs">
+            <button class="pod-preview-tab active" data-preview="inner">내지 미리보기</button>
+            <button class="pod-preview-tab" data-preview="cover">표지 미리보기</button>
+          </div>
+          <div class="pod-preview-controls">
+            <!-- 홀수/짝수 토글 (내지 탭에서만) -->
+            <div class="pod-page-toggle" id="podPageToggleWrap">
+              <button id="podToggleOdd" class="active">홀수 페이지 (우측)</button>
+              <button id="podToggleEven">짝수 페이지 (좌측)</button>
+            </div>
+            <!-- 범례 -->
+            <div class="pod-guide-legend">
+              <span class="pod-guide-dot bleed">재단선</span>
+              <span class="pod-guide-dot safe">안전영역</span>
+              <span class="pod-guide-dot gutter">제본여백</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 내지 미리보기 캔버스 -->
+        <div class="pod-preview-canvas inner-tab" id="podPreviewInner">
+          <div style="position:relative;">
+            <div class="pod-page-info" id="podPageLabel">홀수 페이지 (1, 3, 5... — 우측면)</div>
+            <div class="pod-page-card" id="podPageCard">
+              <!-- 재단선 가이드 -->
+              <div class="pod-guide-bleed"></div>
+              <!-- 안전영역 가이드 -->
+              <div class="pod-guide-safe"></div>
+              <!-- 제본여백 (좌/우 사선) -->
+              <div class="pod-guide-gutter left" id="podGutterLeft"></div>
+              <div class="pod-guide-gutter right" id="podGutterRight"></div>
+              <!-- 본문 텍스트 미리보기 -->
+              <div class="pod-page-content" id="podPageContent">
+                <p>여기에 원고 본문이 조판되어 표시됩니다. 여백을 조절하면 이 텍스트 영역의 크기가 실시간으로 변합니다.</p>
+                <p>상하좌우 파란 점선이 안전영역(텍스트 인쇄 범위)이며, 붉은 점선이 재단선(최종 재단 위치)입니다.</p>
+                <p>내측의 분홍 사선 영역이 제본여백(Gutter)으로, 책이 제본될 때 안으로 말려 들어가는 부분입니다.</p>
+                <p>홀수/짝수 버튼으로 페이지를 전환하면 Gutter 위치가 좌우로 대칭 전환됩니다.</p>
+              </div>
+              <!-- 페이지 번호 위치 표시 -->
+              <div class="pod-page-num">— 1 —</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 표지 미리보기 캔버스 -->
+        <div class="pod-cover-preview-wrap" id="podPreviewCover">
+          <div style="text-align:center;">
+            <canvas id="podCoverPreviewCanvas" style="max-width:100%; max-height:70vh; height:auto; display:block; box-shadow:0 8px 32px rgba(0,0,0,.25);"></canvas>
+            <div style="margin-top:12px; font-size:11px; color:var(--c-muted);">표지 설정 탭에서 이미지를 업로드하거나 배경색을 변경하면 미리보기가 업데이트됩니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <aside id="planDrawer" class="plan-drawer">
     <div class="drawer-head" style="flex-direction:column; align-items:flex-start; gap:12px;">
@@ -3033,6 +3793,15 @@ function getPublishSettings(p) {
     includeCover: true, 
     autoTOC: true, 
     showTitle: false,
+    fontSize: 10,
+    lineHeight: 1.75,
+    margins: {
+      top: 20,
+      bottom: 20,
+      inner: 25,
+      outer: 18,
+      bleed: 3
+    },
     coverOptions: {
       imageBase64: null,
       fillMode: false,
@@ -3046,7 +3815,15 @@ function getPublishSettings(p) {
       publishDate: ''
     }
   };
-  return Object.assign(defaults, p.publishSettings || {});
+  const saved = p.publishSettings || {};
+  // margins는 deep merge (Object.assign은 shallow)
+  return {
+    ...defaults,
+    ...saved,
+    margins: { ...defaults.margins, ...(saved.margins || {}) },
+    coverOptions: { ...defaults.coverOptions, ...(saved.coverOptions || {}) },
+    frontMatter: { ...defaults.frontMatter, ...(saved.frontMatter || {}) }
+  };
 }
 
 function calculateSpineWidth(p) {
@@ -3242,60 +4019,235 @@ $('#pubBackCoverInput').onchange = (e) => {
   reader.readAsDataURL(file);
 };
 
-$('#openPublishSettingsBtn').onclick = () => {
+// ============================================================
+//  POD Publishing Studio — Phase 1
+//  Split View 출판 스튜디오 로직
+// ============================================================
+
+// ── 출판사 프리셋 데이터 ──────────────────────────────────────
+const POD_PRESETS = {
+  purple: {
+    name: '교보 퍼플',
+    paperSize: 'A5',
+    margins: { top: 20, bottom: 20, inner: 25, outer: 18, bleed: 3 }
+  },
+  bookcube: {
+    name: '부크크',
+    paperSize: 'A5',
+    margins: { top: 20, bottom: 20, inner: 22, outer: 17, bleed: 0 }
+  },
+  onehyphen: {
+    name: '원하이프레스',
+    paperSize: 'A5',
+    margins: { top: 18, bottom: 18, inner: 23, outer: 16, bleed: 3 }
+  }
+};
+
+// ── mm → px 변환 (화면 축척 기준) ────────────────────────────
+const PREVIEW_SCALE = 1; // 화면 내 1mm = PREVIEW_SCALE px (JS에서 계산)
+let podPreviewScale = 1;
+
+function mmToPreviewPx(mm) {
+  return mm * podPreviewScale;
+}
+
+// ── 용지 크기 매핑 ────────────────────────────────────────────
+const PAPER_SIZES = {
+  A5: { w: 148, h: 210 },
+  B6: { w: 128, h: 182 }
+};
+
+// ── 스튜디오 열기 ─────────────────────────────────────────────
+function showPodStudio() {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
-  
-  $('#pubPaperSize').value = set.paperSize;
-  
-  // Cover options
-  $('#pubCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
-  $('#pubCoverBgColorHex').value = set.coverOptions?.bgColor || '#2c2c2c';
-  $('#pubSpineFont').value = set.coverOptions?.spineFont || "'KoPub Batang', serif";
-  $('#pubSpineWidth').value = calculateSpineWidth(p); // 항상 최신 페이지 수에 기반해 자동 계산된 값을 기본값으로 넣음
-  $('#pubSpineCalcText').textContent = `(자동 계산됨: ${calculateSpineWidth(p)}mm)`;
-  $('#pubPublisherLogo').value = set.coverOptions?.logo || '';
-  
-  if(set.coverOptions?.frontOriginal) {
+
+  // 브레드크럼
+  $('#podStudioBreadcrumb').textContent = p.title;
+
+  // 기존 설정값 반영
+  const margins = set.margins || { top: 20, bottom: 20, inner: 25, outer: 18, bleed: 3 };
+  $('#podPaperSize').value = set.paperSize || 'A5';
+  $('#podMarginTop').value = margins.top;
+  $('#podMarginBottom').value = margins.bottom;
+  $('#podMarginInner').value = margins.inner;
+  $('#podMarginOuter').value = margins.outer;
+  $('#podBleed').value = margins.bleed !== undefined ? margins.bleed : 3;
+  $('#podFontSize').value = set.fontSize || 10;
+  $('#podLineHeight').value = set.lineHeight || '1.75';
+  $('#podAutoTOC').checked = set.autoTOC !== false;
+  $('#podShowTitle').checked = !!set.showTitle;
+
+  // 판권지
+  $('#podShowCopyright').checked = set.frontMatter?.showCopyright || false;
+  $('#podCopyrightOptions').style.display = set.frontMatter?.showCopyright ? 'flex' : 'none';
+  $('#podAuthor').value = set.frontMatter?.author || '';
+  $('#podPublishDate').value = set.frontMatter?.publishDate || '';
+
+  // 표지 설정
+  $('#podCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
+  $('#podCoverBgColorHex').value = set.coverOptions?.bgColor || '#2c2c2c';
+  $('#podSpineFont').value = set.coverOptions?.spineFont || "'KoPub Batang', serif";
+  const spineW = calculateSpineWidth(p);
+  $('#podSpineWidth').value = set.coverOptions?.spineWidthMm || spineW;
+  $('#podSpineCalcText').textContent = `(자동 계산: ${spineW}mm)`;
+  $('#podPublisherLogo').value = set.coverOptions?.logo || '';
+
+  // 기타 탭 통계
+  const estPages = podEstimatePages(p);
+  $('#podEstPages').textContent = estPages;
+  $('#podEstSpine').textContent = Math.max(1, Math.round(estPages * 0.05 * 10) / 10);
+
+  // 이미지 로드 (표지)
+  if (set.coverOptions?.frontOriginal) {
     const img = new Image();
-    img.onload = () => { currentFrontCoverObj = img; };
+    img.onload = () => { currentFrontCoverObj = img; podUpdateCoverPreview(); };
     img.src = set.coverOptions.frontOriginal;
   } else {
     currentFrontCoverObj = null;
-    $('#pubFrontCoverInput').value = '';
   }
-
-  if(set.coverOptions?.backOriginal) {
+  if (set.coverOptions?.backOriginal) {
     const img = new Image();
-    img.onload = () => { currentBackCoverObj = img; };
+    img.onload = () => { currentBackCoverObj = img; podUpdateCoverPreview(); };
     img.src = set.coverOptions.backOriginal;
   } else {
     currentBackCoverObj = null;
-    $('#pubBackCoverInput').value = '';
   }
 
-  // Front Matter options
-  $('#pubShowCopyright').checked = set.frontMatter?.showCopyright || false;
-  $('#pubCopyrightOptions').style.display = set.frontMatter?.showCopyright ? 'flex' : 'none';
-  $('#pubAuthor').value = set.frontMatter?.author || '';
-  $('#pubPublisher').value = set.frontMatter?.publisher || '';
-  $('#pubPublishDate').value = set.frontMatter?.publishDate || '';
-  $('#pubPubReg').value = set.frontMatter?.pubReg || '';
-  $('#pubAddress').value = set.frontMatter?.address || '';
-  $('#pubPhone').value = set.frontMatter?.phone || '';
-  $('#pubHomepage').value = set.frontMatter?.homepage || '';
+  // 화면 전환: manuscriptView를 숨기고 podStudioView를 활성화
+  $('#manuscriptView').classList.remove('active');
+  $('#editorView').classList.add('hidden');
+  $('#podStudioView').classList.add('active');
 
-  // Other options
-  $('#pubAutoTOC').checked = set.autoTOC;
-  $('#pubShowTitle').checked = set.showTitle;
+  // 초기 미리보기 업데이트
+  podUpdatePreview();
+  podUpdateCoverPreview();
+}
 
-  updateCoverPreviewRender();
-  openModal('publishSettingsModal');
-};
+function hidePodStudio() {
+  $('#podStudioView').classList.remove('active');
+  // 원고 보기로 복귀 (manuscriptView는 editorView와 별도)
+  $('#editorView').classList.add('hidden');
+  $('#manuscriptView').classList.add('active');
+}
 
-$('#savePublishSettingsBtn').onclick = () => {
+function podEstimatePages(p) {
+  let total = 0;
+  for (const e of (p.episodes || [])) {
+    if (!e.body) continue;
+    const len = e.body.replace(/<[^>]*>?/gm, '').length;
+    total += Math.max(2, Math.ceil(len / 350));
+  }
+  return total + 10;
+}
+
+// ── 내지 미리보기 실시간 업데이트 ────────────────────────────
+let podIsOddPage = true; // true = 홀수(우측), false = 짝수(좌측)
+
+function podUpdatePreview() {
+  const paperKey = $('#podPaperSize').value || 'A5';
+  const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
+
+  // 카드 표시 크기 계산 (최대 높이 500px 기준)
+  const maxH = 500;
+  const scale = maxH / paper.h;
+  podPreviewScale = scale;
+  const cardW = Math.round(paper.w * scale);
+  const cardH = Math.round(paper.h * scale);
+
+  const card = $('#podPageCard');
+  card.style.setProperty('--page-w', cardW + 'px');
+  card.style.setProperty('--page-h', cardH + 'px');
+  card.style.width = cardW + 'px';
+  card.style.height = cardH + 'px';
+
+  // 여백값 읽기
+  const top    = parseFloat($('#podMarginTop').value)    || 20;
+  const bottom = parseFloat($('#podMarginBottom').value) || 20;
+  const inner  = parseFloat($('#podMarginInner').value)  || 25;
+  const outer  = parseFloat($('#podMarginOuter').value)  || 18;
+  const bleed  = parseFloat($('#podBleed').value)        || 0;
+
+  // 홀수/짝수에 따른 좌/우 여백 결정
+  // 홀수(우측 페이지): 내측=왼쪽, 외측=오른쪽
+  // 짝수(좌측 페이지): 내측=오른쪽, 외측=왼쪽
+  const leftMm  = podIsOddPage ? inner : outer;
+  const rightMm = podIsOddPage ? outer : inner;
+
+  const topPx    = mmToPreviewPx(top);
+  const bottomPx = mmToPreviewPx(bottom);
+  const leftPx   = mmToPreviewPx(leftMm);
+  const rightPx  = mmToPreviewPx(rightMm);
+  const bleedPx  = mmToPreviewPx(bleed);
+  const gutterPx = mmToPreviewPx(inner);
+
+  // CSS variables 적용
+  card.style.setProperty('--margin-top-px',    topPx    + 'px');
+  card.style.setProperty('--margin-bottom-px', bottomPx + 'px');
+  card.style.setProperty('--margin-left-px',   leftPx   + 'px');
+  card.style.setProperty('--margin-right-px',  rightPx  + 'px');
+  card.style.setProperty('--bleed-px',         bleedPx  + 'px');
+  card.style.setProperty('--gutter-px',        gutterPx + 'px');
+
+  // 제본여백 사선 표시 — 홀수면 왼쪽, 짝수면 오른쪽
+  $('#podGutterLeft').style.display  = podIsOddPage  ? 'block' : 'none';
+  $('#podGutterRight').style.display = !podIsOddPage ? 'block' : 'none';
+  // 좌/우 gutter 너비를 내측 여백으로 고정
+  card.style.setProperty('--gutter-px', mmToPreviewPx(inner) + 'px');
+
+  // 페이지 라벨 업데이트
+  $('#podPageLabel').textContent = podIsOddPage
+    ? '홀수 페이지 (1, 3, 5... — 우측면)'
+    : '짝수 페이지 (2, 4, 6... — 좌측면)';
+
+  // 페이지 번호 표시 위치도 미러 (짝수면 외측=왼쪽으로)
+  const pageNumEl = card.querySelector('.pod-page-num');
+  if (pageNumEl) {
+    pageNumEl.style.left  = podIsOddPage ? '50%' : 'auto';
+    pageNumEl.style.right = podIsOddPage ? 'auto' : '50%';
+    pageNumEl.style.transform = 'translateX(-50%)';
+  }
+}
+
+// ── 표지 미리보기 업데이트 ────────────────────────────────────
+async function podUpdateCoverPreview() {
   const p = currentProject(); if(!p) return;
-  
+  const set = getPublishSettings(p);
+
+  // 설정 패널의 최신 값 임시 반영
+  const tmpSet = {
+    ...set,
+    paperSize: $('#podPaperSize').value || set.paperSize,
+    coverOptions: {
+      ...(set.coverOptions || {}),
+      bgColor: $('#podCoverBgColor').value,
+      logo: $('#podPublisherLogo').value,
+      spineFont: $('#podSpineFont').value,
+      spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p)
+    },
+    frontMatter: {
+      ...(set.frontMatter || {}),
+      author: $('#podAuthor').value || set.frontMatter?.author || ''
+    }
+  };
+
+  try {
+    const canvas = await generateCoverPreview(p, tmpSet);
+    if (!canvas) return;
+    // 스튜디오 내 미리보기 캔버스 업데이트
+    const previewCanvas = $('#podCoverPreviewCanvas');
+    previewCanvas.width = canvas.width;
+    previewCanvas.height = canvas.height;
+    previewCanvas.getContext('2d').drawImage(canvas, 0, 0);
+  } catch(e) {
+    console.warn('Cover preview update failed', e);
+  }
+}
+
+// ── 설정 저장 ─────────────────────────────────────────────────
+function podSaveSettings() {
+  const p = currentProject(); if(!p) return;
+
   const compress = (img) => {
     if(!img) return null;
     const cvs = document.createElement('canvas');
@@ -3310,41 +4262,197 @@ $('#savePublishSettingsBtn').onclick = () => {
   };
 
   p.publishSettings = {
-    paperSize: $('#pubPaperSize').value,
-    autoTOC: $('#pubAutoTOC').checked,
-    showTitle: $('#pubShowTitle').checked,
+    paperSize: $('#podPaperSize').value,
+    autoTOC: $('#podAutoTOC').checked,
+    showTitle: $('#podShowTitle').checked,
+    fontSize: parseFloat($('#podFontSize').value) || 10,
+    lineHeight: $('#podLineHeight').value,
+    margins: {
+      top:    parseFloat($('#podMarginTop').value)    || 20,
+      bottom: parseFloat($('#podMarginBottom').value) || 20,
+      inner:  parseFloat($('#podMarginInner').value)  || 25,
+      outer:  parseFloat($('#podMarginOuter').value)  || 18,
+      bleed:  parseFloat($('#podBleed').value)        || 3
+    },
     coverOptions: {
       frontOriginal: compress(currentFrontCoverObj) || p.publishSettings?.coverOptions?.frontOriginal || null,
-      backOriginal: compress(currentBackCoverObj) || p.publishSettings?.coverOptions?.backOriginal || null,
-      bgColor: $('#pubCoverBgColor').value,
-      logo: $('#pubPublisherLogo').value,
-      spineWidthMm: parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p)
+      backOriginal:  compress(currentBackCoverObj)  || p.publishSettings?.coverOptions?.backOriginal  || null,
+      bgColor:       $('#podCoverBgColor').value,
+      logo:          $('#podPublisherLogo').value,
+      spineFont:     $('#podSpineFont').value,
+      spineWidthMm:  parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p)
     },
     frontMatter: {
-      showCopyright: $('#pubShowCopyright').checked,
-      author: $('#pubAuthor').value,
-      publisher: $('#pubPublisher').value,
-      publishDate: $('#pubPublishDate').value,
-      pubReg: $('#pubPubReg').value,
-      address: $('#pubAddress').value,
-      phone: $('#pubPhone').value,
-      homepage: $('#pubHomepage').value
+      showCopyright: $('#podShowCopyright').checked,
+      author:        $('#podAuthor').value,
+      publishDate:   $('#podPublishDate').value
     }
   };
-  
+
+  // 기존 modal inputs과 동기화 (exportPODPdf가 그쪽을 읽으므로)
+  syncLegacyInputs(p.publishSettings);
+
   try {
     localStorage.setItem('novel_pubset_' + p.id, JSON.stringify(p.publishSettings));
-  } catch(e) {
-    console.warn('Failed to save publish settings to localStorage', e);
-  }
+  } catch(e) { console.warn('pubset save failed', e); }
 
   touchProject(); queueSaveFS();
-  closeModal('publishSettingsModal');
-  showToast('출판 설정이 저장되었습니다.');
+  showToast('✅ 출판 설정이 저장되었습니다.');
+}
+
+// 구형 modal 입력에 값 동기화 (exportPODPdf가 pubPaperSize 등을 읽기 때문)
+function syncLegacyInputs(s) {
+  const trySet = (id, val) => { const el = $(id); if(el) el.value = val; };
+  const tryCheck = (id, val) => { const el = $(id); if(el) el.checked = val; };
+  trySet('#pubPaperSize', s.paperSize);
+  tryCheck('#pubAutoTOC', s.autoTOC);
+  tryCheck('#pubShowTitle', s.showTitle);
+  trySet('#pubCoverBgColor', s.coverOptions?.bgColor || '#2c2c2c');
+  trySet('#pubPublisherLogo', s.coverOptions?.logo || '');
+  trySet('#pubSpineFont', s.coverOptions?.spineFont || "'KoPub Batang', serif");
+  trySet('#pubSpineWidth', s.coverOptions?.spineWidthMm || '');
+  tryCheck('#pubShowCopyright', s.frontMatter?.showCopyright || false);
+  trySet('#pubAuthor', s.frontMatter?.author || '');
+  trySet('#pubPublishDate', s.frontMatter?.publishDate || '');
+}
+
+// ── 이벤트 바인딩 ─────────────────────────────────────────────
+
+// 스튜디오 열기/닫기
+$('#openPublishSettingsBtn').onclick = showPodStudio;
+$('#backFromPodStudio').onclick = hidePodStudio;
+
+// 스튜디오 내 내보내기 버튼
+$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(); };
+$('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
+
+// 저장 버튼
+$('#podSaveSettingsBtn').onclick = podSaveSettings;
+
+// 설정 탭 전환
+$$('.pod-settings-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
+    $$('.pod-settings-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const pane = $('#podPane-' + btn.dataset.pane);
+    if (pane) pane.classList.add('active');
+  });
+});
+
+// 미리보기 탭 전환
+$$('.pod-preview-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const isInner = btn.dataset.preview === 'inner';
+    $('#podPreviewInner').style.display = isInner ? 'flex' : 'none';
+    $('#podPreviewCover').classList.toggle('active', !isInner);
+    $('#podPageToggleWrap').style.display = isInner ? 'flex' : 'none';
+    if (!isInner) podUpdateCoverPreview();
+  });
+});
+
+// 홀수/짝수 토글
+$('#podToggleOdd').addEventListener('click', () => {
+  podIsOddPage = true;
+  $('#podToggleOdd').classList.add('active');
+  $('#podToggleEven').classList.remove('active');
+  podUpdatePreview();
+});
+$('#podToggleEven').addEventListener('click', () => {
+  podIsOddPage = false;
+  $('#podToggleEven').classList.add('active');
+  $('#podToggleOdd').classList.remove('active');
+  podUpdatePreview();
+});
+
+// 여백 입력 실시간 반영
+['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize'].forEach(id => {
+  const el = $('#' + id);
+  if(el) el.addEventListener('input', podUpdatePreview);
+});
+
+// 출판사 프리셋 적용
+$$('.pod-preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.pod-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const preset = POD_PRESETS[btn.dataset.preset];
+    if (!preset) return; // 직접 입력 = 아무것도 안 함
+    $('#podPaperSize').value = preset.paperSize;
+    $('#podMarginTop').value    = preset.margins.top;
+    $('#podMarginBottom').value = preset.margins.bottom;
+    $('#podMarginInner').value  = preset.margins.inner;
+    $('#podMarginOuter').value  = preset.margins.outer;
+    $('#podBleed').value        = preset.margins.bleed;
+    podUpdatePreview();
+    showToast(`${preset.name} 여백 프리셋이 적용되었습니다.`);
+  });
+});
+
+// 판권지 토글
+$('#podShowCopyright').addEventListener('change', (e) => {
+  $('#podCopyrightOptions').style.display = e.target.checked ? 'flex' : 'none';
+});
+
+// 표지 배경색 동기화
+$('#podCoverBgColor').addEventListener('input', (e) => {
+  $('#podCoverBgColorHex').value = e.target.value;
+  podUpdateCoverPreview();
+});
+$('#podCoverBgColorHex').addEventListener('input', (e) => {
+  if (/^#[0-9A-Fa-f]{6}$/i.test(e.target.value)) {
+    $('#podCoverBgColor').value = e.target.value;
+    podUpdateCoverPreview();
+  }
+});
+$('#podPublisherLogo').addEventListener('change', podUpdateCoverPreview);
+$('#podSpineFont').addEventListener('change', podUpdateCoverPreview);
+$('#podSpineWidth').addEventListener('input', podUpdateCoverPreview);
+
+// 표지 이미지 업로드 (스튜디오)
+$('#podFrontCoverInput').onchange = (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => { currentFrontCoverObj = img; podUpdateCoverPreview(); };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
 };
+$('#podBackCoverInput').onchange = (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => { currentBackCoverObj = img; podUpdateCoverPreview(); };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+// 설정 초기화
+$('#podResetSettingsBtn').addEventListener('click', () => {
+  if(!confirm('출판 설정을 초기화하시겠습니까?')) return;
+  const p = currentProject(); if(!p) return;
+  delete p.publishSettings;
+  try { localStorage.removeItem('novel_pubset_' + p.id); } catch(e) {}
+  touchProject(); queueSaveFS();
+  showPodStudio();
+  showToast('출판 설정이 초기화되었습니다.');
+});
+
+// 기존 getPublishSettings 에 margins 기본값 추가 (backward compat)
+// ── 기존 코드와의 하위 호환 ───────────────────────────────────
+// 구형 exportPODPdf/exportPODCover는 아직 pubPaperSize 등 #pub* input을 읽으므로
+// podSaveSettings()에서 syncLegacyInputs()를 통해 동기화함.
+// exportPODPdf의 @page margin도 pubSet.margins로 동적 적용됨 (하단 별도 수정).
 
 $('#exportPODBtn').onclick = exportPODPdf;
 $('#exportPODCoverBtn').onclick = exportPODCover;
+
 function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
   
@@ -3629,12 +4737,18 @@ ${mainStyles}
   }
   @page {
     size: ${pubSet.paperSize};
-    margin: 20mm 15mm 20mm 15mm;
+    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
     @bottom-center {
       content: counter(page);
       font-size: 9pt;
       font-family: 'KoPub Batang', 'Noto Serif KR', serif;
     }
+  }
+  @page:left {
+    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm;
+  }
+  @page:right {
+    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
   }
   @page:first {
     @bottom-center { content: none; }
@@ -3645,13 +4759,14 @@ ${mainStyles}
   }
   body {
     font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: 10pt;
-    line-height: 1.75;
+    font-size: ${pubSet.fontSize||10}pt;
+    line-height: ${pubSet.lineHeight||1.75};
     color: #111;
     background: #fff;
     text-align: justify;
     word-break: keep-all;
   }
+
   .ql-align-center { text-align: center !important; }
   .ql-align-right { text-align: right !important; }
   .ql-align-justify { text-align: justify !important; }
