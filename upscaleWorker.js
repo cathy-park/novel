@@ -10,8 +10,8 @@ self.onmessage = async (e) => {
   if (type === 'INIT') {
     try {
       await tf.ready();
-      upscaler = new window.Upscaler({
-        model: window.ESRGANThick2x
+      upscaler = new self.Upscaler({
+        model: self.ESRGANThick2x
       });
       self.postMessage({ type: 'INIT_DONE' });
     } catch (err) {
