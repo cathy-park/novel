@@ -1708,7 +1708,7 @@ window.addEventListener('unhandledrejection', function(e) {
         </div>
       </div>
       <div class="pod-studio-toolbar-right" style="display:flex; gap:8px;">
-        <a href="https://free.upscaler.video/ko/" target="_blank" title="AI 이미지 업스케일링" class="secondary" style="text-decoration:none; display:flex; align-items:center; justify-content:center; padding: 0 12px; font-size:14px;">✨</a>
+        <button class="secondary" style="font-size:12px; padding:0 12px;" onclick="window.open('https://free.upscaler.video/ko/', '_blank')" title="표지 화질 업스케일링">✨</button>
         <button id="podExportCoverBtn" class="secondary" type="button" style="font-size:12px;">🎨 표지 JPG 저장</button>
         <button id="podExportPdfBtn" class="primary" style="background:#2E2A25; font-size:12px;" type="button">🖨️ 내지 PDF 인쇄</button>
       </div>
@@ -4526,6 +4526,10 @@ function podSaveSettings() {
       showCopyright: window.fmOrder ? !!window.fmOrder.find(x => x.id === 'copyright' && x.active) : false,
       author:        $('#podAuthor').value,
       publishDate:   $('#podPublishDate').value,
+      fmTitle:       $('#podFmTitle')?.value || '',
+      fmSubtitle:    $('#podFmSubtitle')?.value || '',
+      fmPublisher:   $('#podFmPublisher')?.value || '',
+      fmBgColor:     $('#podFmBgColor')?.value || '#ffffff',
       order: window.fmOrder || [
         { id: 'half_title', name: '속표지 (책 제목)', active: true },
         { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
