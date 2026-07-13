@@ -1162,7 +1162,8 @@ window.addEventListener('unhandledrejection', function(e) {
         <div><h1 id="manuscriptTitle" style="display:none;"></h1><p id="manuscriptMeta" style="margin:4px 0 0;color:var(--c-sub);font-size:12px;"></p></div>
         <div style="display:flex; gap:8px;">
           <button id="openPublishSettingsBtn" class="ghost" style="background:#444; color:#fff;" type="button">⚙️ 설정</button>
-          <button id="exportPODBtn" class="primary" style="background:#2E2A25;" type="button">🖨️ 출판용 PDF</button>
+          <button id="exportPODCoverBtn" class="primary" style="background:#4E342E;" type="button">🎨 표지 다운로드(JPG)</button>
+          <button id="exportPODBtn" class="primary" style="background:#2E2A25;" type="button">🖨️ 내지 인쇄(PDF)</button>
           <button id="copyManuscriptFull" class="primary" type="button">전체 본문 복사</button>
           <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
         </div>
@@ -1178,7 +1179,7 @@ window.addEventListener('unhandledrejection', function(e) {
           <div id="tabPlanBtn" class="drawer-tab active" style="cursor:pointer;">작품 기획</div>
           <div id="tabCommentBtn" class="drawer-tab" style="cursor:pointer; color:var(--c-muted);">코멘트 <span id="pcCommentBadge" style="font-size:11px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:10px;display:none;">0</span></div>
         </div>
-        <button id="closeDrawerBtn" class="icon-btn" type="button">×</button>
+        <button id="closePlanDrawerBtn" class="icon-btn">×</button>
       </div>
       <div id="planToolbar" style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
         <button id="copyAllPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">복사</button>
@@ -1187,23 +1188,21 @@ window.addEventListener('unhandledrejection', function(e) {
         <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">＋ 항목</button>
       </div>
     </div>
-    <div id="projectPlanList" class="drawer-body"></div>
-    <div id="projectCommentList" class="drawer-body hidden" style="padding:16px;">
-      <!-- PC 코멘트 리스트 렌더링 영역 -->
-    </div>
+    <div id="planBodyWrapper" class="drawer-body" style="overflow-y:auto;"></div>
+    <div id="commentBodyWrapper" class="drawer-body" style="display:none; flex-direction:column; background:#fff;"></div>
   </aside>
 </div>
 
-<div id="newProjectModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">새 작품</span><h2>새 이야기를 시작해요.</h2></div><button class="icon-btn" data-close="newProjectModal">×</button></div>
-<label class="modal-field"><span>작품 제목</span><input id="newProjectTitle" class="input" placeholder="제목 없는 작품" /></label>
-<label class="modal-field"><span>작품 상태</span><select id="newProjectStatus" class="input"><option value="serializing">연재 중</option><option value="completed">완결</option></select></label>
+<!-- Modals -->
+<div id="newProjectModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">새 프로젝트</span><h2>새로운 작품 만들기</h2></div><button class="icon-btn" data-close="newProjectModal">×</button></div>
+<label class="modal-field"><span>작품 제목</span><input id="newProjectTitle" class="input" placeholder="제목을 입력하세요"/></label>
 <label class="modal-field"><span>표지 컬러</span><div id="newProjectColors" class="cover-colors" style="margin-top:4px;"></div></label>
 <div class="modal-actions"><button class="ghost" data-close="newProjectModal">취소</button><button id="createProjectBtn" class="primary">작품 만들기</button></div></div></div>
 
 <div id="publishSettingsModal" class="modal-overlay hidden" style="z-index:9999;">
-  <div class="modal" style="width: 520px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+  <div class="modal" style="width: 540px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
     <div class="modal-head">
-      <div><span class="kicker">설정</span><h2>출판용 PDF 템플릿 설정</h2></div>
+      <div><span class="kicker">설정</span><h2>출판용 표지 및 템플릿 설정</h2></div>
       <button class="icon-btn" data-close="publishSettingsModal">×</button>
     </div>
     <div class="modal-body" style="display:flex; flex-direction:column; gap:20px; padding-bottom:20px;">
@@ -1219,30 +1218,37 @@ window.addEventListener('unhandledrejection', function(e) {
 
       <!-- 표지 설정 -->
       <div style="display:flex; flex-direction:column; gap:12px; padding: 16px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-3);">
-        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">표지 설정</label>
+        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">표지 설정 (이미지 다운로드용)</label>
         
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="pubIncludeCover"> <span style="font-size:12px; font-weight:600;">표지 포함하여 인쇄</span>
-        </label>
-        
-        <div id="pubCoverOptions" style="display:none; flex-direction:column; gap:12px; margin-top:8px;">
-          <div style="display:flex; gap:12px; align-items:flex-end;">
+        <div id="pubCoverOptions" style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; gap:12px;">
             <div style="flex:1;">
-              <label style="font-size:11px; font-weight:600; color:var(--c-sub); display:block; margin-bottom:4px;">표지 이미지 업로드</label>
-              <input type="file" id="pubCoverImageInput" accept="image/png, image/jpeg" style="font-size:12px; width:100%;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub); display:block; margin-bottom:4px;">앞표지 업로드 (우측면)</label>
+              <input type="file" id="pubFrontCoverInput" accept="image/png, image/jpeg" style="font-size:12px; width:100%;">
             </div>
-            <button id="pubCoverImageClearBtn" class="ghost" style="font-size:11px; padding:0 8px; min-height:26px;">초기화</button>
+            <div style="flex:1;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub); display:block; margin-bottom:4px;">뒷표지 업로드 (좌측면)</label>
+              <input type="file" id="pubBackCoverInput" accept="image/png, image/jpeg" style="font-size:12px; width:100%;">
+            </div>
           </div>
           
-          <img id="pubCoverImagePreview" src="" style="display:none; width:100%; max-height:160px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
+          <img id="pubCoverImagePreview" src="" style="display:none; width:100%; height:auto; max-height:220px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
 
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="pubCoverFillMode"> <span style="font-size:12px;">전체 펼침면 채우기 (체크 해제 시 앞표지만 채움)</span>
-          </label>
-          
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 / 뒷표지 배경색 (앞표지만 채울 때 사용)</label>
-            <input type="color" id="pubCoverBgColor" value="#2c2c2c" style="width:100%; height:32px; border:1px solid var(--c-line); border-radius:4px; cursor:pointer;">
+          <div style="display:flex; gap:12px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">전체 배경색 (빈 영역)</label>
+              <input type="color" id="pubCoverBgColor" value="#2c2c2c" style="width:100%; height:32px; border:1px solid var(--c-line); border-radius:4px; cursor:pointer;">
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">출판사 로고 선택</label>
+              <select id="pubPublisherLogo" style="padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--c-line); outline:none;">
+                <option value="">없음</option>
+                <option value="pod_logo/흑백_타입(한글ver).png">퍼플 흑백 (한글)</option>
+                <option value="pod_logo/흑백_타입(영문ver).png">퍼플 흑백 (영문)</option>
+                <option value="pod_logo/흰색_타입(한글ver).png">퍼플 흰색 (한글)</option>
+                <option value="pod_logo/흰색_타입(영문ver).png">퍼플 흰색 (영문)</option>
+              </select>
+            </div>
           </div>
           
           <div style="display:flex; flex-direction:column; gap:4px;">
@@ -1257,16 +1263,21 @@ window.addEventListener('unhandledrejection', function(e) {
 
       <!-- 판권지 설정 -->
       <div style="display:flex; flex-direction:column; gap:12px; padding: 16px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-3);">
-        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">판권지(Copyright) 설정</label>
+        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">판권지(Copyright) 설정 (본문 PDF용)</label>
         
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="pubShowCopyright"> <span style="font-size:12px; font-weight:600;">판권지 페이지 추가</span>
+          <input type="checkbox" id="pubShowCopyright"> <span style="font-size:12px; font-weight:600;">판권지 페이지 추가 (내지 끝 또는 시작 부분)</span>
         </label>
         
         <div id="pubCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
           <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">지은이 (저자명)</span><input type="text" id="pubAuthor" class="input" placeholder="예: 홍길동" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">출판사</span><input type="text" id="pubPublisher" class="input" placeholder="예: 독립출판" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행일</span><input type="text" id="pubPublishDate" class="input" placeholder="예: 2026년 7월 15일" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행처(출판사)</span><input type="text" id="pubPublisher" class="input" placeholder="예: 퍼플" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행일</span><input type="text" id="pubPublishDate" class="input" placeholder="예: 2026년 1월 1일" style="padding:6px; font-size:12px;"></label>
+          <hr style="border:0; border-top:1px solid var(--c-line-mid); margin:4px 0;" />
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">출판등록 번호</span><input type="text" id="pubPubReg" class="input" placeholder="예: 제 300-2012-167 호" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">주소</span><input type="text" id="pubAddress" class="input" placeholder="예: 서울시 종로구 종로 1가 1번지" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">대표전화</span><input type="text" id="pubPhone" class="input" placeholder="예: 1544-1900" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">홈페이지</span><input type="text" id="pubHomepage" class="input" placeholder="예: www.kyobobook.co.kr" style="padding:6px; font-size:12px;"></label>
         </div>
       </div>
 
@@ -3121,16 +3132,28 @@ $('#pubCoverImageClearBtn').onclick = () => {
   $('#pubCoverImagePreview').dataset.base64 = '';
 };
 
-$('#pubCoverImageInput').onchange = (e) => {
+let currentFrontCoverObj = null;
+let currentBackCoverObj = null;
+
+$('#pubFrontCoverInput').onchange = (e) => {
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = (event) => {
     const img = new Image();
-    img.onload = () => {
-      currentCoverImageObj = img;
-      updateCoverPreviewRender();
-    };
+    img.onload = () => { currentFrontCoverObj = img; };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+$('#pubBackCoverInput').onchange = (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => { currentBackCoverObj = img; };
     img.src = event.target.result;
   };
   reader.readAsDataURL(file);
@@ -3141,25 +3164,29 @@ $('#openPublishSettingsBtn').onclick = () => {
   const set = getPublishSettings(p);
   
   $('#pubPaperSize').value = set.paperSize;
-  $('#pubIncludeCover').checked = set.includeCover;
-  $('#pubCoverOptions').style.display = set.includeCover ? 'flex' : 'none';
   
   // Cover options
-  $('#pubCoverFillMode').checked = set.coverOptions?.fillMode || false;
   $('#pubCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
   $('#pubSpineWidth').value = set.coverOptions?.spineWidthMm || calculateSpineWidth(p);
   $('#pubSpineCalcText').textContent = `(자동 계산 권장: ${calculateSpineWidth(p)}mm)`;
+  $('#pubPublisherLogo').value = set.coverOptions?.logo || '';
   
-  if(set.coverOptions?.imageBase64) {
-    $('#pubCoverImagePreview').src = set.coverOptions.imageBase64;
-    $('#pubCoverImagePreview').dataset.base64 = set.coverOptions.imageBase64;
-    $('#pubCoverImagePreview').style.display = 'block';
-    // Create an img object from the saved base64 so we can edit settings
+  if(set.coverOptions?.frontOriginal) {
     const img = new Image();
-    img.onload = () => { currentCoverImageObj = img; };
-    img.src = set.coverOptions.originalImageBase64 || set.coverOptions.imageBase64;
+    img.onload = () => { currentFrontCoverObj = img; };
+    img.src = set.coverOptions.frontOriginal;
   } else {
-    $('#pubCoverImageClearBtn').click();
+    currentFrontCoverObj = null;
+    $('#pubFrontCoverInput').value = '';
+  }
+
+  if(set.coverOptions?.backOriginal) {
+    const img = new Image();
+    img.onload = () => { currentBackCoverObj = img; };
+    img.src = set.coverOptions.backOriginal;
+  } else {
+    currentBackCoverObj = null;
+    $('#pubBackCoverInput').value = '';
   }
 
   // Front Matter options
@@ -3168,10 +3195,15 @@ $('#openPublishSettingsBtn').onclick = () => {
   $('#pubAuthor').value = set.frontMatter?.author || '';
   $('#pubPublisher').value = set.frontMatter?.publisher || '';
   $('#pubPublishDate').value = set.frontMatter?.publishDate || '';
+  $('#pubPubReg').value = set.frontMatter?.pubReg || '';
+  $('#pubAddress').value = set.frontMatter?.address || '';
+  $('#pubPhone').value = set.frontMatter?.phone || '';
+  $('#pubHomepage').value = set.frontMatter?.homepage || '';
 
   // Other options
   $('#pubAutoTOC').checked = set.autoTOC;
   $('#pubShowTitle').checked = set.showTitle;
+
   openModal('publishSettingsModal');
 };
 
@@ -3179,21 +3211,24 @@ $('#savePublishSettingsBtn').onclick = () => {
   const p = currentProject(); if(!p) return;
   p.publishSettings = {
     paperSize: $('#pubPaperSize').value,
-    includeCover: $('#pubIncludeCover').checked,
     autoTOC: $('#pubAutoTOC').checked,
     showTitle: $('#pubShowTitle').checked,
     coverOptions: {
-      imageBase64: $('#pubCoverImagePreview').dataset.base64 || null,
-      originalImageBase64: currentCoverImageObj?.src || null, // store original for re-processing
-      fillMode: $('#pubCoverFillMode').checked,
+      frontOriginal: currentFrontCoverObj?.src || null,
+      backOriginal: currentBackCoverObj?.src || null,
       bgColor: $('#pubCoverBgColor').value,
+      logo: $('#pubPublisherLogo').value,
       spineWidthMm: parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p)
     },
     frontMatter: {
       showCopyright: $('#pubShowCopyright').checked,
       author: $('#pubAuthor').value,
       publisher: $('#pubPublisher').value,
-      publishDate: $('#pubPublishDate').value
+      publishDate: $('#pubPublishDate').value,
+      pubReg: $('#pubPubReg').value,
+      address: $('#pubAddress').value,
+      phone: $('#pubPhone').value,
+      homepage: $('#pubHomepage').value
     }
   };
   touchProject(); queueSaveFS();
@@ -3202,6 +3237,7 @@ $('#savePublishSettingsBtn').onclick = () => {
 };
 
 $('#exportPODBtn').onclick = exportPODPdf;
+$('#exportPODCoverBtn').onclick = exportPODCover;
 function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
   
@@ -3304,6 +3340,134 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
   }
 
   return { body: div.innerHTML, hasTitle };
+}
+
+async function exportPODCover() {
+  const p = currentProject(); if(!p) return;
+  const set = getPublishSettings(p);
+  const opts = set.coverOptions || {};
+  
+  const MM_TO_PX = 300 / 25.4;
+  const BLEED_MM = 3; // 사방 도련 3mm
+  
+  let paperW = 148;
+  let paperH = 210;
+  if(set.paperSize === 'B6') {
+    paperW = 128;
+    paperH = 182;
+  }
+  
+  const spineW = opts.spineWidthMm || calculateSpineWidth(p);
+  const canvasW_mm = (BLEED_MM * 2) + (paperW * 2) + spineW;
+  const canvasH_mm = paperH + (BLEED_MM * 2);
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(canvasW_mm * MM_TO_PX);
+  canvas.height = Math.round(canvasH_mm * MM_TO_PX);
+  const ctx = canvas.getContext('2d');
+  
+  // 배경색 칠하기
+  ctx.fillStyle = opts.bgColor || '#2c2c2c';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // 요소별 위치 (px)
+  const leftX = 0;
+  const backCoverW = Math.round((BLEED_MM + paperW) * MM_TO_PX);
+  const spineX = backCoverW;
+  const spineW_px = Math.round(spineW * MM_TO_PX);
+  const frontX = spineX + spineW_px;
+  const frontCoverW = Math.round((paperW + BLEED_MM) * MM_TO_PX);
+  
+  // 이미지 로드 유틸
+  const loadImg = (src) => new Promise((resolve) => {
+    if(!src) return resolve(null);
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+
+  const frontImg = await loadImg(opts.frontOriginal);
+  const backImg = await loadImg(opts.backOriginal);
+  const logoImg = await loadImg(opts.logo);
+
+  // 앞표지 그리기 (Center Crop)
+  if (frontImg) {
+    const scale = Math.max(frontCoverW / frontImg.width, canvas.height / frontImg.height);
+    const dw = frontImg.width * scale;
+    const dh = frontImg.height * scale;
+    const dx = frontX + (frontCoverW - dw) / 2;
+    const dy = (canvas.height - dh) / 2;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(frontX, 0, frontCoverW, canvas.height);
+    ctx.clip();
+    ctx.drawImage(frontImg, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  // 뒷표지 그리기 (Center Crop)
+  if (backImg) {
+    const scale = Math.max(backCoverW / backImg.width, canvas.height / backImg.height);
+    const dw = backImg.width * scale;
+    const dh = backImg.height * scale;
+    const dx = leftX + (backCoverW - dw) / 2;
+    const dy = (canvas.height - dh) / 2;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(leftX, 0, backCoverW, canvas.height);
+    ctx.clip();
+    ctx.drawImage(backImg, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  // 책등 텍스트 그리기 (가로 정렬, 세로로 회전)
+  const title = p.title || '제목 없음';
+  const author = set.frontMatter?.author || '저자';
+  
+  ctx.save();
+  ctx.translate(spineX + spineW_px / 2, Math.round((BLEED_MM + 20) * MM_TO_PX)); // 상단 여백 20mm
+  ctx.rotate(Math.PI / 2); // 90도 회전
+  
+  ctx.fillStyle = (opts.bgColor || '#2c2c2c').toLowerCase() === '#ffffff' ? '#000' : '#fff'; // 배경이 흰색이면 검은 글씨
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  
+  // 제목 폰트
+  ctx.font = `bold ${Math.round(4 * MM_TO_PX)}px 'KoPub Batang', serif`;
+  ctx.fillText(title, 0, 0);
+  
+  // 저자 폰트
+  const titleWidth = ctx.measureText(title).width;
+  ctx.font = `normal ${Math.round(3 * MM_TO_PX)}px 'KoPub Batang', serif`;
+  ctx.fillText(author, titleWidth + Math.round(10 * MM_TO_PX), 0);
+  
+  ctx.restore();
+
+  // 로고 그리기 (책등 하단, 앞표지 우측 하단)
+  if (logoImg) {
+    // 책등 하단 로고 (너비를 책등에 맞추되 패딩 2mm)
+    const spineLogoW = spineW_px - Math.round(4 * MM_TO_PX); 
+    const spineLogoH = (logoImg.height / logoImg.width) * spineLogoW;
+    const sLx = spineX + Math.round(2 * MM_TO_PX);
+    const sLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - spineLogoH;
+    ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
+    
+    // 뒷표지 하단 로고
+    const backLogoW = Math.round(25 * MM_TO_PX);
+    const backLogoH = (logoImg.height / logoImg.width) * backLogoW;
+    const bLx = backCoverW - Math.round(15 * MM_TO_PX) - backLogoW; // 우측 여백 15mm
+    const bLy = canvas.height - Math.round((BLEED_MM + 15) * MM_TO_PX) - backLogoH; // 하단 여백 15mm
+    ctx.drawImage(logoImg, bLx, bLy, backLogoW, backLogoH);
+  }
+
+  // 다운로드
+  const link = document.createElement('a');
+  link.download = `${p.title}_표지(300dpi).jpg`;
+  link.href = canvas.toDataURL('image/jpeg', 0.95);
+  link.click();
 }
 
 async function exportPODPdf() {
@@ -3526,28 +3690,28 @@ ${mainStyles}
   const beforeTocEps = loadedEps.slice(0, firstMainIdx);
   const afterTocEps = loadedEps.slice(firstMainIdx);
 
-  // 1. 표지 (옵션)
-  if (pubSet.includeCover) {
-    html += `<div class="cover-page">`;
-    if (pubSet.coverOptions?.imageBase64) {
-      html += `<img src="${pubSet.coverOptions.imageBase64}" style="width:100%; height:100vh; object-fit:contain; display:block; background:${pubSet.coverOptions.bgColor || '#ffffff'};">`;
-    } else if (p.cover) {
-      html += `<img src="${p.cover}" style="width:100%; height:100vh; object-fit:cover; display:block;">`;
-    } else {
-      html += `<h1 style="color:#fff; font-size:28pt;">${escapeHtml(p.title)}</h1>`;
-    }
-    html += `</div>`;
-  }
+  // 1. 표지 (옵션) - 표지는 분리되어 이미지로 다운로드되므로 PDF에는 포함하지 않습니다.
 
   // 2. 판권지 (옵션)
   if (pubSet.frontMatter?.showCopyright) {
     html += `
-  <div class="chapter matter-page" style="break-before: page; break-after: page; padding-top: 60vh; font-size: 9pt; font-family: 'KoPub Batang', serif; text-align: left; padding-left: 20px;">
-    <p style="margin-bottom:8px;"><strong>${escapeHtml(p.title)}</strong></p>
-    <p style="margin-bottom:4px;">발행일 : ${escapeHtml(pubSet.frontMatter.publishDate || '2026년 00월 00일')}</p>
-    <p style="margin-bottom:4px;">지은이 : ${escapeHtml(pubSet.frontMatter.author || '저자명 미상')}</p>
-    <p style="margin-bottom:20px;">출판사 : ${escapeHtml(pubSet.frontMatter.publisher || '독립출판')}</p>
-    <p>ⓒ ${new Date().getFullYear()}. ${escapeHtml(pubSet.frontMatter.author || '저자명 미상')} All rights reserved.</p>
+  <div class="chapter matter-page" style="break-before: page; break-after: page; display: flex; flex-direction: column; justify-content: flex-end; height: 80vh; font-size: 9pt; font-family: 'KoPub Batang', serif; text-align: left; padding: 0 10mm 15mm 10mm;">
+    <h2 style="font-size: 16pt; margin-bottom: 30px; font-weight: 700;">${escapeHtml(p.title)}</h2>
+    <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 20px;">
+      <div style="color: #444;">발행일</div><div>${escapeHtml(pubSet.frontMatter.publishDate || '2026년 00월 00일')}</div>
+      <div style="color: #444;">지은이</div><div>${escapeHtml(pubSet.frontMatter.author || '저자명 미상')}</div>
+      <div style="color: #444;">발행처</div><div>${escapeHtml(pubSet.frontMatter.publisher || '독립출판')}</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 30px;">
+      <div style="color: #444;">출판등록</div><div>${escapeHtml(pubSet.frontMatter.pubReg || '제 000-0000-000 호 (0000년 00월 00일)')}</div>
+      <div style="color: #444;">주 소</div><div>${escapeHtml(pubSet.frontMatter.address || '주소를 입력하세요')}</div>
+      <div style="color: #444;">대표전화</div><div>${escapeHtml(pubSet.frontMatter.phone || '0000-0000')}</div>
+      <div style="color: #444;">홈페이지</div><div>${escapeHtml(pubSet.frontMatter.homepage || 'www.example.com')}</div>
+    </div>
+    <div style="font-size: 8pt; color: #333; line-height: 1.6;">
+      <p style="margin-bottom: 6px;">ⓒ ${escapeHtml(pubSet.frontMatter.author || '저자명 미상')} ${new Date().getFullYear()}</p>
+      <p>본 책 내용의 전부 또는 일부를 재사용하려면<br>반드시 저작권자의 동의를 받으셔야 합니다.</p>
+    </div>
   </div>`;
   }
 
