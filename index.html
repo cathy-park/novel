@@ -1944,7 +1944,7 @@ window.addEventListener('unhandledrejection', function(e) {
               <div style="display:flex; gap:12px; margin-bottom:12px;">
                 <div style="flex:1;">
                   <label style="font-size:11px; margin-bottom:4px; display:block;">가로 크기 (mm)</label>
-                  <input type="number" id="podLogoFrontSize" value="20" min="5" max="100" class="pod-input" style="padding:6px;">
+                  <input type="number" id="podLogoFrontSize" value="7" min="1" max="100" class="pod-input" style="padding:6px;">
                 </div>
                 <div style="flex:1;">
                   <label style="font-size:11px; margin-bottom:4px; display:block;">하단 여백 (mm)</label>
@@ -4065,7 +4065,7 @@ async function generateCoverPreview(p, set) {
     const sLy = fullH - Math.round((BLEED_MM + spineBottomMm) * MM_TO_PX) - logoH;
     ctx.drawImage(logoImg, spineX + (spineW_px - logoW) / 2, sLy, logoW, logoH);
 
-    const frontLogoW_mm = opts.logoFrontSize ?? 20;
+    const frontLogoW_mm = opts.logoFrontSize ?? 7;
     const frontBottomMm = opts.logoFrontBottom ?? 15;
     const frontLogoW = Math.round(frontLogoW_mm * MM_TO_PX);
     const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
@@ -4247,7 +4247,7 @@ function showPodStudio() {
   $('#podPublisherLogo').value = set.coverOptions?.logo || '';
   if ($('#podLogoOptions')) {
     $('#podLogoOptions').style.display = set.coverOptions?.logo ? 'block' : 'none';
-    $('#podLogoFrontSize').value = set.coverOptions?.logoFrontSize || 20;
+    $('#podLogoFrontSize').value = set.coverOptions?.logoFrontSize || 7;
     $('#podLogoFrontBottom').value = set.coverOptions?.logoFrontBottom || 15;
     $('#podLogoSpineRatio').value = set.coverOptions?.logoSpineRatio || 60;
     $('#podLogoSpineBottom').value = set.coverOptions?.logoSpineBottom || 15;
@@ -4449,7 +4449,7 @@ async function podUpdateCoverPreview() {
       logo: $('#podPublisherLogo').value,
       spineFont: $('#podSpineFont').value,
       spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
-      logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 20,
+      logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 7,
       logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
       logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
       logoSpineBottom: parseFloat($('#podLogoSpineBottom').value) || 15
@@ -4516,7 +4516,7 @@ function podSaveSettings() {
       logo:          $('#podPublisherLogo').value,
       spineFont:     $('#podSpineFont').value,
       spineWidthMm:  parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
-      logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 20,
+      logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 7,
       logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
       logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
       logoSpineBottom: parseFloat($('#podLogoSpineBottom').value) || 15
@@ -5015,7 +5015,7 @@ async function exportPODCover() {
     ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
     
     // 앞표지 중앙 하단 로고
-    const frontLogoW_mm = opts.logoFrontSize ?? 20;
+    const frontLogoW_mm = opts.logoFrontSize ?? 7;
     const frontBottomMm = opts.logoFrontBottom ?? 15;
     const frontLogoW = Math.round(frontLogoW_mm * MM_TO_PX);
     const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
