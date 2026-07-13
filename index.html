@@ -4366,7 +4366,7 @@ runPaged();
 ${mainStyles}
 </style>
 <style>
-  html, body { background: transparent !important; }
+  html, body { background: transparent !important; height: 100% !important; overflow: hidden !important; margin: 0; padding: 0; }
   @page front-matter { @bottom-center { content: none; } }
   .bg-colored { page: front-matter; }
   @page {
@@ -4413,7 +4413,7 @@ ${mainStyles}
   .chapter-content p.pdf-group-middle, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-middle, .chapter-content .pdf-group-last { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; padding-top: 4px !important; }
   .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last, .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last { border-top-left-radius: 6px !important; padding-top: 10px !important; }
   .chapter-content p.n-email-body.pdf-group-middle, .chapter-content p.n-email-body.pdf-group-last, .chapter-content p.n-doc.pdf-group-middle, .chapter-content p.n-doc.pdf-group-last { padding-left: 38px !important; }
-  html, body { height: auto !important; overflow: visible !important; }
+  html, body { height: 100% !important; overflow: hidden !important; }
   .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
 </style>
 </head>
@@ -4731,11 +4731,7 @@ function renderPodPageTree() {
   const pagesData = [];
   let pageNum = 1;
 
-  // Front Matter
-  const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
-  activeFm.forEach(b => {
-    pagesData.push({ pageNum: pageNum++, label: FM_LABELS[b.type] || b.type, sublabel: '', type: 'fm', fmIdx: (window.fmBlocks||[]).indexOf(b), accent: '#7c6bf6' });
-  });
+  // Paged.js가 모든 페이지 정보를 주므로 여기서 전면부를 별도로 계산하지 않습니다.
 
   // 본문 에피소드 (Paged.js 렌더링 완료 전에는 관찪 팬이지에서 1에피 = N페이지 로 보여줄)
   if (window.podPageMap && window.podPageMap.length > 0) {
