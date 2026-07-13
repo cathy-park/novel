@@ -2120,7 +2120,8 @@ window.addEventListener('unhandledrejection', function(e) {
             <div style="font-size:12px;color:var(--c-body);line-height:1.7;">
               <div>총 예상 페이지수: <strong id="podEstPages">—</strong> 페이지</div>
               <div>책등 두께 (자동): <strong id="podEstSpine">—</strong> mm</div>
-              <div style="margin-top:8px;font-size:11px;color:var(--c-muted);">※ 1페이지 ≈ 350자 기준 추정값입니다. 실제 인쇄 시 달라질 수 있습니다.</div>
+              <div style="margin-top:8px;font-size:11px;color:var(--c-muted);">※ 설정된 용지 및 여백을 기반으로 한 추정값입니다. (정확도 향상)</div>
+              <button id="podCalcExactBtn" class="btn btn-outline" style="margin-top:10px; width:100%; font-size:11px;" type="button">✨ Paged.js 기반 실제 쪽수 정밀 계산</button>
             </div>
           </div>
           <div class="pod-section">
@@ -4072,8 +4073,8 @@ function getPublishSettings(p) {
 }
 
 function calculateSpineWidth(p) {
-  const estimatedPages = podEstimatePages(p);
-  return Math.max(1, Math.round(estimatedPages * 0.05 * 10) / 10);
+  const estimatedPages = p.podExactPages || podEstimatePages(p);
+  return Math.max(1, Math.round(estimatedPages * (8.8 / 96) * 10) / 10);
 }
 
 // ============================================================
@@ -4156,9 +4157,13 @@ async function showPodStudio() {
   }
 
   // 기타 탭 통계
-  const estPages = podEstimatePages(p);
-  $('#podEstPages').textContent = estPages;
-  $('#podEstSpine').textContent = Math.max(1, Math.round(estPages * 0.05 * 10) / 10);
+  const estPages = p.podExactPages || podEstimatePages(p);
+  if (p.podExactPages) {
+    $('#podEstPages').innerHTML = `${p.podExactPages} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
+  } else {
+    $('#podEstPages').textContent = estPages;
+  }
+  $('#podEstSpine').textContent = Math.max(1, Math.round(estPages * (8.8 / 96) * 10) / 10).toFixed(1);
 
   // 이미지 로드 (표지) - async 로딩 보장
   const loadImg = src => src ? new Promise(res => {
@@ -5170,9 +5175,27 @@ window.addEventListener('resize', () => {
 window.addEventListener('message', e => {
   if (e.data?.type === 'PAGES_READY') {
     const count = e.data.count;
-    $('#podEstPages').textContent = count;
-    $('#podEstSpine').textContent = Math.max(1, Math.round(count * 0.05 * 10) / 10).toFixed(1);
-    showToast(`📄 조판 완료: 총 ${count}페이지 생성됨`);
+    const isSilent = e.data.isSilent;
+    
+    const p = currentProject();
+    if (p) {
+      p.podExactPages = count;
+    }
+    
+    $('#podEstPages').innerHTML = `${count} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
+    $('#podEstSpine').textContent = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10).toFixed(1);
+    
+    if (isSilent) {
+      const btn = $('#podCalcExactBtn');
+      if (btn) {
+        btn.textContent = '✨ Paged.js 기반 실제 쪽수 정밀 계산';
+        btn.disabled = false;
+      }
+      const iframe = document.getElementById('pod-calc-iframe');
+      if (iframe) iframe.remove();
+    } else {
+      showToast(`📄 조판 완료: 총 ${count}페이지 생성됨`);
+    }
   }
 });
 
@@ -5508,23 +5531,42 @@ async function exportPODCover() {
   link.click();
 }
 
-async function exportPODPdf() {
+async function exportPODPdf(isSilent = false) {
   const p = currentProject();
   if(!p) return;
   
   const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if (eps.length === 0) return showToast('출판할 본문이 없습니다.');
-  
-  // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
-  const win = window.open('', '_blank');
-  if (!win) {
-    showToast('팝업 차단을 해제하고 다시 시도해주세요.');
+  if (eps.length === 0) {
+    if (!isSilent) showToast('출판할 본문이 없습니다.');
     return;
   }
-  win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
+  
+  let win;
+  if (isSilent) {
+    let iframe = document.getElementById('pod-calc-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'pod-calc-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      iframe.style.visibility = 'hidden';
+      document.body.appendChild(iframe);
+    }
+    win = iframe.contentWindow;
+  } else {
+    // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
+    win = window.open('', '_blank');
+    if (!win) {
+      showToast('팝업 차단을 해제하고 다시 시도해주세요.');
+      return;
+    }
+    win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
+  }
 
   if (p.episodes.some(e => e.body === undefined)) {
-    showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
+    if (!isSilent) showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
     await ensureProjectBodiesLoaded(p);
   }
   
@@ -5532,7 +5574,7 @@ async function exportPODPdf() {
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const pubSet = getPublishSettings(p);
   
-  showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
+  if (!isSilent) showToast('PDF 변환을 준비 중입니다...');
   
   let html = `<!DOCTYPE html>
 <html lang="ko">
@@ -5868,8 +5910,12 @@ ${mainStyles}
   <script>
     class PrintHandler extends window.Paged.Handler {
       afterRendered(pages) {
-        window.opener?.postMessage({ type: 'PAGES_READY', count: pages.length }, '*');
-        setTimeout(() => window.print(), 500);
+        if (window.parent && window.parent !== window) {
+           window.parent.postMessage({ type: 'PAGES_READY', count: pages.length, isSilent: ${isSilent} }, '*');
+        } else {
+           window.opener?.postMessage({ type: 'PAGES_READY', count: pages.length, isSilent: false }, '*');
+        }
+        ${isSilent ? '' : 'setTimeout(() => window.print(), 500);'}
       }
     }
     window.Paged.registerHandlers(PrintHandler);
@@ -5882,6 +5928,13 @@ ${mainStyles}
   win.document.write(html);
   win.document.close();
 }
+
+$('#podCalcExactBtn').onclick = () => {
+  const btn = $('#podCalcExactBtn');
+  btn.textContent = '계산 중... (잠시만 기다려주세요)';
+  btn.disabled = true;
+  exportPODPdf(true); // run silently
+};
 
 // Export/Import
 $('#exportBackupBtn').onclick = exportBackup;
