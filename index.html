@@ -153,6 +153,10 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .section-title { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px 4px; color: var(--c-sub); font-size: 11px; font-weight: 800; }
 /* 에피소드 목록: 간겹 축소 + 디자인 정리 */
 .episode-list { flex: 1; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 1px; }
+.tree-category-label { font-size: 11px; font-weight: 700; color: var(--c-muted); padding: 12px 8px 4px 8px; margin-top: 4px; display: flex; align-items: center; gap: 6px; letter-spacing: -0.01em; border-bottom: 1px solid var(--c-line); user-select: none; }
+.tree-category-label:first-child { margin-top: 0; padding-top: 4px; }
+.tree-category-label .tree-icon { font-size: 14px; opacity: 0.8; }
+.episode-row.tree-item { margin-left: 8px; border-left: 1px solid var(--c-line); padding-left: 6px; border-radius: 0 4px 4px 0; }
 .episode-row { display: grid; grid-template-columns: 16px minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; color: var(--c-sub); user-select: none; transition: background .12s; }
 .episode-row:hover .delete-ep-btn { opacity: 1 !important; }
 .delete-ep-btn { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
@@ -1845,15 +1849,7 @@ window.addEventListener('unhandledrejection', function(e) {
         <!-- ── 전면부 디자인 탭 ── -->
         <div class="pod-settings-pane" id="podPane-fm">
 
-          <!-- 디자인 테마 선택 -->
-          <div style="margin-bottom:16px;">
-            <div class="pod-section-title">디자인 테마 (프리셋)</div>
-            <div style="display:flex; gap:8px;">
-              <button class="pod-btn" onclick="applyFmTheme('essay')" style="flex:1; font-size:12px; border-radius: 6px; padding: 8px;">🌸 감성 에세이</button>
-              <button class="pod-btn" onclick="applyFmTheme('novel')" style="flex:1; font-size:12px; border-radius: 6px; padding: 8px;">📚 깔끔한 소설</button>
-              <button class="pod-btn" onclick="applyFmTheme('classic')" style="flex:1; font-size:12px; border-radius: 6px; padding: 8px;">🖋️ 클래식</button>
-            </div>
-          </div>
+          <!-- 디자인 테마 선택 (삭제됨) -->
 
           <!-- 블록 추가 버튼 -->
           <div style="position:sticky; top:0; z-index:5; background:var(--c-bg); padding:12px 0 8px; border-bottom:1px solid var(--c-line); margin-bottom:12px;">
@@ -1904,6 +1900,13 @@ window.addEventListener('unhandledrejection', function(e) {
               <div class="pod-field" id="fmBgOpacityField" style="display:none;">
                 <label>이미지 투명도 <span id="fmBgOpacityVal" style="color:var(--primary);">0.8</span></label>
                 <input type="range" id="fmBgOpacity" min="0.05" max="1" step="0.05" value="0.8" style="width:100%;">
+              </div>
+              <div class="pod-field">
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" id="fmHideText">
+                  <span style="font-size:12px; font-weight:600; color:var(--c-ink);">글자(텍스트) 숨기기</span>
+                </label>
+                <div style="font-size:10px; color:var(--c-muted); margin-top:2px;">이미지로만 페이지를 채울 때 체크하세요.</div>
               </div>
             </div>
 
@@ -3123,9 +3126,44 @@ function getEpisodeDisplayTitle(ep, p, asHtml = false) {
 
 function renderEpisodeList() {
   const p = currentProject(), eps = orderedEpisodes(p);
-  $('#episodeList').innerHTML = '';
+  const listEl = $('#episodeList');
+  listEl.innerHTML = '';
+  
+  // 표지 (고정 항목) - 인디자인 느낌
+  const coverRow = document.createElement('div');
+  coverRow.className = 'tree-category-label';
+  coverRow.style.cursor = 'pointer';
+  coverRow.style.color = 'var(--c-ink)';
+  coverRow.style.transition = 'color 0.2s';
+  coverRow.onmouseover = () => coverRow.style.color = 'var(--c-accent)';
+  coverRow.onmouseout = () => coverRow.style.color = 'var(--c-ink)';
+  coverRow.innerHTML = `<span class="tree-icon">🖼</span> <span>표지 (Cover)</span>`;
+  coverRow.title = "표지 설정 열기";
+  coverRow.onclick = () => {
+    const btn = $('#openPodSettingsBtn');
+    if(btn) btn.click();
+    setTimeout(() => { if($$('.pod-settings-tab')[3]) $$('.pod-settings-tab')[3].click(); }, 50);
+  };
+  listEl.appendChild(coverRow);
+
   let chapterIdx = 1;
+  let currentCategory = null;
+
   eps.forEach(ep=>{
+    let cat = 'body';
+    if (ep.type === 'frontmatter' || ep.type === 'prologue') cat = 'front';
+    else if (ep.type === 'epilogue' || ep.type === 'backmatter') cat = 'back';
+
+    if (cat !== currentCategory) {
+      const catLabel = document.createElement('div');
+      catLabel.className = 'tree-category-label';
+      if (cat === 'front') catLabel.innerHTML = `<span class="tree-icon">📂</span> <span>앞부속 (Front Matter)</span>`;
+      else if (cat === 'body') catLabel.innerHTML = `<span class="tree-icon">📖</span> <span>본문 (Main Body)</span>`;
+      else if (cat === 'back') catLabel.innerHTML = `<span class="tree-icon">📄</span> <span>뒷부속 (Back Matter)</span>`;
+      listEl.appendChild(catLabel);
+      currentCategory = cat;
+    }
+
     const isChap = ep.type==='chapter';
     let rawTitle = ep.title;
     let badgeType = '', badgeText = '';
@@ -3155,7 +3193,7 @@ function renderEpisodeList() {
     let dispTitle = rawTitle || '(제목 없는 회차)';
     
     const row = document.createElement('div');
-    row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
+    row.className = `episode-row tree-item ${ep.id===p.selectedEpisodeId?'active':''}`;
     row.draggable = true;
     row.innerHTML = `<span class="drag" title="드래그하여 순서 변경">⋮</span><div class="episode-main"><strong><span style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">${badgeHtml}<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dispTitle)}</span></span></strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
                     `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')" style="opacity:0; transition:opacity .15s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
@@ -3164,7 +3202,7 @@ function renderEpisodeList() {
     row.ondragover = e=>e.preventDefault();
     row.ondrop = e=>{ e.preventDefault(); reorderEpisode(ep.id); };
     row.ondragend = ()=>row.classList.remove('dragging');
-    $('#episodeList').appendChild(row);
+    listEl.appendChild(row);
   });
   requestAnimationFrame(()=>{ const el = $('.episode-row.active'); if(el) el.scrollIntoView({block:'nearest'}); });
 }
@@ -3499,11 +3537,11 @@ function removeBeatSheetFromPlan(planStr) {
   return planStr.replace(/\n{3,}/g, '\n\n').trim();
 }
 function parseBeatSheet(text) {
-  // ## 헤더 기준으로 파싱
+  // #, ##, ### 헤더 모두 인식 가능하도록 파싱
   const blocks = [];
   let currentHeader = null, currentLines = [];
   for (const line of text.split('\n')) {
-    const hMatch = line.match(/^##\s*([^#].*)/);
+    const hMatch = line.match(/^#{1,4}\s*([^#].*)/);
     if (hMatch) {
       if (currentHeader !== null) blocks.push({ header: currentHeader, body: currentLines.join('\n').trim() });
       currentHeader = hMatch[1].trim();
@@ -3566,10 +3604,18 @@ function matchEpisodeForBeat(header, episodes) {
 
 function distributeBeatSheet(sectionId) {
   const p = currentProject();
+  
+  // 편집 중인 내용(textarea)이 있다면 실시간으로 반영 (블러 이벤트 전에 배포 버튼 누를 수 있으므로)
+  const tx = document.querySelector(`.plan-section-body[data-bdy="${sectionId}"]`);
+  if(tx) {
+    const secObj = (p.planSections || []).find(x => x.id === sectionId);
+    if(secObj) secObj.body = tx.value;
+  }
+
   const section = (p.planSections || []).find(x => x.id === sectionId);
   if (!section) return;
   const blocks = parseBeatSheet(section.body);
-  if (!blocks.length) { showToast('## 헤더로 구분된 비트시트 내용이 없습니다.'); return; }
+  if (!blocks.length) { alert('비트시트 내용이 없거나 #, ##, ### 기호로 구분된 회차 헤더(예: "## 1화")를 찾을 수 없습니다.'); return; }
   let eps = orderedEpisodes(p);
   let matched = 0, created = 0; const matchedEpNames = [];
   for (const block of blocks) {
@@ -3598,7 +3644,7 @@ function distributeBeatSheet(sectionId) {
       matched++; matchedEpNames.push(ep.title);
     }
   }
-  if (matched === 0 && created === 0) { showToast('매칭되는 회차를 찾지 못했습니다.'); return; }
+  if (matched === 0 && created === 0) { alert('매칭되는 회차를 찾지 못했습니다.\\n"1화", "프롤로그" 등의 제목이나 번호가 있는지 확인해주세요.'); return; }
   section.distributed = true;
   touchProject();
   forceSaveAllSupabase();
@@ -3716,7 +3762,10 @@ function renderProjectPlan() {
       touchProject(); queueSaveFS(); renderProjectPlan(); 
     }
   });
-  $$('[data-distribute-beat]').forEach(b=>b.onclick=()=>distributeBeatSheet(b.dataset.distributeBeat));
+  $$('[data-distribute-beat]').forEach(b=>b.onclick=(e)=>{
+    e.stopPropagation(); e.preventDefault();
+    distributeBeatSheet(b.dataset.distributeBeat);
+  });
   $$('[data-open-pdf]').forEach(b=>b.onclick=()=>openAttachedPdf(b.dataset.openPdf));
 }
 
@@ -4461,7 +4510,14 @@ function podSaveSettings() {
   } catch(e) { console.warn('pubset save failed', e); }
 
   touchProject(); queueSaveFS();
-  showToast('✅ 출판 설정이 저장되었습니다.');
+  
+  const saveBtn = $('#podSaveSettingsBtn');
+  if (saveBtn) {
+    const orig = saveBtn.innerHTML;
+    saveBtn.innerHTML = '✔ 저장되었습니다';
+    setTimeout(() => { saveBtn.innerHTML = orig; }, 1500);
+  }
+  showToast('✅ 설정이 저장되었습니다.');
 }
 
 // 구형 modal 입력에 값 동기화 (exportPODPdf가 pubPaperSize 등을 읽기 때문)
@@ -4644,19 +4700,23 @@ function podUpdateFmPreview() {
   const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
   const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
+  const hideTxt = s.hideText ? 'display:none !important;' : '';
   const pageBase = `display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;background-color:${bgColor};${rel}`;
+
+  const podLogo = $('#podPublisherLogo')?.value || set.coverOptions?.logo || '';
+  const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
 
   let htmlFm = '';
   if (type === 'half_title') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
   } else if (type === 'title_page') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPub?`<div style="font-size:12pt;font-weight:700;">${pPub}</div>`:''}</div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
   } else if (type === 'dedication') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
   } else if (type === 'epigraph') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
   } else if (type === 'copyright') {
-    htmlFm = `<div style="position:relative;height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt;font-family:'KoPub Batang',serif;line-height:1.6;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPub?`<div style="opacity:0.6;">발행처</div><div>${pPub}</div>`:''}</div><div style="font-size:7.5pt;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    htmlFm = `<div style="position:relative;height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt;font-family:'KoPub Batang',serif;line-height:1.6;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
   } else if (type === 'toc') {
     htmlFm = `<div style="height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${zi}padding:40px 20px;"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;${fontCss}">목차</h2><div style="text-align:center;font-size:10pt;color:#888;">(목차는 본문 렌더링 시 자동으로 생성됩니다)</div></div></div>`;
   } else if (type === 'blank') {
@@ -4938,6 +4998,9 @@ function openFmBlockEditor(index) {
   $('#fmPaddingLeft').value   = s.paddingLeft ?? 20;
   $('#fmPaddingRight').value  = s.paddingRight ?? 20;
 
+  // 글자 숨기기
+  if($('#fmHideText')) $('#fmHideText').checked = s.hideText || false;
+
   // 폰트
   $('#fmFontFamily').value     = s.fontFamily || "'KoPub Batang', serif";
   $('#fmFontSize').value       = s.fontSize   || 20;
@@ -5022,6 +5085,7 @@ function syncFmBlockLive() {
   if (fmActiveBlockIdx === null) return;
   const block = window.fmBlocks[fmActiveBlockIdx];
 
+  block.style.hideText       = $('#fmHideText')?.checked || false;
   block.style.bgColor        = $('#fmBgColorHex').value || '#ffffff';
   block.style.fontFamily     = $('#fmFontFamily').value;
   block.style.fontSize       = parseFloat($('#fmFontSize').value) || 20;
@@ -5045,7 +5109,7 @@ function syncFmBlockLive() {
 }
 
 [
-  '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity',
+  '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity', '#fmHideText',
   '#fmContentTitle', '#fmContentSubtitle', '#fmContentPublisher', '#fmContentAuthor', '#fmContentDate', '#fmContentCustom', '#fmContentQuoteAuthor'
 ].forEach(sel => {
   const el = $(sel);
@@ -5855,18 +5919,22 @@ ${mainStyles}
     const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
     const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
+    const hideTxt = s.hideText ? 'display:none !important;' : '';
+    const podLogo = pubSet.coverOptions?.logo || '';
+    const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
+
     const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;${bgPrintCss}${rel}`;
 
     if (type === 'half_title') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
     } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPub?`<div style="font-size:12pt;font-weight:700;">${pPub}</div>`:''}</div></div>`;
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
     } else if (type === 'dedication') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
     } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
     } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPub?`<div style="opacity:0.6;">발행처</div><div>${pPub}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
