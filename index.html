@@ -4308,15 +4308,12 @@ async function renderLivePodPreview() {
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
 <style>
   /* 스프레드(양면) 뷰어용 스타일 */
-  .pagedjs_pages { position: relative; width: 100%; height: 100%; display: block; }
+  .pagedjs_pages { position: relative; width: 100%; height: 100%; display: flex; flex-direction: row; justify-content: center; align-items: flex-start; }
   .pagedjs_page { 
     margin: 0 !important; border: none !important; 
     box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; 
     background: #fff !important;
-    position: absolute !important; top: 0 !important; 
   }
-  .pagedjs_left_page { left: 0 !important; }
-  .pagedjs_right_page { right: 0 !important; }
   
   /* 책등(가운데 접히는 부분) 시각적 효과 */
   .pagedjs_left_page::after {
@@ -4346,7 +4343,13 @@ function runPaged() {
         
         // 렌더링 직후 1페이지만 남기기 (우측 페이지)
         var pgNum = parseInt(el.dataset.pageNumber || el.getAttribute('data-page-number') || '0', 10);
-        if (pgNum !== 1) el.style.display = 'none';
+        if (pgNum !== 1) {
+          el.style.display = 'none';
+        } else {
+          el.style.position = 'absolute';
+          el.style.top = '0';
+          el.style.right = '0';
+        }
 
         var fmBlock = el.querySelector('.matter-page');
         var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
@@ -4373,13 +4376,17 @@ function runPaged() {
     
     // 1. 모든 페이지 숨기기
     var allPages = document.querySelectorAll('.pagedjs_page');
-    allPages.forEach(function(p) { p.style.display = 'none'; });
+    allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
     
     // 2. 요청된 스프레드(양면) 보이기
     targetSpread.forEach(function(num) {
       var el = document.querySelector('.pagedjs_page[data-page-number="' + num + '"]');
       if (el) {
         el.style.display = 'block';
+        el.style.position = 'absolute';
+        el.style.top = '0';
+        if (num % 2 === 0) el.style.left = '0';
+        else el.style.right = '0';
       }
     });
     window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
