@@ -1722,6 +1722,7 @@ window.addEventListener('unhandledrejection', function(e) {
         <!-- 탭 헤더 -->
         <div class="pod-settings-tabs">
           <button class="pod-settings-tab active" data-pane="inner">📄 내지 설정</button>
+          <button class="pod-settings-tab" data-pane="fm">✦ 전면부 디자인</button>
           <button class="pod-settings-tab" data-pane="cover">🎨 표지 설정</button>
           <button class="pod-settings-tab" data-pane="extra">⚙️ 기타</button>
         </div>
@@ -1831,51 +1832,143 @@ window.addEventListener('unhandledrejection', function(e) {
             </label>
           </div>
 
-          <!-- 책머리 (Front Matter) -->
-          <div class="pod-section">
-            <div class="pod-section-title">책머리 (Front Matter) 구성</div>
-            <div style="font-size:11px; color:var(--c-muted); margin-bottom:12px; line-height:1.4;">
-              드래그하여 순서를 변경하고, 체크박스로 포함 여부를 설정하세요.<br>
-              각 항목은 인쇄 규격에 맞게 <b>우측 페이지(홀수 쪽)</b>에서 시작합니다.
+          <!-- 판권지 세부 설정 (저자/날짜)은 전면부 탭으로 이동 -->
+          <div class="pod-section" style="border:1px dashed var(--c-line); border-radius:6px; padding:12px; text-align:center;">
+            <div style="font-size:12px; color:var(--c-muted); line-height:1.5;">
+              ✨ 전면부 페이지(속표지, 본표지, 판권지 등)의 내용과 스타일은<br>
+              <b>[전면부 디자인]</b> 탭에서 설정하세요.
             </div>
-            
-            <div id="podFmList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
-              <!-- JS로 렌더링됨 -->
+            <button class="pod-btn" onclick="$$('.pod-settings-tab')[1].click()" style="margin-top:8px; font-size:12px; padding:6px 16px;">🚀 전면부 디자인 탭으로 이동</button>
+          </div>
+        </div>
+
+        <!-- ── 전면부 디자인 탭 ── -->
+        <div class="pod-settings-pane" id="podPane-fm">
+
+          <!-- 블록 추가 버튼 -->
+          <div style="position:sticky; top:0; z-index:5; background:var(--c-bg); padding:12px 0 8px; border-bottom:1px solid var(--c-line); margin-bottom:12px;">
+            <div style="font-size:11px; color:var(--c-muted); margin-bottom:8px;">드래그하여 순서 변경. 각 블록 클릭 시 개별 스타일 편집.</div>
+            <div class="pod-preset-row" style="flex-wrap:wrap; gap:4px;" id="fmAddBtns">
+              <button class="pod-preset-btn" data-fm-add="half_title">+ 속표지</button>
+              <button class="pod-preset-btn" data-fm-add="title_page">+ 본표지</button>
+              <button class="pod-preset-btn" data-fm-add="dedication">+ 헌사</button>
+              <button class="pod-preset-btn" data-fm-add="epigraph">+ 인용구</button>
+              <button class="pod-preset-btn" data-fm-add="copyright">+ 판권지</button>
+              <button class="pod-preset-btn" data-fm-add="toc">+ 목차</button>
+              <button class="pod-preset-btn" data-fm-add="blank">+ 빈 면지</button>
             </div>
-            
-            <button class="pod-btn" id="podAddBlankPageBtn" style="width:100%; font-size:12px; padding:6px; background:var(--c-bg); color:var(--c-ink); border:1px dashed var(--c-line);">+ 빈 페이지(여백) 추가</button>
-            
-            <div id="podCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--c-line);">
-              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">판권지 세부 설정</div>
+          </div>
+
+          <!-- 블록 목록 -->
+          <div id="podFmBlockList" style="display:flex; flex-direction:column; gap:6px; min-height:60px; margin-bottom:12px;">
+            <!-- JS로 렌더링 -->
+          </div>
+
+          <!-- 선택된 블록 스타일 편집 패널 -->
+          <div id="fmBlockEditor" style="display:none; border-top:2px solid var(--primary); margin-top:8px; padding-top:16px;">
+            <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.05em;" id="fmEditorTitle">블록 편집</div>
+
+            <!-- 배경 -->
+            <div class="pod-section">
+              <div class="pod-section-title">배경</div>
               <div class="pod-field">
-                <label>지은이 (저자명)</label>
-                <input type="text" id="podAuthor" class="pod-input" placeholder="예: 박소연">
+                <label>배경색</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="color" id="fmBgColorPicker" style="width:40px; height:32px; border:none; cursor:pointer; border-radius:4px;">
+                  <input type="text" id="fmBgColorHex" class="pod-input" placeholder="#ffffff" style="flex:1;">
+                </div>
               </div>
               <div class="pod-field">
-                <label>발행일</label>
-                <input type="text" id="podPublishDate" class="pod-input" placeholder="예: 2026년 07월 13일">
+                <label>배경 이미지 <span style="color:var(--c-muted);font-weight:400;">(전면 꽉 차게)</span></label>
+                <input type="file" id="fmBgImageInput" accept="image/*" class="pod-input" style="padding:4px;">
+                <div id="fmBgImagePreview" style="display:none; margin-top:6px; position:relative;">
+                  <img id="fmBgImageThumb" style="width:100%; height:60px; object-fit:cover; border-radius:4px; border:1px solid var(--c-line);">
+                  <button onclick="clearFmBgImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:12px;">×</button>
+                </div>
+              </div>
+              <div class="pod-field" id="fmBgOpacityField" style="display:none;">
+                <label>이미지 투명도 <span id="fmBgOpacityVal" style="color:var(--primary);">0.8</span></label>
+                <input type="range" id="fmBgOpacity" min="0.05" max="1" step="0.05" value="0.8" style="width:100%;">
               </div>
             </div>
 
-            <div id="podFmSettings" style="display:flex; flex-direction:column; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--c-line);">
-              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">속표지 / 본표지 설정</div>
+            <!-- 텍스트 정렬 (9-Grid) -->
+            <div class="pod-section">
+              <div class="pod-section-title">텍스트 위치</div>
+              <div id="fmAlignGrid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; width:108px; margin:0 auto 8px;">
+              </div>
+              <div style="font-size:10px; color:var(--c-muted); text-align:center;">선택된 칸 = 텍스트 배치 위치</div>
+            </div>
+
+            <!-- 폰트 -->
+            <div class="pod-section">
+              <div class="pod-section-title">폰트 스타일</div>
               <div class="pod-field">
-                <label>제목</label>
-                <input type="text" id="podFmTitle" class="pod-input" placeholder="기본값: 원고 제목">
+                <label>폰트</label>
+                <select id="fmFontFamily" class="pod-input">
+                  <option value="'KoPub Batang', serif">KoPub 바탕 (명조)</option>
+                  <option value="'Noto Serif KR', serif">Noto Serif (바탕)</option>
+                  <option value="'Noto Sans KR', sans-serif">Noto Sans (고딕)</option>
+                  <option value="Pretendard, sans-serif">Pretendard</option>
+                </select>
               </div>
               <div class="pod-field">
-                <label>부제 / 저자명</label>
-                <input type="text" id="podFmSubtitle" class="pod-input" placeholder="기본값: [저자명] 지음">
+                <label>제목 글자 크기 (pt)</label>
+                <input type="number" id="fmFontSize" class="pod-input" value="20" min="8" max="60">
               </div>
               <div class="pod-field">
-                <label>출판사 (본표지 하단)</label>
-                <input type="text" id="podFmPublisher" class="pod-input" placeholder="기본값: 퍼플">
+                <label>글자색</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="color" id="fmFontColorPicker" value="#1C1813" style="width:40px; height:32px; border:none; cursor:pointer; border-radius:4px;">
+                  <input type="text" id="fmFontColorHex" class="pod-input" placeholder="#1C1813" style="flex:1;">
+                </div>
               </div>
               <div class="pod-field">
-                <label>배경색 (Hex)</label>
-                <input type="text" id="podFmBgColor" class="pod-input" placeholder="예: #ffffff">
+                <label>자간 (letter-spacing)</label>
+                <select id="fmLetterSpacing" class="pod-input">
+                  <option value="-0.02em">-0.02em (좁게)</option>
+                  <option value="0em" selected>0em (기본)</option>
+                  <option value="0.05em">0.05em (약간 넓게)</option>
+                  <option value="0.1em">0.1em (넓게)</option>
+                  <option value="0.2em">0.2em (매우 넓게)</option>
+                </select>
               </div>
             </div>
+
+            <!-- 콘텐츠 내용 -->
+            <div class="pod-section" id="fmContentSection">
+              <div class="pod-section-title">텍스트 내용</div>
+              <div class="pod-field" id="fmFieldTitle">
+                <label>제목 <span style="color:var(--c-muted); font-weight:400;">(빈칸 = 원고 제목)</span></label>
+                <input type="text" id="fmContentTitle" class="pod-input" placeholder="기본값: 원고 제목">
+              </div>
+              <div class="pod-field" id="fmFieldSubtitle">
+                <label>부제 / 저자명</label>
+                <input type="text" id="fmContentSubtitle" class="pod-input" placeholder="예: 박소연 지음">
+              </div>
+              <div class="pod-field" id="fmFieldPublisher">
+                <label>출판사 (본표지 하단)</label>
+                <input type="text" id="fmContentPublisher" class="pod-input" placeholder="예: 퍼플">
+              </div>
+              <div class="pod-field" id="fmFieldAuthor">
+                <label>지은이 (판권지)</label>
+                <input type="text" id="fmContentAuthor" class="pod-input" placeholder="예: 박소연">
+              </div>
+              <div class="pod-field" id="fmFieldDate">
+                <label>발행일</label>
+                <input type="text" id="fmContentDate" class="pod-input" placeholder="예: 2026년 07월">
+              </div>
+              <div class="pod-field" id="fmFieldCustom">
+                <label>자유 텍스트 <span style="color:var(--c-muted); font-weight:400;">(헌사·인용구 등)</span></label>
+                <textarea id="fmContentCustom" class="pod-input" rows="3" placeholder="예: 이 책을 엄마에게 바칩니다."></textarea>
+              </div>
+              <div class="pod-field" id="fmFieldQuoteAuthor">
+                <label>인용 출처</label>
+                <input type="text" id="fmContentQuoteAuthor" class="pod-input" placeholder="예: — 헤르만 헤세">
+              </div>
+            </div>
+
+            <button id="fmApplyBlockBtn" class="primary" style="width:100%; font-size:13px; padding:10px;">✓ 이 블록에 적용</button>
           </div>
         </div>
 
@@ -4223,20 +4316,10 @@ function showPodStudio() {
   $('#podAutoTOC').checked = set.autoTOC !== false;
   $('#podShowTitle').checked = !!set.showTitle;
 
-  // 책머리(Front Matter) 초기화
-  window.fmOrder = set.frontMatter?.order || window.fmOrder || [
-    { id: 'half_title', name: '속표지 (책 제목)', active: true },
-    { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
-    { id: 'copyright', name: '판권지', active: true },
-    { id: 'toc', name: '목차', active: true }
-  ];
-  renderFmList();
-  $('#podAuthor').value = set.frontMatter?.author || '';
-  $('#podPublishDate').value = set.frontMatter?.publishDate || '';
-  $('#podFmTitle').value = set.frontMatter?.fmTitle || '';
-  $('#podFmSubtitle').value = set.frontMatter?.fmSubtitle || '';
-  $('#podFmPublisher').value = set.frontMatter?.fmPublisher || '';
-  $('#podFmBgColor').value = set.frontMatter?.fmBgColor || '';
+  // 전면부 블록 초기화
+  initFmBlocks(p);
+  renderFmBlockList();
+
 
   // 표지 설정
   $('#podCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
@@ -4523,20 +4606,15 @@ function podSaveSettings() {
       logoSpineBottom: parseFloat($('#podLogoSpineBottom').value) || 15
     },
     frontMatter: {
-      showCopyright: window.fmOrder ? !!window.fmOrder.find(x => x.id === 'copyright' && x.active) : false,
-      author:        $('#podAuthor').value,
-      publishDate:   $('#podPublishDate').value,
-      fmTitle:       $('#podFmTitle')?.value || '',
-      fmSubtitle:    $('#podFmSubtitle')?.value || '',
-      fmPublisher:   $('#podFmPublisher')?.value || '',
-      fmBgColor:     $('#podFmBgColor')?.value || '#ffffff',
-      order: window.fmOrder || [
-        { id: 'half_title', name: '속표지 (책 제목)', active: true },
-        { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
-        { id: 'copyright', name: '판권지', active: true },
-        { id: 'toc', name: '목차', active: true }
-      ]
-    }
+      showCopyright: window.fmBlocks ? !!window.fmBlocks.find(x => x.type === 'copyright' && x.active) : false,
+      author:        window.fmBlocks?.find(x => x.type === 'copyright')?.content?.author || '',
+      publishDate:   window.fmBlocks?.find(x => x.type === 'copyright')?.content?.date || '',
+      fmTitle:       window.fmBlocks?.find(x => x.type === 'half_title' || x.type === 'title_page')?.content?.title || '',
+      fmSubtitle:    window.fmBlocks?.find(x => x.type === 'title_page')?.content?.subtitle || '',
+      fmPublisher:   window.fmBlocks?.find(x => x.type === 'title_page' || x.type === 'copyright')?.content?.publisher || '',
+      fmBgColor:     '#ffffff'
+    },
+    fmBlocks: window.fmBlocks || []
   };
 
   // 기존 modal inputs과 동기화 (exportPODPdf가 그쪽을 읽으므로)
@@ -4635,79 +4713,379 @@ $('#podPublisherLogo')?.addEventListener('change', (e) => {
   if(el) el.addEventListener('input', () => { podUpdateCoverPreview(); });
 });
 
-window.fmOrder = window.fmOrder || [
-  { id: 'half_title', name: '속표지 (책 제목)', active: true },
-  { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
-  { id: 'copyright', name: '판권지', active: true },
-  { id: 'toc', name: '목차', active: true }
-];
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 전면부 커스텀 에디터 (Front Matter Designer)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-function renderFmList() {
-  const container = $('#podFmList');
-  if (!container) return;
-  container.innerHTML = '';
-  window.fmOrder.forEach((item, index) => {
-    const el = document.createElement('div');
-    el.className = 'fm-item';
-    el.draggable = true;
-    el.dataset.index = index;
-    el.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--c-bg); border:1px solid var(--c-line); border-radius:4px; cursor:grab; font-size:12px;';
-    
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = item.active;
-    cb.onchange = (e) => {
-      item.active = e.target.checked;
-      if (item.id === 'copyright') {
-        $('#podCopyrightOptions').style.display = item.active ? 'flex' : 'none';
-      }
-      podSaveSettings();
-    };
-    
-    const label = document.createElement('span');
-    label.style.flex = '1';
-    label.textContent = item.name;
-    
-    let delBtn = '';
-    if (item.id.startsWith('blank_')) {
-      delBtn = `<span style="cursor:pointer; color:var(--danger); padding:0 4px;" onclick="removeFmItem('${item.id}')">×</span>`;
-    }
-    
-    el.innerHTML = `<span style="color:#ccc;">≡</span>`;
-    el.insertBefore(cb, el.firstChild);
-    el.appendChild(label);
-    if(delBtn) el.insertAdjacentHTML('beforeend', delBtn);
-    
-    el.ondragstart = (e) => { e.dataTransfer.setData('text/plain', index); el.style.opacity = 0.5; };
-    el.ondragover = (e) => e.preventDefault();
-    el.ondragend = () => el.style.opacity = 1;
-    el.ondrop = (e) => {
-      e.preventDefault();
-      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-      const toIndex = index;
-      const moved = window.fmOrder.splice(fromIndex, 1)[0];
-      window.fmOrder.splice(toIndex, 0, moved);
-      renderFmList();
-      podSaveSettings();
-    };
-    container.appendChild(el);
-  });
-  
-  const hasCopyright = window.fmOrder.find(x => x.id === 'copyright')?.active;
-  if($('#podCopyrightOptions')) $('#podCopyrightOptions').style.display = hasCopyright ? 'flex' : 'none';
-}
-window.removeFmItem = (id) => {
-  window.fmOrder = window.fmOrder.filter(x => x.id !== id);
-  renderFmList();
-  podSaveSettings();
+// 블록 타입 메타데이터
+const FM_BLOCK_META = {
+  half_title:  { name: '속표지',   icon: '📖', fields: ['title'] },
+  title_page:  { name: '본표지',   icon: '📗', fields: ['title','subtitle','publisher'] },
+  dedication:  { name: '헌사',     icon: '💌', fields: ['custom'] },
+  epigraph:    { name: '인용구',   icon: '✏️', fields: ['custom','quoteAuthor'] },
+  copyright:   { name: '판권지',   icon: '©️',  fields: ['title','author','date','publisher'] },
+  toc:         { name: '목차',     icon: '📋', fields: [] },
+  blank:       { name: '빈 면지', icon: '⬜', fields: [] }
 };
-if ($('#podAddBlankPageBtn')) {
-  $('#podAddBlankPageBtn').onclick = () => {
-    window.fmOrder.push({ id: 'blank_' + Date.now(), name: '빈 페이지 (여백)', active: true });
-    renderFmList();
-    podSaveSettings();
+
+// 기본 스타일 팩토리
+function defaultFmStyle(type) {
+  const dark = ['dedication','epigraph'].includes(type);
+  return {
+    bgColor: dark ? '#1C1813' : '#ffffff',
+    bgImage: null,
+    bgImageOpacity: 0.8,
+    alignX: 'center',
+    alignY: 'center',
+    fontFamily: "'KoPub Batang', serif",
+    fontSize: type === 'half_title' ? 20 : type === 'title_page' ? 24 : 12,
+    fontColor: dark ? '#FAF5ED' : '#1C1813',
+    letterSpacing: '0em'
   };
 }
+
+// 기본 콘텐츠 팩토리
+function defaultFmContent(type) {
+  return { title:'', subtitle:'', publisher:'', author:'', date:'', customText:'', quoteAuthor:'' };
+}
+
+// ── 마이그레이션: 구형 fmOrder → fmBlocks ─────────────────────
+function migrateFmOrder(oldOrder) {
+  return (oldOrder || []).map(item => ({
+    id: 'fm_' + (item.id || Date.now()) + '_' + Math.random().toString(36).slice(2,6),
+    type: item.id.startsWith('blank_') ? 'blank' : item.id,
+    active: item.active !== false,
+    style: defaultFmStyle(item.id.startsWith('blank_') ? 'blank' : item.id),
+    content: defaultFmContent(item.id)
+  }));
+}
+
+// ── fmBlocks 초기화 ────────────────────────────────────────────
+function initFmBlocks(p) {
+  const saved = p.publishSettings?.fmBlocks;
+  if (saved && Array.isArray(saved) && saved.length > 0) {
+    window.fmBlocks = saved;
+  } else if (p.publishSettings?.frontMatter?.order) {
+    window.fmBlocks = migrateFmOrder(p.publishSettings.frontMatter.order);
+  } else {
+    window.fmBlocks = [
+      { id:'fm_half_title',  type:'half_title',  active:true, style:defaultFmStyle('half_title'),  content:defaultFmContent('half_title') },
+      { id:'fm_title_page',  type:'title_page',  active:true, style:defaultFmStyle('title_page'),  content:defaultFmContent('title_page') },
+      { id:'fm_copyright',   type:'copyright',   active:true, style:defaultFmStyle('copyright'),   content:defaultFmContent('copyright') },
+      { id:'fm_toc',         type:'toc',         active:true, style:defaultFmStyle('toc'),         content:defaultFmContent('toc') }
+    ];
+  }
+}
+
+// 현재 편집 중인 블록 인덱스
+let fmActiveBlockIdx = null;
+
+// 9-Grid 정렬 옵션
+const FM_ALIGN_GRID = [
+  {ax:'flex-start', ay:'flex-start', label:'↖'},
+  {ax:'center',     ay:'flex-start', label:'↑'},
+  {ax:'flex-end',   ay:'flex-start', label:'↗'},
+  {ax:'flex-start', ay:'center',     label:'←'},
+  {ax:'center',     ay:'center',     label:'✦'},
+  {ax:'flex-end',   ay:'center',     label:'→'},
+  {ax:'flex-start', ay:'flex-end',   label:'↙'},
+  {ax:'center',     ay:'flex-end',   label:'↓'},
+  {ax:'flex-end',   ay:'flex-end',   label:'↘'},
+];
+
+// ── 9-Grid 렌더링 ──────────────────────────────────────────────
+function renderAlignGrid(curAX, curAY) {
+  const grid = $('#fmAlignGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  FM_ALIGN_GRID.forEach(cell => {
+    const btn = document.createElement('button');
+    btn.textContent = cell.label;
+    const isActive = cell.ax === curAX && cell.ay === curAY;
+    btn.style.cssText = `
+      width:34px; height:34px; border-radius:4px; cursor:pointer; font-size:14px;
+      border: 1.5px solid ${isActive ? 'var(--primary)' : 'var(--c-line)'};
+      background: ${isActive ? 'var(--primary)' : 'var(--c-bg)'};
+      color: ${isActive ? '#fff' : 'var(--c-ink)'};
+    `;
+    btn.onclick = () => {
+      if (fmActiveBlockIdx === null) return;
+      window.fmBlocks[fmActiveBlockIdx].style.alignX = cell.ax;
+      window.fmBlocks[fmActiveBlockIdx].style.alignY = cell.ay;
+      renderAlignGrid(cell.ax, cell.ay);
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// ── 블록 목록 렌더링 ───────────────────────────────────────────
+function renderFmBlockList() {
+  const container = $('#podFmBlockList'); if (!container) return;
+  container.innerHTML = '';
+  let dragFromIndex = null;
+
+  window.fmBlocks.forEach((block, index) => {
+    const meta = FM_BLOCK_META[block.type] || { name: block.type, icon:'📄' };
+    const isSelected = fmActiveBlockIdx === index;
+    const el = document.createElement('div');
+    el.draggable = true;
+    el.dataset.index = index;
+    el.style.cssText = `
+      display:flex; align-items:center; gap:8px;
+      padding:9px 12px; border-radius:6px; cursor:grab; font-size:12px;
+      border:1.5px solid ${isSelected ? 'var(--primary)' : 'var(--c-line)'};
+      background:${isSelected ? 'rgba(99,91,255,0.07)' : 'var(--c-bg)'};
+      transition: border-color 0.15s, background 0.15s;
+    `;
+
+    // 체크박스
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = block.active;
+    cb.onclick = e => e.stopPropagation();
+    cb.onchange = e => { block.active = e.target.checked; saveFmBlocks(); };
+
+    // 아이콘 + 이름
+    const labelSpan = document.createElement('span');
+    labelSpan.style.flex = '1';
+    labelSpan.innerHTML = `<span style="margin-right:6px;">${meta.icon}</span>${meta.name}`;
+    
+    // 배경색 미리보기 점
+    const colorDot = document.createElement('span');
+    colorDot.style.cssText = `width:10px; height:10px; border-radius:50%; flex-shrink:0;
+      background:${block.style.bgColor}; border:1px solid var(--c-line);`;
+
+    // 삭제 버튼
+    const delBtn = document.createElement('span');
+    delBtn.innerHTML = '🗑';
+    delBtn.style.cssText = 'cursor:pointer; opacity:0.4; font-size:11px; padding:2px;';
+    delBtn.onmouseenter = () => delBtn.style.opacity = '1';
+    delBtn.onmouseleave = () => delBtn.style.opacity = '0.4';
+    delBtn.onclick = e => { e.stopPropagation(); deleteFmBlock(index); };
+
+    el.appendChild(document.createTextNode('≡ '));
+    el.appendChild(cb);
+    el.appendChild(labelSpan);
+    el.appendChild(colorDot);
+    el.appendChild(delBtn);
+
+    // 클릭 → 에디터 열기
+    el.addEventListener('click', () => openFmBlockEditor(index));
+
+    // 드래그 앤 드롭
+    el.addEventListener('dragstart', e => {
+      dragFromIndex = index;
+      el.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => { el.style.opacity = '1'; dragFromIndex = null; });
+    el.addEventListener('dragover', e => { e.preventDefault(); el.style.borderColor = 'var(--primary)'; });
+    el.addEventListener('dragleave', () => { el.style.borderColor = isSelected ? 'var(--primary)' : 'var(--c-line)'; });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragFromIndex === null || dragFromIndex === index) return;
+      const [moved] = window.fmBlocks.splice(dragFromIndex, 1);
+      window.fmBlocks.splice(index, 0, moved);
+      if (fmActiveBlockIdx === dragFromIndex) fmActiveBlockIdx = index;
+      renderFmBlockList();
+      saveFmBlocks();
+    });
+
+    container.appendChild(el);
+  });
+}
+
+// ── 블록 에디터 열기 ───────────────────────────────────────────
+function openFmBlockEditor(index) {
+  fmActiveBlockIdx = index;
+  const block = window.fmBlocks[index];
+  const meta = FM_BLOCK_META[block.type] || { name: block.type };
+  const s = block.style;
+  const c = block.content;
+
+  // 에디터 패널 표시
+  const ed = $('#fmBlockEditor'); if (!ed) return;
+  ed.style.display = 'block';
+  $('#fmEditorTitle').textContent = `${meta.name} 편집`;
+
+  // 배경색
+  $('#fmBgColorPicker').value = s.bgColor || '#ffffff';
+  $('#fmBgColorHex').value    = s.bgColor || '#ffffff';
+
+  // 배경이미지
+  const prevBox = $('#fmBgImagePreview');
+  const thumb   = $('#fmBgImageThumb');
+  if (s.bgImage) {
+    prevBox.style.display = 'block';
+    thumb.src = s.bgImage;
+    $('#fmBgOpacityField').style.display = 'block';
+    $('#fmBgOpacity').value = s.bgImageOpacity ?? 0.8;
+    $('#fmBgOpacityVal').textContent = s.bgImageOpacity ?? 0.8;
+  } else {
+    prevBox.style.display = 'none';
+    $('#fmBgOpacityField').style.display = 'none';
+  }
+
+  // 9-Grid
+  renderAlignGrid(s.alignX || 'center', s.alignY || 'center');
+
+  // 폰트
+  $('#fmFontFamily').value     = s.fontFamily || "'KoPub Batang', serif";
+  $('#fmFontSize').value       = s.fontSize   || 20;
+  $('#fmFontColorPicker').value = s.fontColor || '#1C1813';
+  $('#fmFontColorHex').value    = s.fontColor || '#1C1813';
+  $('#fmLetterSpacing').value   = s.letterSpacing || '0em';
+
+  // 필드 표시/숨김
+  const fields = meta.fields || [];
+  const allFields = ['title','subtitle','publisher','author','date','custom','quoteAuthor'];
+  allFields.forEach(f => {
+    const el = $(`#fmField${f.charAt(0).toUpperCase()+f.slice(1)}`);
+    if(el) el.style.display = fields.includes(f) ? 'block' : 'none';
+  });
+  $('#fmContentSection').style.display = fields.length ? 'block' : 'none';
+
+  // 콘텐츠 값
+  $('#fmContentTitle').value       = c.title || '';
+  $('#fmContentSubtitle').value    = c.subtitle || '';
+  $('#fmContentPublisher').value   = c.publisher || '';
+  $('#fmContentAuthor').value      = c.author || '';
+  $('#fmContentDate').value        = c.date || '';
+  $('#fmContentCustom').value      = c.customText || '';
+  $('#fmContentQuoteAuthor').value = c.quoteAuthor || '';
+
+  // 블록 목록 재렌더 (selected 강조)
+  renderFmBlockList();
+
+  // 패널 스크롤
+  ed.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── 블록에 적용 버튼 ───────────────────────────────────────────
+$('#fmApplyBlockBtn').onclick = () => {
+  if (fmActiveBlockIdx === null) return;
+  const block = window.fmBlocks[fmActiveBlockIdx];
+
+  block.style.bgColor        = $('#fmBgColorHex').value || '#ffffff';
+  block.style.alignX         = window.fmBlocks[fmActiveBlockIdx].style.alignX;
+  block.style.alignY         = window.fmBlocks[fmActiveBlockIdx].style.alignY;
+  block.style.fontFamily     = $('#fmFontFamily').value;
+  block.style.fontSize       = parseFloat($('#fmFontSize').value) || 20;
+  block.style.fontColor      = $('#fmFontColorHex').value || '#1C1813';
+  block.style.letterSpacing  = $('#fmLetterSpacing').value;
+  block.style.bgImageOpacity = parseFloat($('#fmBgOpacity').value) || 0.8;
+
+  block.content.title       = $('#fmContentTitle').value;
+  block.content.subtitle    = $('#fmContentSubtitle').value;
+  block.content.publisher   = $('#fmContentPublisher').value;
+  block.content.author      = $('#fmContentAuthor').value;
+  block.content.date        = $('#fmContentDate').value;
+  block.content.customText  = $('#fmContentCustom').value;
+  block.content.quoteAuthor = $('#fmContentQuoteAuthor').value;
+
+  saveFmBlocks();
+  renderFmBlockList();
+  showToast('✅ 블록 설정이 적용되었습니다.');
+};
+
+// ── 배경색 동기화 ──────────────────────────────────────────────
+$('#fmBgColorPicker').addEventListener('input', e => { $('#fmBgColorHex').value = e.target.value; });
+$('#fmBgColorHex').addEventListener('input', e => {
+  if (/^#[0-9A-Fa-f]{6}$/i.test(e.target.value)) $('#fmBgColorPicker').value = e.target.value;
+});
+$('#fmFontColorPicker').addEventListener('input', e => { $('#fmFontColorHex').value = e.target.value; });
+$('#fmFontColorHex').addEventListener('input', e => {
+  if (/^#[0-9A-Fa-f]{6}$/i.test(e.target.value)) $('#fmFontColorPicker').value = e.target.value;
+});
+
+// ── 투명도 슬라이더 ────────────────────────────────────────────
+$('#fmBgOpacity').addEventListener('input', e => { $('#fmBgOpacityVal').textContent = e.target.value; });
+
+// ── 배경 이미지 업로드 ─────────────────────────────────────────
+$('#fmBgImageInput').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file || fmActiveBlockIdx === null) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    // 1MB 이하로 압축
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const MAX = 1200;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      cvs.width = w; cvs.height = h;
+      cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
+      window.fmBlocks[fmActiveBlockIdx].style.bgImage = dataUrl;
+      $('#fmBgImageThumb').src = dataUrl;
+      $('#fmBgImagePreview').style.display = 'block';
+      $('#fmBgOpacityField').style.display = 'block';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+window.clearFmBgImage = () => {
+  if (fmActiveBlockIdx === null) return;
+  window.fmBlocks[fmActiveBlockIdx].style.bgImage = null;
+  $('#fmBgImagePreview').style.display = 'none';
+  $('#fmBgOpacityField').style.display = 'none';
+  $('#fmBgImageInput').value = '';
+};
+
+// ── 블록 추가 ─────────────────────────────────────────────────
+$$('[data-fm-add]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.fmAdd;
+    const meta = FM_BLOCK_META[type] || {};
+    window.fmBlocks.push({
+      id: 'fm_' + type + '_' + Date.now(),
+      type,
+      active: true,
+      style: defaultFmStyle(type),
+      content: defaultFmContent(type)
+    });
+    fmActiveBlockIdx = window.fmBlocks.length - 1;
+    renderFmBlockList();
+    openFmBlockEditor(fmActiveBlockIdx);
+    saveFmBlocks();
+  });
+});
+
+// ── 블록 삭제 ─────────────────────────────────────────────────
+function deleteFmBlock(index) {
+  if (!confirm(`이 블록을 삭제하시겠습니까?`)) return;
+  window.fmBlocks.splice(index, 1);
+  if (fmActiveBlockIdx === index) {
+    fmActiveBlockIdx = null;
+    $('#fmBlockEditor').style.display = 'none';
+  } else if (fmActiveBlockIdx > index) {
+    fmActiveBlockIdx--;
+  }
+  renderFmBlockList();
+  saveFmBlocks();
+}
+
+// ── 상태 저장 ─────────────────────────────────────────────────
+function saveFmBlocks() {
+  const p = currentProject(); if (!p) return;
+  if (!p.publishSettings) p.publishSettings = {};
+  p.publishSettings.fmBlocks = window.fmBlocks;
+  try { localStorage.setItem('novel_pubset_' + p.id, JSON.stringify(p.publishSettings)); } catch(e) {}
+  touchProject(); queueSaveFS();
+}
+
+// 하위 호환: fmOrder 참조를 위한 getter
+Object.defineProperty(window, 'fmOrder', {
+  get: () => window.fmBlocks?.map(b => ({ id: b.type === 'blank' ? 'blank_'+b.id : b.type, name: (FM_BLOCK_META[b.type]?.name || b.type), active: b.active })) || [],
+  configurable: true
+});
+
+// renderFmList는 더 이상 쓰이지 않지만 하위 호환용으로 유지
+function renderFmList() { renderFmBlockList(); }
+
 
 // 창 크기 변경 시 미리보기 크기 업데이트
 window.addEventListener('resize', () => {
@@ -5290,87 +5668,70 @@ ${mainStyles}
   const beforeTocEps = loadedEps.slice(0, firstMainIdx);
   const afterTocEps = loadedEps.slice(firstMainIdx);
 
-  // 1. 표지 (옵션) - 표지는 분리되어 이미지로 다운로드되므로 PDF에는 포함하지 않습니다.
+  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
+  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
+    ? pubSet.fmBlocks : (window.fmBlocks || []);
 
-  const pTitle = escapeHtml(pubSet.frontMatter.fmTitle || p.title);
-  const pAuthor = escapeHtml(pubSet.frontMatter.author || '박소연');
-  const pDate = escapeHtml(pubSet.frontMatter.publishDate || '2026년 07월 13일');
-  const fmSubtitle = escapeHtml(pubSet.frontMatter.fmSubtitle || (pAuthor + ' 지음'));
-  const fmPublisher = escapeHtml(pubSet.frontMatter.fmPublisher || '퍼플');
-  const fmBgColor = pubSet.frontMatter.fmBgColor || '#ffffff';
-  
-  // 시각적 정중앙을 위한 오프셋 계산 (오른쪽 페이지 기준: inner margin이 왼쪽에 위치)
-  const marginInner = parseFloat(pubSet.margins?.inner || 25);
-  const marginOuter = parseFloat(pubSet.margins?.outer || 18);
-  const centerOffset = (marginInner - marginOuter) / 2;
-  const transformStyle = centerOffset ? `transform: translateX(-${centerOffset}mm);` : '';
-  const bgStyle = fmBgColor && fmBgColor !== '#ffffff' ? `background-color: ${escapeHtml(fmBgColor)} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;` : '';
-  const bgClass = fmBgColor && fmBgColor !== '#ffffff' ? 'bg-colored' : '';
-  const bgStylePage = fmBgColor && fmBgColor !== '#ffffff' ? `<style>@page front-matter { background-color: ${escapeHtml(fmBgColor)} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>` : '';
+  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
+  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
+  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
+  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
 
-  // 책머리(Front Matter) 렌더링
   let htmlFm = '';
-  const fmOrder = pubSet.frontMatter?.order || [];
-  fmOrder.filter(x => x.active).forEach(item => {
-    if (item.id === 'half_title') {
-      htmlFm += `
-  <div class="chapter matter-page ${bgClass}" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
-    <div style="${transformStyle}">
-      <h1 style="font-size:20pt; font-weight:700; text-align:center;">${pTitle}</h1>
-    </div>
-  </div>`;
-    } else if (item.id === 'title_page') {
-      htmlFm += `
-  <div class="chapter matter-page ${bgClass}" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
-    <div style="display:flex; flex-direction:column; align-items:center; ${transformStyle}">
-      <h1 style="font-size:24pt; font-weight:700; margin-bottom:20px; text-align:center;">${pTitle}</h1>
-      <div style="font-size:12pt; color:#444; margin-bottom:40px; text-align:center;">${fmSubtitle}</div>
-      <div style="font-size:12pt; font-weight:700; text-align:center;">${fmPublisher}</div>
-    </div>
-  </div>`;
-    } else if (item.id === 'copyright') {
-      htmlFm += `
-  <div class="chapter matter-page ${bgClass}" style="break-before: right; position:relative; height:90vh; ${bgStyle}">
-    <div style="position:absolute; bottom:0; left:0; right:0; padding:10mm; font-size:8pt !important; font-family:'KoPub Batang', serif; text-align:left; line-height:1.6 !important;">
-      <h2 style="font-size:12pt !important; margin-bottom:20px; font-weight:700;">${pTitle}</h2>
-      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:12px;">
-        <div style="color:#666;">발행일</div><div>${pDate}</div>
-        <div style="color:#666;">지은이</div><div>${pAuthor}</div>
-        <div style="color:#666;">발행처</div><div>${fmPublisher}</div>
-      </div>
-      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:16px;">
-        <div style="color:#666;">출판등록</div><div>제 300-2012-167 호 (2012년 09월 07일)</div>
-        <div style="color:#666;">주 소</div><div>서울시 종로구 종로 1 (종로1가) 교보생명빌딩 15층 ㈜교보문고</div>
-        <div style="color:#666;">대표전화</div><div>1544-1900</div>
-        <div style="color:#666;">홈페이지</div><div>www.kyobobook.co.kr</div>
-      </div>
-      <div style="font-size:7.5pt !important; color:#333; padding-top:12px; border-top:1px solid #ccc;">
-        <p style="margin-bottom:4px;">ⓒ ${pAuthor} ${new Date().getFullYear()}</p>
-        <p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p>
-      </div>
-    </div>
-  </div>`;
-    } else if (item.id === 'toc') {
+  fmBlocksForRender.filter(b => b.active).forEach(block => {
+    const s = block.style || {};
+    const c = block.content || {};
+    const type = block.type;
+
+    const pTitle  = escapeHtml(c.title || p.title || '');
+    const pSub    = escapeHtml(c.subtitle || '');
+    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
+    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
+    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
+    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
+    const pQuote  = escapeHtml(c.quoteAuthor || '');
+
+    const bgColor = s.bgColor || '#ffffff';
+    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
+    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
+
+    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
+    const titleSz = `font-size:${s.fontSize||20}pt;`;
+    const jc = s.alignY || 'center';
+    const ai = s.alignX || 'center';
+    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
+
+    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
+    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
+    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
+
+    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;${bgPrintCss}${rel}`;
+
+    if (type === 'half_title') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+    } else if (type === 'title_page') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPub?`<div style="font-size:12pt;font-weight:700;">${pPub}</div>`:''}</div></div>`;
+    } else if (type === 'dedication') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+    } else if (type === 'epigraph') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    } else if (type === 'copyright') {
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPub?`<div style="opacity:0.6;">발행처</div><div>${pPub}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
-        htmlFm += `
-  <div class="chapter matter-page toc-page" style="break-before: right;">
-    <h2 style="margin-bottom:30px; font-size:16pt; font-weight:700; text-align:center;">목차</h2>
-    <ul class="toc-list">`;
-        tocEps.forEach((ep) => {
-          const displayTitleHtml = getEpisodeDisplayTitle(ep, p, true);
-          htmlFm += `<li><a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a></li>`;
-        });
-        htmlFm += `
-    </ul>
-  </div>`;
+        let tocHtml = `<div class="chapter matter-page toc-page" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
+        tocEps.forEach(ep => { tocHtml += `<li><a href="#ep-${ep.id}" class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</a></li>`; });
+        tocHtml += `</ul></div></div>`;
+        htmlFm += tocHtml;
       }
-    } else if (item.id.startsWith('blank_')) {
-      htmlFm += `<div class="chapter matter-page" style="break-before: right; height:100vh;"></div>`;
+    } else if (type === 'blank') {
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;height:100vh;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
     }
   });
-  
-  html += bgStylePage + htmlFm;
+
+  html += htmlFm;
+
 
   // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
