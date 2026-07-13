@@ -4336,20 +4336,37 @@ async function renderLivePodPreview() {
 <script>window.PagedConfig = { auto: false };<\/script>
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
 <script>
-class LiveHandler extends Paged.Handler {
-  afterRendered(pages) {
-    try { window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length }, '*'); } catch(err) {}
+function runPaged() {
+  if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
+    setTimeout(runPaged, 50);
+    return;
   }
+  class LiveHandler extends Paged.Handler {
+    afterRendered(pages) {
+      var map = [];
+      pages.forEach(function(p) {
+        if (!p.pageNode) return;
+        var el = p.pageNode;
+        var pgNum = el.dataset.pageNumber || el.getAttribute('data-page-number') || '';
+        var hasToc = el.querySelector('.toc-page, .fm-page');
+        var chTitle = el.querySelector('.chapter-title');
+        var label = hasToc ? (el.querySelector('.toc-page') ? '목차' : '속표지') : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
+        map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
+      });
+      try { window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*'); } catch(err) {}
+    }
+  }
+  Paged.registerHandlers(LiveHandler);
+  window.addEventListener('message', function(ev) {
+    if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
+    var el = document.querySelector('.pagedjs_page[data-page-number="' + ev.data.page + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  PagedPolyfill.preview().catch(function(e) {
+    try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message }, '*'); } catch(e2) {}
+  });
 }
-Paged.registerHandlers(LiveHandler);
-window.addEventListener('message', function(ev) {
-  if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
-  var el = document.querySelector('.pagedjs_page[data-page-number="' + ev.data.page + '"]');
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-PagedPolyfill.preview().catch(function(e) {
-  try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message }, '*'); } catch(e2) {}
-});
+runPaged();
 <\/script>`;
 
   // ── 1. 속표지 (Front Matter) ───────────────────────────────────
@@ -4391,6 +4408,7 @@ window.addEventListener('message', (e) => {
   if (e.data.type === 'pagedjs-rendered') {
     const total = e.data.totalPages || 0;
     podLastRenderedTotalPages = total;
+    window.podPageMap = e.data.pageMap || []; // ★ pageMap 저장
     
     const st = $('#podLiveRenderStatus');
     if(st) st.textContent = `렌더링 완료 ✓ 총 ${total}쪽`;
@@ -4398,12 +4416,11 @@ window.addEventListener('message', (e) => {
     // 책등 두께 계산 업데이트
     updateSpineThickness(total);
     
-    // ★ 조건 없이 항상 트리 footer를 업데이트 (isTreeActive 조건 제거)
-    const footerLabel = document.getElementById('podSpineThicknessLabel');
-    const totalLabel = footerLabel?.previousElementSibling;
+    // ★ 조건 없이 항상 트리 footer를 업데이트
+    const totalLabel = document.getElementById('podTreeTotalLabel');
     if (totalLabel) totalLabel.innerHTML = `내지 총합: ${total}쪽`;
     
-    // 트리 탭이 열려 있으면 전체 트리 재렌더링 (실제 DOM 기반 썸네일)
+    // 트리 탭이 열려 있으면 전체 트리 재렌더링
     const treePane = document.getElementById('podPane-tree');
     const isTreeVisible = treePane && (treePane.classList.contains('active') || getComputedStyle(treePane).display !== 'none');
     if (isTreeVisible) {
@@ -4912,11 +4929,10 @@ function podUpdateFmPreview() {
   }
 
   // scale calculation to fit iframe in preview canvas
-  const canvasH = $('#podPreviewFm').clientHeight - 40;
+  const canvasH = $('#podPreviewFm').clientHeight || window.innerHeight;
   const paperH_px = paper.h * (96 / 25.4); // approx px
-  const scale = Math.min(1, canvasH / paperH_px);
+  const scale = Math.max(0.2, Math.min(1, (canvasH - 40) / paperH_px));
   iframe.style.transform = `scale(${scale})`;
-  
   const iframeHtml = `
 <!DOCTYPE html>
 <html>
