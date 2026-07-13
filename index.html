@@ -1845,6 +1845,16 @@ window.addEventListener('unhandledrejection', function(e) {
         <!-- ── 전면부 디자인 탭 ── -->
         <div class="pod-settings-pane" id="podPane-fm">
 
+          <!-- 디자인 테마 선택 -->
+          <div style="margin-bottom:16px;">
+            <div class="pod-section-title">디자인 테마 (프리셋)</div>
+            <div style="display:flex; gap:8px;">
+              <button class="pod-btn" onclick="applyFmTheme('essay')" style="flex:1; font-size:12px; border-radius: 6px; padding: 8px;">🌸 감성 에세이</button>
+              <button class="pod-btn" onclick="applyFmTheme('novel')" style="flex:1; font-size:12px; border-radius: 6px; padding: 8px;">📚 깔끔한 소설</button>
+              <button class="pod-btn" onclick="applyFmTheme('classic')" style="flex:1; font-size:12px; border-radius: 6px; padding: 8px;">🖋️ 클래식</button>
+            </div>
+          </div>
+
           <!-- 블록 추가 버튼 -->
           <div style="position:sticky; top:0; z-index:5; background:var(--c-bg); padding:12px 0 8px; border-bottom:1px solid var(--c-line); margin-bottom:12px;">
             <div style="font-size:11px; color:var(--c-muted); margin-bottom:8px;">드래그하여 순서 변경. 각 블록 클릭 시 개별 스타일 편집.</div>
@@ -1867,6 +1877,11 @@ window.addEventListener('unhandledrejection', function(e) {
           <!-- 선택된 블록 스타일 편집 패널 -->
           <div id="fmBlockEditor" style="display:none; border-top:2px solid var(--primary); margin-top:8px; padding-top:16px;">
             <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.05em;" id="fmEditorTitle">블록 편집</div>
+
+            <!-- 고급 설정 (배경/텍스트 정렬/여백/폰트) -->
+            <details style="margin-bottom: 16px; border: 1px solid var(--c-line); border-radius: 6px; padding: 12px; background: var(--c-surface);">
+              <summary style="cursor:pointer; font-weight:700; color:var(--c-body); font-size:12px; outline:none; user-select:none;">고급 설정 (배경 · 여백 · 폰트)</summary>
+              <div style="margin-top: 16px;">
 
             <!-- 배경 -->
             <div class="pod-section">
@@ -1898,6 +1913,29 @@ window.addEventListener('unhandledrejection', function(e) {
               <div id="fmAlignGrid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; width:108px; margin:0 auto 8px;">
               </div>
               <div style="font-size:10px; color:var(--c-muted); text-align:center;">선택된 칸 = 텍스트 배치 위치</div>
+            </div>
+
+            <!-- 내부 여백 (Padding) -->
+            <div class="pod-section">
+              <div class="pod-section-title">내부 여백 (Padding)</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div class="pod-field">
+                  <label>위쪽 (mm)</label>
+                  <input type="number" id="fmPaddingTop" class="pod-input" value="20" min="0" max="100">
+                </div>
+                <div class="pod-field">
+                  <label>아래쪽 (mm)</label>
+                  <input type="number" id="fmPaddingBottom" class="pod-input" value="20" min="0" max="100">
+                </div>
+                <div class="pod-field">
+                  <label>왼쪽 (mm)</label>
+                  <input type="number" id="fmPaddingLeft" class="pod-input" value="20" min="0" max="100">
+                </div>
+                <div class="pod-field">
+                  <label>오른쪽 (mm)</label>
+                  <input type="number" id="fmPaddingRight" class="pod-input" value="20" min="0" max="100">
+                </div>
+              </div>
             </div>
 
             <!-- 폰트 -->
@@ -1934,6 +1972,9 @@ window.addEventListener('unhandledrejection', function(e) {
                 </select>
               </div>
             </div>
+
+              </div>
+            </details>
 
             <!-- 콘텐츠 내용 -->
             <div class="pod-section" id="fmContentSection">
@@ -4552,7 +4593,7 @@ function podUpdateFmPreview() {
   
   // 현재 에디팅 중인 블록 찾기 (또는 활성화된 첫 블록)
   const fmBlocks = window.fmBlocks || [];
-  let block = fmBlocks[window.fmActiveBlockIdx];
+  let block = fmBlocks[fmActiveBlockIdx];
   if (!block) block = fmBlocks.find(b => b.active);
   if (!block) {
     iframe.srcdoc = `<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;color:#999;">활성화된 전면부 페이지가 없습니다.</body></html>`;
@@ -4877,6 +4918,12 @@ function openFmBlockEditor(index) {
   // 9-Grid
   renderAlignGrid(s.alignX || 'center', s.alignY || 'center');
 
+  // 여백 (Padding)
+  $('#fmPaddingTop').value    = s.paddingTop ?? 20;
+  $('#fmPaddingBottom').value = s.paddingBottom ?? 20;
+  $('#fmPaddingLeft').value   = s.paddingLeft ?? 20;
+  $('#fmPaddingRight').value  = s.paddingRight ?? 20;
+
   // 폰트
   $('#fmFontFamily').value     = s.fontFamily || "'KoPub Batang', serif";
   $('#fmFontSize').value       = s.fontSize   || 20;
@@ -4912,6 +4959,50 @@ function openFmBlockEditor(index) {
   ed.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
+function applyFmTheme(theme) {
+  if (!window.fmBlocks || window.fmBlocks.length === 0) {
+    showToast('전면부 블록이 없습니다. 블록을 먼저 추가해주세요.');
+    return;
+  }
+  
+  let font, align, pt, pb, bg, color;
+  
+  if (theme === 'essay') {
+    font = "'Noto Serif KR', serif";
+    align = 'center';
+    pt = 40; pb = 40;
+    bg = '#FAFAFA';
+    color = '#4A4A4A';
+  } else if (theme === 'novel') {
+    font = "'KoPub Batang', serif";
+    align = 'center';
+    pt = 30; pb = 30;
+    bg = '#FFFFFF';
+    color = '#1C1813';
+  } else if (theme === 'classic') {
+    font = "'KoPub Batang', serif";
+    align = 'flex-start';
+    pt = 20; pb = 20;
+    bg = '#F4F1EA';
+    color = '#2C2825';
+  }
+  
+  window.fmBlocks.forEach(b => {
+    b.style.fontFamily = font;
+    b.style.alignY = align;
+    b.style.paddingTop = pt;
+    b.style.paddingBottom = pb;
+    b.style.bgColor = bg;
+    b.style.fontColor = color;
+  });
+  
+  saveFmBlocks();
+  renderFmBlockList();
+  if (fmActiveBlockIdx !== null) openFmBlockEditor(fmActiveBlockIdx);
+  podUpdateFmPreview();
+  showToast('디자인 테마가 적용되었습니다.');
+}
+
 // ── 실시간 미리보기 동기화 ────────────────────────────────────
 function syncFmBlockLive() {
   if (fmActiveBlockIdx === null) return;
@@ -4923,6 +5014,10 @@ function syncFmBlockLive() {
   block.style.fontColor      = $('#fmFontColorHex').value || '#1C1813';
   block.style.letterSpacing  = $('#fmLetterSpacing').value;
   block.style.bgImageOpacity = parseFloat($('#fmBgOpacity').value) || 0.8;
+  block.style.paddingTop     = parseFloat($('#fmPaddingTop').value) || 0;
+  block.style.paddingBottom  = parseFloat($('#fmPaddingBottom').value) || 0;
+  block.style.paddingLeft    = parseFloat($('#fmPaddingLeft').value) || 0;
+  block.style.paddingRight   = parseFloat($('#fmPaddingRight').value) || 0;
 
   block.content.title       = $('#fmContentTitle').value;
   block.content.subtitle    = $('#fmContentSubtitle').value;
@@ -5382,6 +5477,13 @@ async function generatePODCoverCanvas(p, set, opts) {
   return canvas;
 }
 
+async function generateCoverPreview(p, set) {
+  const opts = set.coverOptions || {};
+  const canvas = await generatePODCoverCanvas(p, set, opts);
+  if (!canvas) return null;
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
 async function exportPODCover() {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
@@ -5649,7 +5751,17 @@ ${mainStyles}
 <body>
 `;
 
+  if (pubSet.includeCover !== false) {
+    try {
+      const coverB64 = await generateCoverPreview(p, pubSet);
+      if (coverB64) {
+        html += `<div class="cover-page" style="page: cover; break-after: right; margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #2c2c2c;"><img src="${coverB64}" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
+      }
+    } catch (err) { console.warn('Cover rendering skipped:', err); }
+  }
+
   let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+
   if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
   
   const beforeTocEps = loadedEps.slice(0, firstMainIdx);
@@ -5724,8 +5836,8 @@ ${mainStyles}
   beforeTocEps.forEach(ep => {
     const processed = processEpisodeBody(ep.body, ep.title, true);
     html += `
-  <div class="chapter matter-page" id="ep-${ep.id}" style="break-before: right;">
-    <div class="chapter-content ql-editor">${processed.body}</div>
+  <div class="chapter matter-page" style="break-before: right;">
+    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
   </div>`;
   });
 
@@ -5737,8 +5849,8 @@ ${mainStyles}
     const displayTitle = getEpisodeDisplayTitle(ep, p);
     
     html += `
-  <div class="chapter ${isMatter ? 'matter-page' : ''}" id="ep-${ep.id}">
-    ${renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : ''}
+  <div class="chapter ${isMatter ? 'matter-page' : ''}">
+    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
     <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
   });
