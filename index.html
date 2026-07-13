@@ -5130,16 +5130,6 @@ ${mainStyles}
   }
   .bg-colored {
     page: front-matter;
-    position: relative;
-  }
-  .bg-colored::before {
-    content: "";
-    position: absolute;
-    top: -50mm; left: -50mm; right: -50mm; bottom: -50mm;
-    background-color: inherit;
-    z-index: -1;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
   @page {
     size: ${pubSet.paperSize};
