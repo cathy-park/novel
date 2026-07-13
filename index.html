@@ -4060,6 +4060,11 @@ const PAPER_SIZES = {
   B6: { w: 128, h: 182 }
 };
 
+// Publish Settings Logic
+function getPublishSettings(p) {
+  return p.publishSettings || { paperSize: 'A5', includeCover: true, autoTOC: true, showTitle: false };
+}
+
 // ── 스튜디오 열기 ─────────────────────────────────────────────
 async function showPodStudio() {
   const p = currentProject(); if(!p) return;
