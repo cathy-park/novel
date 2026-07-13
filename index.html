@@ -4268,114 +4268,103 @@ async function renderLivePodPreview() {
 
   $('#podLiveRenderStatus').textContent = '조판 렌더링 진행 중... (Paged.js)';
   const iframe = document.getElementById('podLiveIframe');
+  if(!iframe) return;
   const pubSet = getPublishSettings(p);
-  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  // ⚠️ 핵심 수정: mainStyles(앱 전체 CSS)를 주입하지 않고
+  //    조판에 필요한 최소 CSS만 사용 → Paged.js 오염 방지
   const innerMargin = parseFloat(pubSet.margins?.inner || 25);
   const outerMargin = parseFloat(pubSet.margins?.outer || 18);
-  
+
   let html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
 <style>
-${mainStyles}
-</style>
-<style>
-  html, body { background: transparent !important; }
-  @page {
-    size: ${pubSet.paperSize};
-    margin: ${pubSet.margins?.top||20}mm ${outerMargin}mm ${pubSet.margins?.bottom||20}mm ${innerMargin}mm;
-    @bottom-center {
-      content: counter(page);
-      font-size: 9pt;
-      font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    }
-  }
-  @page:left { margin: ${pubSet.margins?.top||20}mm ${innerMargin}mm ${pubSet.margins?.bottom||20}mm ${outerMargin}mm; }
-  @page:right { margin: ${pubSet.margins?.top||20}mm ${outerMargin}mm ${pubSet.margins?.bottom||20}mm ${innerMargin}mm; }
-  @page front-matter { @bottom-center { content: none; } }
-  .bg-colored { page: front-matter; }
-  @page:first { @bottom-center { content: none; } }
-  @page cover { margin: 0; @bottom-center { content: none; } }
-  
-  body {
+  html, body {
+    margin: 0; padding: 0;
+    background: #fff;
     font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: ${pubSet.fontSize||10}pt;
-    line-height: ${pubSet.lineHeight||1.75};
-    color: #111; text-align: justify; word-break: keep-all;
+    font-size: ${pubSet.fontSize || 10}pt;
+    line-height: ${pubSet.lineHeight || 1.75};
+    color: #111;
+    text-align: justify;
+    word-break: keep-all;
   }
-  .title-page { break-before: right; break-after: page; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; }
-  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
-  .toc-page { break-before: right; break-after: page; padding-top: 40px; }
+  @page {
+    size: ${pubSet.paperSize || 'A5'};
+    margin: ${pubSet.margins?.top||20}mm ${outerMargin}mm ${pubSet.margins?.bottom||20}mm ${innerMargin}mm;
+    @bottom-center { content: counter(page); font-size: 9pt; font-family: 'KoPub Batang', serif; }
+  }
+  @page:left  { margin-left: ${outerMargin}mm; margin-right: ${innerMargin}mm; }
+  @page:right { margin-left: ${innerMargin}mm; margin-right: ${outerMargin}mm; }
+  @page front-matter { @bottom-center { content: none; } }
+  .fm-page { page: front-matter; break-before: right; break-after: page;
+             display: flex; flex-direction: column; justify-content: center;
+             align-items: center; height: 100vh; text-align: center; }
+  .fm-page h1 { font-size: 24pt; font-weight: 700; margin-bottom: 20px; }
+  .toc-page { page: front-matter; break-before: right; break-after: page; padding-top: 40px; }
   .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
-  .toc-list { list-style: none; padding: 0; margin: 0 20px; overflow-x: hidden; }
-  .toc-list li { margin-bottom: 12px; font-size: 10pt; display: flex; align-items: baseline; }
-  .toc-list li .toc-title { flex: 0 0 auto; }
-  .toc-list li .toc-page-ref { color: inherit; text-decoration: none; flex: 0 0 auto; min-width: 20px; text-align: right; }
-  .toc-list li .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
-  .toc-list li .toc-page-ref::after { content: target-counter(attr(href), page); }
-  .toc-prefix { color: #888; margin-right: 6px; }
-  .chapter { break-before: right; margin-top: 40px; } /* 각 챕터는 우측 페이지 시작 */
-  .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
-  .chapter-content { margin-top: 20px; }
+  .toc-list { list-style: none; padding: 0; margin: 0 20px; }
+  .toc-list li { display: flex; align-items: baseline; margin-bottom: 12px; font-size: 10pt; }
+  .toc-list .toc-ch-title { flex: 0 0 auto; }
+  .toc-list .toc-dots { flex: 1; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
+  .toc-list .toc-pnum { flex: 0 0 auto; min-width: 24px; text-align: right; }
+  .toc-list .toc-pnum::after { content: target-counter(attr(href), page); }
+  .chapter { break-before: right; }
+  .chapter-title { font-size: 14pt; font-weight: 700; margin: 40px 0 30px; text-align: center; }
+  .chapter-content p { text-indent: 10pt; margin: 0; }
+  .chapter-content .ql-editor { padding: 0; }
+  span { background-color: transparent !important; }
 </style>
+<script> window.PagedConfig = { auto: false }; <\/script>
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
 <script>
-  window.PagedConfig = { auto: false };
-</${'script'}>
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
-<script>
-  class CustomHandler extends Paged.Handler {
-    constructor(chunker, polisher, caller) { super(chunker, polisher, caller); }
+  class LiveHandler extends Paged.Handler {
     afterRendered(pages) {
       window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length }, '*');
     }
   }
-  Paged.registerHandlers(CustomHandler);
-  
-  window.addEventListener('DOMContentLoaded', () => {
+  Paged.registerHandlers(LiveHandler);
+  document.addEventListener('DOMContentLoaded', () => {
     window.PagedPolyfill.preview().catch(err => {
-      console.error("Paged.js 렌더링 에러:", err);
       window.parent.postMessage({ type: 'pagedjs-error', error: err.message }, '*');
     });
   });
-</${'script'}>
+<\/script>
 </head>
 <body>
 `;
 
-  // 1. 속표지
-  const fmTitle = escapeHtml($('#podFmTitle')?.value || p.title || '제목 없음');
-  const fmSub = escapeHtml($('#podFmSubtitle')?.value || ($('#podAuthor')?.value || '저자') + ' 지음');
-  const fmPub = escapeHtml($('#podFmPublisher')?.value || '출판사');
-  html += `<div class="title-page bg-colored"><h1>${fmTitle}</h1><div style="margin-bottom:40px;">${fmSub}</div><div>${fmPub}</div></div>`;
-  
-  // 2. 목차 생성 (Cross-Reference 매핑)
-  html += `<div class="toc-page bg-colored"><h2>차 례</h2><ul class="toc-list">`;
-  eps.forEach((e, idx) => {
-    let t = cleanText(e.title) || '(제목 없음)';
-    // a 태그 내부에 보이지 않는 공백 문자를 넣어 DOM이 무너지지 않게 보완
-    html += `<li><div class="toc-title"><span class="toc-prefix">${idx+1}</span>${escapeHtml(t)}</div><div class="toc-dots"></div><a class="toc-page-ref" href="#chapter-${idx}">&#8203;</a></li>`;
+  // ── 1. 속표지 (Front Matter) ───────────────────────────────────
+  const activeFm = (window.fmBlocks || pubSet.fmBlocks || []).filter(b => b.active);
+  const fmTitleVal = window.fmBlocks?.find(b => b.type === 'half_title' || b.type === 'title_page')?.content?.title || p.title || '제목 없음';
+  const fmSubVal   = window.fmBlocks?.find(b => b.type === 'title_page')?.content?.subtitle || ($('#podAuthor')?.value || '저자') + ' 지음';
+  const fmPubVal   = window.fmBlocks?.find(b => b.type === 'title_page' || b.type === 'copyright')?.content?.publisher || '출판사';
+  html += `<div class="fm-page"><h1>${escapeHtml(fmTitleVal)}</h1><div style="margin-bottom:40px;opacity:0.7;">${escapeHtml(fmSubVal)}</div><div style="font-weight:700;">${escapeHtml(fmPubVal)}</div></div>`;
+
+  // ── 2. 목차 (ep.id 기반 앵커 — exportPODPdf와 통일) ──────────────
+  html += `<div class="toc-page"><h2>차 례</h2><ul class="toc-list">`;
+  eps.forEach((e) => {
+    const t = cleanText(e.title) || '(제목 없음)';
+    html += `<li><span class="toc-ch-title">${escapeHtml(t)}</span><span class="toc-dots"></span><a class="toc-pnum" href="#ep-${e.id}">&#8203;</a></li>`;
   });
   html += `</ul></div>`;
 
-  // 3. 본문 조립
-  eps.forEach((e, idx) => {
-    let t = cleanText(e.title) || '';
-    let b = e.body || '';
-    html += `<div class="chapter" id="chapter-${idx}">`;
+  // ── 3. 본문 조립 (ep.id 기반 id 부여 — TOC 앵커와 반드시 일치) ────
+  eps.forEach((e) => {
+    const t = cleanText(e.title) || '';
+    html += `<div class="chapter" id="ep-${e.id}">`;
     if(t) html += `<div class="chapter-title">${escapeHtml(t)}</div>`;
-    html += `<div class="chapter-content">${b}</div></div>`;
+    html += `<div class="chapter-content ql-editor">${e.body || ''}</div></div>`;
   });
 
   html += `</body></html>`;
-  
-  // iframe에 srcdoc으로 주입하여 렌더링 (블로킹 방지 및 라이프사이클 정상화)
-  iframe.removeAttribute('srcdoc'); // 리셋
-  setTimeout(() => {
-    iframe.srcdoc = html;
-  }, 10);
+
+  // ── iframe 갱신: removeAttribute로 완전 초기화 후 srcdoc 재주입 ──
+  iframe.removeAttribute('srcdoc');
+  // 10ms 딜레이: removeAttribute 이후 브라우저가 iframe을 리셋할 시간 확보
+  setTimeout(() => { iframe.srcdoc = html; }, 10);
 }
 
 // iframe 렌더링 완료/에러 메시지 수신 훅
@@ -4557,7 +4546,8 @@ $('#openPublishSettingsBtn').onclick = showPodStudio;
 $('#backFromPodStudio').onclick = hidePodStudio;
 
 // 스튜디오 내 내보내기 버튼
-$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(); };
+// 내지 전용 PDF: 2번째 인자 true → 표지 배제
+$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(false, true); };
 $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
 
 // 저장 버튼
@@ -4677,22 +4667,39 @@ function renderPodPageTree() {
   grid.appendChild(centerLine);
 
   const pagesData = [];
-  let pageNum = 1;
-  
-  // Front matter
-  activeFm.forEach((b, idx) => {
-    const meta = FM_BLOCK_META[b.type] || {name: b.type};
-    pagesData.push({ title: meta.name, page: pageNum, type: 'fm', fmIdx: window.fmBlocks?.indexOf(b) || idx });
-    pageNum++;
-  });
 
-  // Main body (이전에는 글자수로 예상했으나 이제는 실제 렌더링 된 개수만큼 그림)
-  const actualPages = podLastRenderedTotalPages || 10; // 렌더링 전에는 기본 10칸 렌더링
-  let currentEpsIdx = 0;
-  for (let i = pageNum; i <= actualPages; i++) {
-    // 챕터 매핑은 대략적으로 넣음 (나중에 고도화)
-    let epsTitle = loadedEps[currentEpsIdx]?.title || '본문';
-    pagesData.push({ title: epsTitle, page: i, type: 'inner' });
+  // ⚠️ 핵심 수정: 추정 pageNum 대신 iframe 내 실제 Paged.js DOM에서
+  //    렌더링된 .pagedjs_page 엘리먼트를 직접 쿼리하여 썸네일 구성
+  const iframe = document.getElementById('podLiveIframe');
+  const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+  const realPageEls = iframeDoc
+    ? Array.from(iframeDoc.querySelectorAll('.pagedjs_page'))
+    : [];
+
+  if (realPageEls.length > 0) {
+    // Paged.js 렌더링 완료된 경우: 실제 DOM 순서대로 썸네일 구성
+    realPageEls.forEach((el, idx) => {
+      const pgNum = parseInt(el.dataset.pageNumber || el.getAttribute('data-page-number') || (idx + 1), 10);
+      // 해당 페이지 내부에 목차/속표지 클래스가 있으면 이름 추출
+      const hasToc = el.querySelector('.toc-page, .fm-page');
+      const chapterTitleEl = el.querySelector('.chapter-title');
+      let label = hasToc ? (el.querySelector('.toc-page') ? '목차' : '속표지') :
+                  (chapterTitleEl ? cleanText(chapterTitleEl.textContent).slice(0, 12) : `${pgNum}쪽`);
+      pagesData.push({ title: label, page: pgNum, type: 'inner', el });
+    });
+  } else {
+    // 렌더링 전(대기 중): Front matter 예상 + 본문 예상으로 스켈레톤 구성
+    let pageNum = 1;
+    const activeFm2 = (window.fmBlocks || set.fmBlocks || []).filter(b => b.active);
+    activeFm2.forEach((b) => {
+      const meta = FM_BLOCK_META[b.type] || {name: b.type};
+      pagesData.push({ title: meta.name, page: pageNum, type: 'fm', fmIdx: window.fmBlocks?.indexOf(b) });
+      pageNum++;
+    });
+    const skeletonPages = Math.max(podLastRenderedTotalPages, 10);
+    for (let i = pageNum; i <= skeletonPages; i++) {
+      pagesData.push({ title: `${i}쪽`, page: i, type: 'inner' });
+    }
   }
 
   // [3] IntersectionObserver를 통한 가상화 렌더링
@@ -4727,14 +4734,14 @@ function renderPodPageTree() {
               $('#podPreviewCover').classList.remove('active');
               $('#podPageToggleWrap').style.display = 'flex';
               
-              // Paged.js iframe 내의 실제 페이지로 스크롤 이동 (Event Routing)
-              const iframe = document.getElementById('podLiveIframe');
-              if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
-                const doc = iframe.contentWindow.document;
-                const pageEl = doc.querySelector(`.pagedjs_page[data-page-number="${data.page}"]`);
-                if (pageEl) {
-                  pageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+              // ⚠️ 핵심 수정: data.el이 있으면 직접 스크롤, 없으면 page-number로 쿼리
+              const liveIframe = document.getElementById('podLiveIframe');
+              const targetEl = data.el || liveIframe?.contentDocument?.querySelector(
+                `.pagedjs_page[data-page-number="${data.page}"]`
+              );
+              if (targetEl) {
+                // iframe 내부 엘리먼트를 iframe 뷰포트 기준으로 스크롤
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
             }
           };
@@ -6033,7 +6040,10 @@ ${mainStyles}
 <body>
 `;
 
-  if (pubSet.includeCover !== false) {
+  // ⚠️ 핵심 수정: isSilent(정밀계산용) 또는 coverExcluded(내지 전용 내보내기) 시 표지 완전 배제
+  //    내지 PDF 내보내기 버튼은 exportPODPdf(false, true)로 호출 → 표지 없이 내지만 출력
+  const coverExcluded = arguments[1] === true; // 2번째 인자가 true이면 내지 전용
+  if (!isSilent && !coverExcluded && pubSet.includeCover !== false) {
     try {
       const coverB64 = await generateCoverPreview(p, pubSet);
       if (coverB64) {
