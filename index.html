@@ -4327,24 +4327,30 @@ async function renderLivePodPreview() {
   .chapter-content .ql-editor { padding: 0; }
   span { background-color: transparent !important; }
 </style>
-<script> window.PagedConfig = { auto: false }; <\/script>
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
-<script>
-  class LiveHandler extends Paged.Handler {
-    afterRendered(pages) {
-      window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length }, '*');
-    }
-  }
-  Paged.registerHandlers(LiveHandler);
-  document.addEventListener('DOMContentLoaded', () => {
-    window.PagedPolyfill.preview().catch(err => {
-      window.parent.postMessage({ type: 'pagedjs-error', error: err.message }, '*');
-    });
-  });
-<\/script>
 </head>
 <body>
 `;
+
+  // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
+  const srcdocScripts = `
+<script>window.PagedConfig = { auto: false };<\/script>
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
+<script>
+class LiveHandler extends Paged.Handler {
+  afterRendered(pages) {
+    try { window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length }, '*'); } catch(err) {}
+  }
+}
+Paged.registerHandlers(LiveHandler);
+window.addEventListener('message', function(ev) {
+  if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
+  var el = document.querySelector('.pagedjs_page[data-page-number="' + ev.data.page + '"]');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+PagedPolyfill.preview().catch(function(e) {
+  try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message }, '*'); } catch(e2) {}
+});
+<\/script>`;
 
   // ── 1. 속표지 (Front Matter) ───────────────────────────────────
   const activeFm = (window.fmBlocks || pubSet.fmBlocks || []).filter(b => b.active);
@@ -4369,6 +4375,8 @@ async function renderLivePodPreview() {
     html += `<div class="chapter-content ql-editor">${e.body || ''}</div></div>`;
   });
 
+  // ★ 핵심: body 콘텐츠 뒤에 스크립트 블록 삽입 (DOM 파싱 완료 후 실행 보장)
+  html += srcdocScripts;
   html += `</body></html>`;
 
   // ── iframe 갱신: removeAttribute로 완전 초기화 후 srcdoc 재주입 ──
@@ -4377,24 +4385,33 @@ async function renderLivePodPreview() {
   setTimeout(() => { iframe.srcdoc = html; }, 10);
 }
 
-// iframe 렌더링 완료/에러 메시지 수신 훅
+// ── pagedjs-rendered 메시지 수신 → 트리 업데이트 ──────────────────
 window.addEventListener('message', (e) => {
   if (!e.data) return;
-  
   if (e.data.type === 'pagedjs-rendered') {
-    $('#podLiveRenderStatus').textContent = `렌더링 완료 (총 ${e.data.totalPages}쪽)`;
-    podLastRenderedTotalPages = e.data.totalPages;
+    const total = e.data.totalPages || 0;
+    podLastRenderedTotalPages = total;
     
-    // UI 업데이트 (책등 재계산 및 좌측 썸네일 재렌더링)
-    updateSpineThickness(podLastRenderedTotalPages);
+    const st = $('#podLiveRenderStatus');
+    if(st) st.textContent = `렌더링 완료 ✓ 총 ${total}쪽`;
     
-    // 무한 루프(render -> tree -> tab -> render) 방지를 위해, 현재 열려있는 설정 탭이 '구조도(tree)'일 때만 재렌더링 수행
-    const isTreeActive = document.querySelector('.pod-settings-tab[data-pane="tree"]')?.classList.contains('active');
-    if (isTreeActive) {
-      renderPodPageTree(); 
+    // 책등 두께 계산 업데이트
+    updateSpineThickness(total);
+    
+    // ★ 조건 없이 항상 트리 footer를 업데이트 (isTreeActive 조건 제거)
+    const footerLabel = document.getElementById('podSpineThicknessLabel');
+    const totalLabel = footerLabel?.previousElementSibling;
+    if (totalLabel) totalLabel.innerHTML = `내지 총합: ${total}쪽`;
+    
+    // 트리 탭이 열려 있으면 전체 트리 재렌더링 (실제 DOM 기반 썸네일)
+    const treePane = document.getElementById('podPane-tree');
+    const isTreeVisible = treePane && (treePane.classList.contains('active') || getComputedStyle(treePane).display !== 'none');
+    if (isTreeVisible) {
+      renderPodPageTree();
     }
   } else if (e.data.type === 'pagedjs-error') {
-    $('#podLiveRenderStatus').textContent = `렌더링 에러: ${e.data.error}`;
+    const st = $('#podLiveRenderStatus');
+    if(st) st.textContent = `렌더링 에러: ${e.data.error}`;
   }
 });
 
@@ -4735,7 +4752,7 @@ function renderPodPageTree() {
               $('#podPreviewCover').classList.remove('active');
               $('#podPageToggleWrap').style.display = 'none';
             } else {
-              // 내지 탭 활성화 (수동으로 UI만 변경)
+              // ★ 내지 탭 활성화 (수동 UI 변경)
               $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
               const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
               if(pb) pb.classList.add('active');
@@ -4744,14 +4761,12 @@ function renderPodPageTree() {
               $('#podPreviewCover').classList.remove('active');
               $('#podPageToggleWrap').style.display = 'flex';
               
-              // ⚠️ 핵심 수정: data.el이 있으면 직접 스크롤, 없으면 page-number로 쿼리
+              // ★ postMessage로 iframe 내부에 스크롤 요청 (parent에서 iframe DOM scrollIntoView는 동작 안 함)
               const liveIframe = document.getElementById('podLiveIframe');
-              const targetEl = data.el || liveIframe?.contentDocument?.querySelector(
-                `.pagedjs_page[data-page-number="${data.page}"]`
-              );
-              if (targetEl) {
-                // iframe 내부 엘리먼트를 iframe 뷰포트 기준으로 스크롤
-                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              if (liveIframe && liveIframe.contentWindow) {
+                liveIframe.contentWindow.postMessage(
+                  { type: 'pod-scroll-to-page', page: data.page }, '*'
+                );
               }
             }
           };
