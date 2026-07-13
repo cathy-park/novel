@@ -4308,7 +4308,6 @@ async function renderLivePodPreview() {
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
 <style>
   /* 스프레드(양면) 뷰어용 스타일 */
-  .pagedjs_pages { position: relative; width: 100%; height: 100%; display: flex; flex-direction: row; justify-content: center; align-items: flex-start; }
   .pagedjs_page { 
     margin: 0 !important; border: none !important; 
     box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; 
@@ -4338,8 +4337,8 @@ function runPaged() {
       if (window.podProgressTimer) clearInterval(window.podProgressTimer);
       var map = [];
       pages.forEach(function(p, idx) {
-        if (!p.pageNode) return;
-        var el = p.pageNode;
+        var el = p.element || p.pageNode || p.wrapper;
+        if (!el) return;
         
         // 렌더링 직후 1페이지만 남기기 (우측 페이지)
         var pgNum = parseInt(el.dataset.pageNumber || el.getAttribute('data-page-number') || '0', 10);
@@ -4398,10 +4397,13 @@ function runPaged() {
       try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: count }, '*'); } catch(err) {}
     }
   }, 250);
-
-  PagedPolyfill.preview().catch(function(e) {
-    try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message }, '*'); } catch(e2) {}
-  });
+  try {
+    PagedPolyfill.preview().catch(function(e) {
+      try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message + " | " + (e.stack ? e.stack.substring(0, 100) : "") }, '*'); } catch(e2) {}
+    });
+  } catch (err) {
+    try { window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*'); } catch(e2) {}
+  }
 }
 runPaged();
 <\/script>`;
