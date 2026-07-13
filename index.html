@@ -1027,11 +1027,13 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
    POD Publishing Studio (Phase 1)
    ============================== */
 
-/* 스튜디오 전체 레이아웃 */
+/* 스튜디오 전체 레이아웃 — 전체 화면 오버레이 */
 #podStudioView {
   display: none;
   flex-direction: column;
-  height: 100vh;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
   overflow: hidden;
   background: var(--c-bg);
 }
@@ -1547,7 +1549,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <label>작품명</label><input id="projectTitle" class="project-title-input" />
       <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
     </div>
-    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addFrontMatterBtn" class="icon-btn" type="button" title="부속/판권지 추가" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">+ 부속 추가</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
+    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
     <div id="episodeList" class="episode-list"></div>
     <div class="sidebar-foot">
       <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
@@ -1575,7 +1577,19 @@ window.addEventListener('unhandledrejection', function(e) {
           <input id="episodeTitle" class="episode-title" aria-label="회차 제목" />
           <div class="episode-meta-row">
             <div class="episode-sub">
-              <select id="episodeType"><option value="prologue">프롤로그</option><option value="chapter">본편</option><option value="epilogue">에필로그</option></select>
+              <select id="episodeType">
+                <optgroup label="앞부속">
+                  <option value="frontmatter">📄 앞부속 (속표지·헌사·서문 등)</option>
+                </optgroup>
+                <optgroup label="본문">
+                  <option value="prologue">프롤로그</option>
+                  <option value="chapter">본편</option>
+                  <option value="epilogue">에필로그</option>
+                </optgroup>
+                <optgroup label="뒷부속">
+                  <option value="backmatter">📄 뒷부속 (작가의 말·참고문헌 등)</option>
+                </optgroup>
+              </select>
               
             </div>
             <div class="view-tabs"><button class="view-tab" data-mode="plan" type="button">기획</button><button class="view-tab" data-mode="body" type="button">본문</button><button class="view-tab active" data-mode="split" type="button">분할</button></div>
@@ -3032,7 +3046,7 @@ function addFrontMatter() {
   setTimeout(() => { const el = $('.episode-row.active'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);
   showToast('부속 페이지를 맨 위에 추가했습니다. 위아래로 끌어다 놓아 순서를 변경하세요.'); 
 }
-$('#addFrontMatterBtn').onclick = addFrontMatter;
+if ($('#addFrontMatterBtn')) $('#addFrontMatterBtn').onclick = addFrontMatter;
 
 function togglePlanDrawer() {
   saveEditorScroll();
