@@ -4370,7 +4370,7 @@ async function podUpdateCoverPreview() {
         { id: 'copyright', name: '판권지', active: true },
         { id: 'toc', name: '목차', active: true }
       ],
-      author: $('#podAuthor').value || set.frontMatter?.author || ''
+      author: window.fmBlocks?.find(x => x.type === 'copyright')?.content?.author || set.frontMatter?.author || ''
     }
   };
 
