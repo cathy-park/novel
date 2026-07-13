@@ -1200,13 +1200,15 @@ window.addEventListener('unhandledrejection', function(e) {
 <label class="modal-field"><span>표지 컬러</span><div id="newProjectColors" class="cover-colors" style="margin-top:4px;"></div></label>
 <div class="modal-actions"><button class="ghost" data-close="newProjectModal">취소</button><button id="createProjectBtn" class="primary">작품 만들기</button></div></div></div>
 
-<div id="publishSettingsModal" class="modal-overlay hidden">
-  <div class="modal">
+<div id="publishSettingsModal" class="modal-overlay hidden" style="z-index:9999;">
+  <div class="modal" style="width: 520px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
     <div class="modal-head">
       <div><span class="kicker">설정</span><h2>출판용 PDF 템플릿 설정</h2></div>
       <button class="icon-btn" data-close="publishSettingsModal">×</button>
     </div>
-    <div class="modal-body" style="display:flex; flex-direction:column; gap:20px;">
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:20px; padding-bottom:20px;">
+      
+      <!-- 기본 템플릿 설정 -->
       <div style="display:flex; flex-direction:column; gap:8px;">
         <label style="font-size:12px; font-weight:600; color:var(--c-sub);">용지 크기</label>
         <select id="pubPaperSize" style="padding:10px; border-radius:6px; border:1px solid #E2E2E2; outline:none; background:var(--c-bg); color:var(--c-ink);">
@@ -1214,15 +1216,68 @@ window.addEventListener('unhandledrejection', function(e) {
           <option value="B6">B6 (문고판 크기 - 128×182mm)</option>
         </select>
       </div>
+
+      <!-- 표지 설정 -->
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-3);">
+        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">표지 설정</label>
+        
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="pubIncludeCover"> <span style="font-size:12px; font-weight:600;">표지 포함하여 인쇄</span>
+        </label>
+        
+        <div id="pubCoverOptions" style="display:none; flex-direction:column; gap:12px; margin-top:8px;">
+          <div style="display:flex; gap:12px; align-items:flex-end;">
+            <div style="flex:1;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub); display:block; margin-bottom:4px;">표지 이미지 업로드</label>
+              <input type="file" id="pubCoverImageInput" accept="image/png, image/jpeg" style="font-size:12px; width:100%;">
+            </div>
+            <button id="pubCoverImageClearBtn" class="ghost" style="font-size:11px; padding:0 8px; min-height:26px;">초기화</button>
+          </div>
+          
+          <img id="pubCoverImagePreview" src="" style="display:none; width:100%; max-height:160px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
+
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="pubCoverFillMode"> <span style="font-size:12px;">전체 펼침면 채우기 (체크 해제 시 앞표지만 채움)</span>
+          </label>
+          
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 / 뒷표지 배경색 (앞표지만 채울 때 사용)</label>
+            <input type="color" id="pubCoverBgColor" value="#2c2c2c" style="width:100%; height:32px; border:1px solid var(--c-line); border-radius:4px; cursor:pointer;">
+          </div>
+          
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 두께 (mm)</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="number" id="pubSpineWidth" style="width:80px; padding:6px; border-radius:4px; border:1px solid #E2E2E2; outline:none;" min="1" step="0.5">
+              <span style="font-size:11px; color:var(--c-muted);" id="pubSpineCalcText"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 판권지 설정 -->
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-3);">
+        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">판권지(Copyright) 설정</label>
+        
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="pubShowCopyright"> <span style="font-size:12px; font-weight:600;">판권지 페이지 추가</span>
+        </label>
+        
+        <div id="pubCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">지은이 (저자명)</span><input type="text" id="pubAuthor" class="input" placeholder="예: 홍길동" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">출판사</span><input type="text" id="pubPublisher" class="input" placeholder="예: 독립출판" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행일</span><input type="text" id="pubPublishDate" class="input" placeholder="예: 2026년 7월 15일" style="padding:6px; font-size:12px;"></label>
+        </div>
+      </div>
+
       <div style="display:flex; flex-direction:column; gap:12px;">
-        <label style="font-size:12px; font-weight:600; color:var(--c-sub);">템플릿 옵션</label>
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubIncludeCover"> <span>서재의 작품 표지를 첫 장에 포함</span></label>
+        <label style="font-size:12px; font-weight:600; color:var(--c-sub);">기타 옵션</label>
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubAutoTOC"> <span>원고 목차(Table of Contents) 페이지 자동 생성</span></label>
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubShowTitle"> <span>본문 시작 전에 회차 제목(예: 1화) 자동으로 삽입</span></label>
         <p style="font-size:11px; color:#A0AAB5; margin:0 0 0 22px;">※ 본문 첫 줄에 이미 회차 제목을 적어두셨다면 위 옵션을 끄셔야 제목이 두 번 중복해서 나오지 않습니다.</p>
       </div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="margin-top:0;">
       <button class="ghost" data-close="publishSettingsModal">취소</button>
       <button id="savePublishSettingsBtn" class="primary">저장하기</button>
     </div>
@@ -2941,24 +2996,205 @@ $('#copyManuscriptFull').onclick = () => {
 
 // Publish Settings Logic
 function getPublishSettings(p) {
-  return p.publishSettings || { paperSize: 'A5', includeCover: true, autoTOC: true, showTitle: false };
+  const defaults = { 
+    paperSize: 'A5', 
+    includeCover: true, 
+    autoTOC: true, 
+    showTitle: false,
+    coverOptions: {
+      imageBase64: null,
+      fillMode: false,
+      bgColor: '#2c2c2c',
+      spineWidthMm: calculateSpineWidth(p)
+    },
+    frontMatter: {
+      showCopyright: false,
+      author: '',
+      publisher: '',
+      publishDate: ''
+    }
+  };
+  return Object.assign(defaults, p.publishSettings || {});
 }
+
+function calculateSpineWidth(p) {
+  // 간단한 추산식: 총 글자수 / 500자 (1페이지) * 0.05mm (페이지당 두께)
+  const eps = p.episodes || [];
+  const totalChars = eps.reduce((sum, e) => sum + (e.body ? e.body.replace(/<[^>]*>?/gm, '').length : 0), 0);
+  const estimatedPages = Math.max(10, Math.ceil(totalChars / 500));
+  return Math.max(1, Math.round(estimatedPages * 0.05 * 10) / 10); // 소수점 1자리
+}
+
+const MM_TO_PX_300DPI = 300 / 25.4;
+let currentCoverImageObj = null;
+
+async function generateCoverPreview(imgObj, p, set) {
+  if(!imgObj) return null;
+  const paperSize = $('#pubPaperSize').value;
+  const spineWidthMm = parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p);
+  const fillMode = $('#pubCoverFillMode').checked;
+  const bgColor = $('#pubCoverBgColor').value;
+  const bleedMm = 3;
+
+  let widthMm = 148; let heightMm = 210;
+  if (paperSize === 'B6') { widthMm = 128; heightMm = 182; }
+
+  const totalWidthMm = (widthMm * 2) + spineWidthMm + (bleedMm * 2);
+  const totalHeightMm = heightMm + (bleedMm * 2);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(totalWidthMm * MM_TO_PX_300DPI);
+  canvas.height = Math.round(totalHeightMm * MM_TO_PX_300DPI);
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (fillMode) {
+    // 전체 채우기 모드 (Center Crop)
+    const imgRatio = imgObj.width / imgObj.height;
+    const canvasRatio = canvas.width / canvas.height;
+    let renderW, renderH, offsetX, offsetY;
+
+    if (imgRatio > canvasRatio) {
+      renderH = canvas.height; renderW = imgObj.width * (canvas.height / imgObj.height);
+      offsetX = (canvas.width - renderW) / 2; offsetY = 0;
+    } else {
+      renderW = canvas.width; renderH = imgObj.height * (canvas.width / imgObj.width);
+      offsetX = 0; offsetY = (canvas.height - renderH) / 2;
+    }
+    ctx.drawImage(imgObj, offsetX, offsetY, renderW, renderH);
+  } else {
+    // 앞표지만 채우기 모드 (우측 영역)
+    const frontStartX = Math.round((widthMm + spineWidthMm + bleedMm) * MM_TO_PX_300DPI);
+    const frontWidth = Math.round((widthMm + bleedMm) * MM_TO_PX_300DPI);
+    const frontHeight = canvas.height;
+    
+    // 앞표지 영역 Center Crop
+    const imgRatio = imgObj.width / imgObj.height;
+    const frontRatio = frontWidth / frontHeight;
+    let renderW, renderH, cropX, cropY;
+    
+    if (imgRatio > frontRatio) {
+      renderH = frontHeight; renderW = imgObj.width * (frontHeight / imgObj.height);
+      cropX = frontStartX + (frontWidth - renderW) / 2; cropY = 0;
+    } else {
+      renderW = frontWidth; renderH = imgObj.height * (frontWidth / imgObj.width);
+      cropX = frontStartX; cropY = (frontHeight - renderH) / 2;
+    }
+    
+    // 클리핑(마스크) 처리하여 영역 밖으로 넘어가지 않게 방지
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(frontStartX, 0, frontWidth, frontHeight);
+    ctx.clip();
+    ctx.drawImage(imgObj, cropX, cropY, renderW, renderH);
+    ctx.restore();
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.85); // 0.85 for slightly smaller base64 size
+}
+
+$('#pubIncludeCover').onchange = (e) => { $('#pubCoverOptions').style.display = e.target.checked ? 'flex' : 'none'; };
+$('#pubShowCopyright').onchange = (e) => { $('#pubCopyrightOptions').style.display = e.target.checked ? 'flex' : 'none'; };
+
+function updateCoverPreviewRender() {
+  if(!currentCoverImageObj) return;
+  const p = currentProject(); if(!p) return;
+  const set = getPublishSettings(p);
+  generateCoverPreview(currentCoverImageObj, p, set).then(b64 => {
+    $('#pubCoverImagePreview').src = b64;
+    $('#pubCoverImagePreview').style.display = 'block';
+    $('#pubCoverImagePreview').dataset.base64 = b64;
+  });
+}
+$('#pubPaperSize').addEventListener('change', updateCoverPreviewRender);
+$('#pubSpineWidth').addEventListener('input', updateCoverPreviewRender);
+$('#pubCoverFillMode').addEventListener('change', updateCoverPreviewRender);
+$('#pubCoverBgColor').addEventListener('input', updateCoverPreviewRender);
+
+$('#pubCoverImageClearBtn').onclick = () => {
+  currentCoverImageObj = null;
+  $('#pubCoverImageInput').value = '';
+  $('#pubCoverImagePreview').style.display = 'none';
+  $('#pubCoverImagePreview').src = '';
+  $('#pubCoverImagePreview').dataset.base64 = '';
+};
+
+$('#pubCoverImageInput').onchange = (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      currentCoverImageObj = img;
+      updateCoverPreviewRender();
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
 $('#openPublishSettingsBtn').onclick = () => {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
+  
   $('#pubPaperSize').value = set.paperSize;
   $('#pubIncludeCover').checked = set.includeCover;
+  $('#pubCoverOptions').style.display = set.includeCover ? 'flex' : 'none';
+  
+  // Cover options
+  $('#pubCoverFillMode').checked = set.coverOptions?.fillMode || false;
+  $('#pubCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
+  $('#pubSpineWidth').value = set.coverOptions?.spineWidthMm || calculateSpineWidth(p);
+  $('#pubSpineCalcText').textContent = `(자동 계산 권장: ${calculateSpineWidth(p)}mm)`;
+  
+  if(set.coverOptions?.imageBase64) {
+    $('#pubCoverImagePreview').src = set.coverOptions.imageBase64;
+    $('#pubCoverImagePreview').dataset.base64 = set.coverOptions.imageBase64;
+    $('#pubCoverImagePreview').style.display = 'block';
+    // Create an img object from the saved base64 so we can edit settings
+    const img = new Image();
+    img.onload = () => { currentCoverImageObj = img; };
+    img.src = set.coverOptions.originalImageBase64 || set.coverOptions.imageBase64;
+  } else {
+    $('#pubCoverImageClearBtn').click();
+  }
+
+  // Front Matter options
+  $('#pubShowCopyright').checked = set.frontMatter?.showCopyright || false;
+  $('#pubCopyrightOptions').style.display = set.frontMatter?.showCopyright ? 'flex' : 'none';
+  $('#pubAuthor').value = set.frontMatter?.author || '';
+  $('#pubPublisher').value = set.frontMatter?.publisher || '';
+  $('#pubPublishDate').value = set.frontMatter?.publishDate || '';
+
+  // Other options
   $('#pubAutoTOC').checked = set.autoTOC;
   $('#pubShowTitle').checked = set.showTitle;
   openModal('publishSettingsModal');
 };
+
 $('#savePublishSettingsBtn').onclick = () => {
   const p = currentProject(); if(!p) return;
   p.publishSettings = {
     paperSize: $('#pubPaperSize').value,
     includeCover: $('#pubIncludeCover').checked,
     autoTOC: $('#pubAutoTOC').checked,
-    showTitle: $('#pubShowTitle').checked
+    showTitle: $('#pubShowTitle').checked,
+    coverOptions: {
+      imageBase64: $('#pubCoverImagePreview').dataset.base64 || null,
+      originalImageBase64: currentCoverImageObj?.src || null, // store original for re-processing
+      fillMode: $('#pubCoverFillMode').checked,
+      bgColor: $('#pubCoverBgColor').value,
+      spineWidthMm: parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p)
+    },
+    frontMatter: {
+      showCopyright: $('#pubShowCopyright').checked,
+      author: $('#pubAuthor').value,
+      publisher: $('#pubPublisher').value,
+      publishDate: $('#pubPublishDate').value
+    }
   };
   touchProject(); queueSaveFS();
   closeModal('publishSettingsModal');
@@ -3293,7 +3529,9 @@ ${mainStyles}
   // 1. 표지 (옵션)
   if (pubSet.includeCover) {
     html += `<div class="cover-page">`;
-    if (p.cover) {
+    if (pubSet.coverOptions?.imageBase64) {
+      html += `<img src="${pubSet.coverOptions.imageBase64}" style="width:100%; height:100vh; object-fit:contain; display:block; background:${pubSet.coverOptions.bgColor || '#ffffff'};">`;
+    } else if (p.cover) {
       html += `<img src="${p.cover}" style="width:100%; height:100vh; object-fit:cover; display:block;">`;
     } else {
       html += `<h1 style="color:#fff; font-size:28pt;">${escapeHtml(p.title)}</h1>`;
@@ -3301,7 +3539,19 @@ ${mainStyles}
     html += `</div>`;
   }
 
-  // 2. 목차 전 부속 (사용자가 추가한 앞부속)
+  // 2. 판권지 (옵션)
+  if (pubSet.frontMatter?.showCopyright) {
+    html += `
+  <div class="chapter matter-page" style="break-before: page; break-after: page; padding-top: 60vh; font-size: 9pt; font-family: 'KoPub Batang', serif; text-align: left; padding-left: 20px;">
+    <p style="margin-bottom:8px;"><strong>${escapeHtml(p.title)}</strong></p>
+    <p style="margin-bottom:4px;">발행일 : ${escapeHtml(pubSet.frontMatter.publishDate || '2026년 00월 00일')}</p>
+    <p style="margin-bottom:4px;">지은이 : ${escapeHtml(pubSet.frontMatter.author || '저자명 미상')}</p>
+    <p style="margin-bottom:20px;">출판사 : ${escapeHtml(pubSet.frontMatter.publisher || '독립출판')}</p>
+    <p>ⓒ ${new Date().getFullYear()}. ${escapeHtml(pubSet.frontMatter.author || '저자명 미상')} All rights reserved.</p>
+  </div>`;
+  }
+
+  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
     const processed = processEpisodeBody(ep.body, ep.title, true);
     html += `
@@ -3310,12 +3560,13 @@ ${mainStyles}
   </div>`;
   });
 
-  // 3. 제목 페이지 (자동 생성)
+  // 4. 제목 페이지 (자동 생성)
   // 사용자가 직접 앞부속을 만들지 않았을 때만 제목 페이지를 생성
   if (beforeTocEps.length === 0) {
     html += `
   <div class="title-page">
     <h1>${escapeHtml(p.title)}</h1>
+    <p style="margin-top: 20px; font-size: 14pt;">${escapeHtml(pubSet.frontMatter?.author || '')}</p>
   </div>
 `;
   }
