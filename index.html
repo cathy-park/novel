@@ -4587,30 +4587,8 @@ function renderPodPageTree() {
   header.innerHTML = `📚 ${escapeHtml(p.title)}`;
   treeEl.appendChild(header);
 
-  const grid = document.createElement('div');
-  grid.style.cssText = `
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-auto-rows: max-content;
-    gap: 16px 12px;
-    padding: 10px 10px 40px 10px;
-    position: relative;
-    justify-items: center;
-  `;
-
-  // 중앙 가이드라인
-  const centerLine = document.createElement('div');
-  centerLine.style.cssText = `
-    position: absolute;
-    top: 0; bottom: 0; left: 50%;
-    width: 1px;
-    background-color: var(--border-color);
-    z-index: 0;
-  `;
-  grid.appendChild(centerLine);
-
   // 공통 썸네일 생성 함수
-  function createThumb(title, icon, labelBottom, labelInside, isCover = false) {
+  function createThumb(title, icon, labelBottom, labelInside) {
     const el = document.createElement('div');
     el.style.cssText = `
       width: 64px;
@@ -4629,38 +4607,72 @@ function renderPodPageTree() {
       cursor: pointer;
       transition: border-color 0.2s;
     `;
-    if (isCover) el.style.gridColumn = '2'; // 표지는 우측
-    
     el.innerHTML = `
       <div style="font-size:24px; margin-bottom:4px; opacity:0.8;">${icon}</div>
       <div style="font-size:10px; font-weight:700; color:var(--c-ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${title}">${title}</div>
       ${labelInside ? `<div style="font-size:9px; color:var(--c-muted); margin-top:auto; opacity:0.6;">${labelInside}</div>` : ''}
       ${labelBottom ? `<div style="position:absolute; bottom:-20px; font-size:11px; color:var(--c-link); font-weight:700; background:var(--c-bg); padding:0 4px;">${labelBottom}</div>` : ''}
     `;
-    
     el.onmouseenter = () => el.style.borderColor = 'var(--primary)';
     el.onmouseleave = () => el.style.borderColor = 'var(--border-color)';
     return el;
   }
 
-  let pageNum = 1; // 페이지 추적
+  // [1] 표지 섹션 (별도 레이어)
+  const coverSection = document.createElement('div');
+  coverSection.style.cssText = 'display:flex; flex-direction:column; align-items:center; margin-bottom:32px; position:relative;';
+  const coverLabel = document.createElement('div');
+  coverLabel.style.cssText = 'font-size:11px; font-weight:700; color:var(--c-sub); margin-bottom:8px; width:100%; text-align:center; border-bottom:1px dashed var(--border-color); padding-bottom:4px;';
+  coverLabel.innerText = '─ 표지 (별도 판형) ─';
+  coverSection.appendChild(coverLabel);
   
-  // 1. Cover
-  const coverEl = createThumb('표지', '🖼', '1', '1장', true);
-  coverEl.onclick = () => { if($$('.pod-settings-tab')[3]) $$('.pod-settings-tab')[3].click(); };
-  grid.appendChild(coverEl);
-  pageNum++;
+  const coverEl = createThumb('표지', '🖼', '', '앞/뒤/책등');
+  // 클릭 시 "미리보기 화면"을 표지로 전환 (좌측 설정 탭 변경 안 함)
+  coverEl.onclick = () => { const b = document.querySelector('.pod-preview-tab[data-preview="cover"]'); if(b) b.click(); };
+  coverSection.appendChild(coverEl);
+  treeEl.appendChild(coverSection);
 
-  // 2. Front matter
+  // [2] 내지 스프레드 뷰
+  const innerLabel = document.createElement('div');
+  innerLabel.style.cssText = 'font-size:11px; font-weight:700; color:var(--c-sub); margin-bottom:16px; width:100%; text-align:center; border-bottom:1px dashed var(--border-color); padding-bottom:4px;';
+  innerLabel.innerText = '─ 내지 (본문/부속) ─';
+  treeEl.appendChild(innerLabel);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = `
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: max-content;
+    gap: 16px 12px;
+    padding: 10px 10px 40px 10px;
+    position: relative;
+    justify-items: center;
+  `;
+
+  // 중앙 가이드라인 (책등)
+  const centerLine = document.createElement('div');
+  centerLine.style.cssText = `
+    position: absolute;
+    top: -10px; bottom: 0; left: 50%;
+    width: 2px;
+    background-color: var(--border-color);
+    z-index: 0;
+  `;
+  grid.appendChild(centerLine);
+
+  let pageNum = 1; // 내지의 1쪽 시작
+  
+  // Front matter
   activeFm.forEach(b => {
     const meta = FM_BLOCK_META[b.type] || {name: b.type, icon: '📄'};
     const el = createThumb(meta.name, meta.icon, String(pageNum), '1쪽');
-    el.onclick = () => { if($$('.pod-settings-tab')[1]) $$('.pod-settings-tab')[1].click(); };
+    if (pageNum === 1) el.style.gridColumn = '2'; // 1페이지는 우측 시작
+    el.onclick = () => { const pb = document.querySelector('.pod-preview-tab[data-preview="fm"]'); if(pb) pb.click(); };
     grid.appendChild(el);
     pageNum++;
   });
 
-  // 3. Main body
+  // Main body
   let totalBodyPages = 0;
   loadedEps.forEach(e => {
     const len = e.body.replace(/<[^>]*>?/gm, '').length;
@@ -4671,19 +4683,18 @@ function renderPodPageTree() {
     const pageLabel = pgs > 1 ? `${pageNum}-${endPageNum}` : `${pageNum}`;
     
     const el = createThumb(escapeHtml(e.title), '📄', pageLabel, `예상 ${pgs}쪽`);
+    if (pageNum === 1) el.style.gridColumn = '2'; // 혹시라도 전면부가 하나도 없다면 본문이 1페이지(우측)부터 시작
+    el.onclick = () => { const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]'); if(pb) pb.click(); };
     grid.appendChild(el);
     
-    // 인디자인에서는 한 아이템이 여러 페이지를 차지해도 아이콘 하나로 퉁치거나, 
-    // 혹은 해당 항목이 끝난 뒤 다음 항목이 좌/우 중 올바른 위치에서 시작하도록 할 수 있습니다.
-    // 여기서는 직관성을 위해 그리드 흐름대로 단순히 다음 썸네일을 배치합니다.
     pageNum += pgs;
   });
 
   treeEl.appendChild(grid);
   
   const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:16px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink); padding-right:12px;';
-  footer.innerHTML = `예상 총합: ${pageNum - 1}쪽`;
+  footer.style.cssText = 'margin-top:16px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink); padding-right:12px; border-top:1px solid var(--border-color); padding-top:8px;';
+  footer.innerHTML = `내지 예상 총합: ${pageNum - 1}쪽`;
   treeEl.appendChild(footer);
 }
 
