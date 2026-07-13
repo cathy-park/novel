@@ -1270,14 +1270,15 @@ window.addEventListener('unhandledrejection', function(e) {
         </label>
         
         <div id="pubCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">지은이 (저자명)</span><input type="text" id="pubAuthor" class="input" placeholder="예: 홍길동" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행처(출판사)</span><input type="text" id="pubPublisher" class="input" placeholder="예: 퍼플" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행일</span><input type="text" id="pubPublishDate" class="input" placeholder="예: 2026년 1월 1일" style="padding:6px; font-size:12px;"></label>
-          <hr style="border:0; border-top:1px solid var(--c-line-mid); margin:4px 0;" />
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">출판등록 번호</span><input type="text" id="pubPubReg" class="input" placeholder="예: 제 300-2012-167 호" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">주소</span><input type="text" id="pubAddress" class="input" placeholder="예: 서울시 종로구 종로 1가 1번지" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">대표전화</span><input type="text" id="pubPhone" class="input" placeholder="예: 1544-1900" style="padding:6px; font-size:12px;"></label>
-          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">홈페이지</span><input type="text" id="pubHomepage" class="input" placeholder="예: www.kyobobook.co.kr" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">지은이 (저자명)</span><input type="text" id="pubAuthor" class="input" placeholder="예: 박소연" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행일</span><input type="text" id="pubPublishDate" class="input" placeholder="예: 2026년 07월 13일" style="padding:6px; font-size:12px;"></label>
+          <div style="display:none;">
+            <input type="text" id="pubPublisher">
+            <input type="text" id="pubPubReg">
+            <input type="text" id="pubAddress">
+            <input type="text" id="pubPhone">
+            <input type="text" id="pubHomepage">
+          </div>
         </div>
       </div>
 
@@ -3043,83 +3044,107 @@ function calculateSpineWidth(p) {
 }
 
 const MM_TO_PX_300DPI = 300 / 25.4;
-let currentCoverImageObj = null;
+async function generateCoverPreview(p, set) {
+  const opts = set.coverOptions || {};
+  const MM_TO_PX = 300 / 25.4;
+  const BLEED_MM = 3;
 
-async function generateCoverPreview(imgObj, p, set) {
-  if(!imgObj) return null;
-  const paperSize = $('#pubPaperSize').value;
-  const spineWidthMm = parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p);
-  const fillMode = false;
-  const bgColor = $('#pubCoverBgColor').value;
-  const bleedMm = 3;
+  let paperW = 148;
+  let paperH = 210;
+  if (set.paperSize === 'B6') { paperW = 128; paperH = 182; }
 
-  let widthMm = 148; let heightMm = 210;
-  if (paperSize === 'B6') { widthMm = 128; heightMm = 182; }
-
-  const totalWidthMm = (widthMm * 2) + spineWidthMm + (bleedMm * 2);
-  const totalHeightMm = heightMm + (bleedMm * 2);
+  const spineW = parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p);
+  const canvasW_mm = (BLEED_MM * 2) + (paperW * 2) + spineW;
+  const canvasH_mm = paperH + (BLEED_MM * 2);
 
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(totalWidthMm * MM_TO_PX_300DPI);
-  canvas.height = Math.round(totalHeightMm * MM_TO_PX_300DPI);
+  // 화면 미리보기용이므로 크기를 적당히 줄임 (150 DPI 상당으로)
+  const scaleRatio = 0.5;
+  canvas.width = Math.round(canvasW_mm * MM_TO_PX * scaleRatio);
+  canvas.height = Math.round(canvasH_mm * MM_TO_PX * scaleRatio);
   const ctx = canvas.getContext('2d');
+  ctx.scale(scaleRatio, scaleRatio);
 
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const fullW = Math.round(canvasW_mm * MM_TO_PX);
+  const fullH = Math.round(canvasH_mm * MM_TO_PX);
 
-  if (fillMode) {
-    // 전체 채우기 모드 (Center Crop)
-    const imgRatio = imgObj.width / imgObj.height;
-    const canvasRatio = canvas.width / canvas.height;
-    let renderW, renderH, offsetX, offsetY;
+  ctx.fillStyle = $('#pubCoverBgColor').value || '#2c2c2c';
+  ctx.fillRect(0, 0, fullW, fullH);
 
-    if (imgRatio > canvasRatio) {
-      renderH = canvas.height; renderW = imgObj.width * (canvas.height / imgObj.height);
-      offsetX = (canvas.width - renderW) / 2; offsetY = 0;
-    } else {
-      renderW = canvas.width; renderH = imgObj.height * (canvas.width / imgObj.width);
-      offsetX = 0; offsetY = (canvas.height - renderH) / 2;
-    }
-    ctx.drawImage(imgObj, offsetX, offsetY, renderW, renderH);
-  } else {
-    // 앞표지만 채우기 모드 (우측 영역)
-    const frontStartX = Math.round((widthMm + spineWidthMm + bleedMm) * MM_TO_PX_300DPI);
-    const frontWidth = Math.round((widthMm + bleedMm) * MM_TO_PX_300DPI);
-    const frontHeight = canvas.height;
-    
-    // 앞표지 영역 Center Crop
-    const imgRatio = imgObj.width / imgObj.height;
-    const frontRatio = frontWidth / frontHeight;
-    let renderW, renderH, cropX, cropY;
-    
-    if (imgRatio > frontRatio) {
-      renderH = frontHeight; renderW = imgObj.width * (frontHeight / imgObj.height);
-      cropX = frontStartX + (frontWidth - renderW) / 2; cropY = 0;
-    } else {
-      renderW = frontWidth; renderH = imgObj.height * (frontWidth / imgObj.width);
-      cropX = frontStartX; cropY = (frontHeight - renderH) / 2;
-    }
-    
-    // 클리핑(마스크) 처리하여 영역 밖으로 넘어가지 않게 방지
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(frontStartX, 0, frontWidth, frontHeight);
-    ctx.clip();
-    ctx.drawImage(imgObj, cropX, cropY, renderW, renderH);
-    ctx.restore();
+  const backCoverW = Math.round((BLEED_MM + paperW) * MM_TO_PX);
+  const spineX = backCoverW;
+  const spineW_px = Math.round(spineW * MM_TO_PX);
+  const frontX = spineX + spineW_px;
+  const frontCoverW = Math.round((paperW + BLEED_MM) * MM_TO_PX);
+
+  const loadImg = (src) => new Promise((resolve) => {
+    if(!src) return resolve(null);
+    const img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = src;
+  });
+
+  const frontImg = currentFrontCoverObj || await loadImg(opts.frontOriginal);
+  const backImg = currentBackCoverObj || await loadImg(opts.backOriginal);
+  const logoImg = await loadImg($('#pubPublisherLogo').value);
+
+  if (frontImg) {
+    const scale = Math.max(frontCoverW / frontImg.width, fullH / frontImg.height);
+    const dw = frontImg.width * scale; const dh = frontImg.height * scale;
+    const dx = frontX + (frontCoverW - dw) / 2; const dy = (fullH - dh) / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(frontX, 0, frontCoverW, fullH); ctx.clip();
+    ctx.drawImage(frontImg, dx, dy, dw, dh); ctx.restore();
+  }
+  if (backImg) {
+    const scale = Math.max(backCoverW / backImg.width, fullH / backImg.height);
+    const dw = backImg.width * scale; const dh = backImg.height * scale;
+    const dx = (backCoverW - dw) / 2; const dy = (fullH - dh) / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, backCoverW, fullH); ctx.clip();
+    ctx.drawImage(backImg, dx, dy, dw, dh); ctx.restore();
   }
 
-  return canvas.toDataURL('image/jpeg', 0.85); // 0.85 for slightly smaller base64 size
+  // 책등 텍스트
+  ctx.save();
+  ctx.translate(spineX + spineW_px / 2, fullH / 2);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  ctx.font = `bold ${Math.max(16, spineW_px * 0.4)}px "Noto Sans KR", sans-serif`;
+  ctx.fillText(p.title, 0, -fullH * 0.2);
+  
+  if (opts.logo && logoImg) {
+    const logoW = spineW_px * 0.6;
+    const logoH = logoImg.height * (logoW / logoImg.width);
+    ctx.drawImage(logoImg, -logoW / 2, fullH * 0.35 - logoH / 2, logoW, logoH);
+  } else {
+    ctx.font = `${Math.max(12, spineW_px * 0.3)}px "Noto Sans KR", sans-serif`;
+    ctx.fillText(set.frontMatter?.author || '저자', 0, fullH * 0.35);
+  }
+  ctx.restore();
+
+  // 미리보기 시 도련선(Bleed line) 표시 (점선)
+  const bleedPx = Math.round(BLEED_MM * MM_TO_PX);
+  ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([10, 10]);
+  ctx.strokeRect(bleedPx, bleedPx, fullW - bleedPx*2, fullH - bleedPx*2);
+  
+  // 미리보기 시 책등 경계선 표시
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.beginPath();
+  ctx.moveTo(spineX, 0); ctx.lineTo(spineX, fullH);
+  ctx.moveTo(spineX + spineW_px, 0); ctx.lineTo(spineX + spineW_px, fullH);
+  ctx.stroke();
+
+  return canvas.toDataURL('image/jpeg', 0.85);
 }
 
 if ($('#pubIncludeCover')) $('#pubIncludeCover').onchange = (e) => { $('#pubCoverOptions').style.display = e.target.checked ? 'flex' : 'none'; };
 $('#pubShowCopyright').onchange = (e) => { $('#pubCopyrightOptions').style.display = e.target.checked ? 'flex' : 'none'; };
 
 function updateCoverPreviewRender() {
-  if(!currentCoverImageObj) return;
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
-  generateCoverPreview(currentCoverImageObj, p, set).then(b64 => {
+  generateCoverPreview(p, set).then(b64 => {
     $('#pubCoverImagePreview').src = b64;
     $('#pubCoverImagePreview').style.display = 'block';
     $('#pubCoverImagePreview').dataset.base64 = b64;
@@ -3131,13 +3156,16 @@ $('#pubSpineWidth').addEventListener('input', updateCoverPreviewRender);
 let currentFrontCoverObj = null;
 let currentBackCoverObj = null;
 
+$('#pubSpineWidth').addEventListener('input', updateCoverPreviewRender);
+$('#pubCoverBgColor').addEventListener('input', updateCoverPreviewRender);
+
 $('#pubFrontCoverInput').onchange = (e) => {
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = (event) => {
     const img = new Image();
-    img.onload = () => { currentFrontCoverObj = img; };
+    img.onload = () => { currentFrontCoverObj = img; updateCoverPreviewRender(); };
     img.src = event.target.result;
   };
   reader.readAsDataURL(file);
@@ -3149,7 +3177,7 @@ $('#pubBackCoverInput').onchange = (e) => {
   const reader = new FileReader();
   reader.onload = (event) => {
     const img = new Image();
-    img.onload = () => { currentBackCoverObj = img; };
+    img.onload = () => { currentBackCoverObj = img; updateCoverPreviewRender(); };
     img.src = event.target.result;
   };
   reader.readAsDataURL(file);
@@ -3163,8 +3191,8 @@ $('#openPublishSettingsBtn').onclick = () => {
   
   // Cover options
   $('#pubCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
-  $('#pubSpineWidth').value = set.coverOptions?.spineWidthMm || calculateSpineWidth(p);
-  $('#pubSpineCalcText').textContent = `(자동 계산 권장: ${calculateSpineWidth(p)}mm)`;
+  $('#pubSpineWidth').value = calculateSpineWidth(p); // 항상 최신 페이지 수에 기반해 자동 계산된 값을 기본값으로 넣음
+  $('#pubSpineCalcText').textContent = `(자동 계산됨: ${calculateSpineWidth(p)}mm)`;
   $('#pubPublisherLogo').value = set.coverOptions?.logo || '';
   
   if(set.coverOptions?.frontOriginal) {
@@ -3200,6 +3228,7 @@ $('#openPublishSettingsBtn').onclick = () => {
   $('#pubAutoTOC').checked = set.autoTOC;
   $('#pubShowTitle').checked = set.showTitle;
 
+  updateCoverPreviewRender();
   openModal('publishSettingsModal');
 };
 
@@ -3508,11 +3537,9 @@ async function exportPODPdf() {
   }
   
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const pubSet = getPublishSettings(p);
   
   showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
-  
-  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
-  const pubSet = getPublishSettings(p);
   
   let html = `<!DOCTYPE html>
 <html lang="ko">
@@ -3521,11 +3548,11 @@ async function exportPODPdf() {
 <title>${escapeHtml(p.title)} - 출판용 원고</title>
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
-<style>
-${mainStyles}
-</style>
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
 <style>
+  html, body {
+    background: #fff !important;
+  }
   @page {
     size: ${pubSet.paperSize};
     margin: 20mm 15mm 20mm 15mm;
@@ -3551,6 +3578,9 @@ ${mainStyles}
     text-align: justify;
     word-break: keep-all;
   }
+  .ql-align-center { text-align: center !important; }
+  .ql-align-right { text-align: right !important; }
+  .ql-align-justify { text-align: justify !important; }
   .cover-page {
     page: cover;
     break-after: right;
@@ -3715,18 +3745,18 @@ ${mainStyles}
   <div class="chapter matter-page" style="break-before: page; break-after: page; display: flex; flex-direction: column; justify-content: flex-end; height: 80vh; font-size: 9pt; font-family: 'KoPub Batang', serif; text-align: left; padding: 0 10mm 15mm 10mm;">
     <h2 style="font-size: 16pt; margin-bottom: 30px; font-weight: 700;">${escapeHtml(p.title)}</h2>
     <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 20px;">
-      <div style="color: #444;">발행일</div><div>${escapeHtml(pubSet.frontMatter.publishDate || '2026년 00월 00일')}</div>
-      <div style="color: #444;">지은이</div><div>${escapeHtml(pubSet.frontMatter.author || '저자명 미상')}</div>
-      <div style="color: #444;">발행처</div><div>${escapeHtml(pubSet.frontMatter.publisher || '독립출판')}</div>
+      <div style="color: #444;">발행일</div><div>${escapeHtml(pubSet.frontMatter.publishDate || '2026년 07월 13일')}</div>
+      <div style="color: #444;">지은이</div><div>${escapeHtml(pubSet.frontMatter.author || '박소연')}</div>
+      <div style="color: #444;">발행처</div><div>퍼플</div>
     </div>
     <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 30px;">
-      <div style="color: #444;">출판등록</div><div>${escapeHtml(pubSet.frontMatter.pubReg || '제 000-0000-000 호 (0000년 00월 00일)')}</div>
-      <div style="color: #444;">주 소</div><div>${escapeHtml(pubSet.frontMatter.address || '주소를 입력하세요')}</div>
-      <div style="color: #444;">대표전화</div><div>${escapeHtml(pubSet.frontMatter.phone || '0000-0000')}</div>
-      <div style="color: #444;">홈페이지</div><div>${escapeHtml(pubSet.frontMatter.homepage || 'www.example.com')}</div>
+      <div style="color: #444;">출판등록</div><div>제 000-0000-000 호 (0000년 00월 00일)</div>
+      <div style="color: #444;">주 소</div><div>주소를 입력하세요</div>
+      <div style="color: #444;">대표전화</div><div>0000-0000</div>
+      <div style="color: #444;">홈페이지</div><div>www.example.com</div>
     </div>
     <div style="font-size: 8pt; color: #333; line-height: 1.6;">
-      <p style="margin-bottom: 6px;">ⓒ ${escapeHtml(pubSet.frontMatter.author || '저자명 미상')} ${new Date().getFullYear()}</p>
+      <p style="margin-bottom: 6px;">ⓒ ${escapeHtml(pubSet.frontMatter.author || '박소연')} ${new Date().getFullYear()}</p>
       <p>본 책 내용의 전부 또는 일부를 재사용하려면<br>반드시 저작권자의 동의를 받으셔야 합니다.</p>
     </div>
   </div>`;
@@ -4077,6 +4107,7 @@ function renderEbookPage(eps, idx) {
   // 코멘트 오버레이 렌더
   renderEbookComments(ep);
 
+  // 이전 / 다음 버튼
   // 이전 / 다음 버튼
   $('#ebookPrev').disabled = idx === 0;
   $('#ebookNext').disabled = idx === eps.length - 1;
