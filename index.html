@@ -1707,7 +1707,8 @@ window.addEventListener('unhandledrejection', function(e) {
           <div class="pod-studio-breadcrumb" id="podStudioBreadcrumb">작품을 선택하세요</div>
         </div>
       </div>
-      <div class="pod-studio-toolbar-right">
+      <div class="pod-studio-toolbar-right" style="display:flex; gap:8px;">
+        <a href="https://free.upscaler.video/ko/" target="_blank" title="AI 이미지 업스케일링" class="pod-btn" style="text-decoration:none; display:flex; align-items:center; justify-content:center; padding: 0 10px; font-size:14px; background:var(--c-bg); color:var(--c-ink); border: 1px solid var(--c-line);">✨</a>
         <button id="podExportCoverBtn" class="secondary" type="button" style="font-size:12px;">🎨 표지 JPG 저장</button>
         <button id="podExportPdfBtn" class="primary" style="background:#2E2A25; font-size:12px;" type="button">🖨️ 내지 PDF 인쇄</button>
       </div>
@@ -5077,6 +5078,16 @@ ${mainStyles}
   }
   .bg-colored {
     page: front-matter;
+    position: relative;
+  }
+  .bg-colored::before {
+    content: "";
+    position: absolute;
+    top: -50mm; left: -50mm; right: -50mm; bottom: -50mm;
+    background-color: inherit;
+    z-index: -1;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   @page {
     size: ${pubSet.paperSize};
@@ -5157,12 +5168,14 @@ ${mainStyles}
     margin-bottom: 12px;
     font-size: 10pt;
   }
-  .toc-title {
+  .toc-list li a {
     color: inherit;
     text-decoration: none;
+    display: block;
   }
-  .toc-title::after {
+  .toc-list li a::after {
     content: leader('.') target-counter(attr(href), page);
+    float: right;
   }
   .toc-prefix {
     color: #888;
@@ -5292,7 +5305,6 @@ ${mainStyles}
   const transformStyle = centerOffset ? `transform: translateX(-${centerOffset}mm);` : '';
   const bgStyle = fmBgColor && fmBgColor !== '#ffffff' ? `background-color: ${escapeHtml(fmBgColor)} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;` : '';
   const bgClass = fmBgColor && fmBgColor !== '#ffffff' ? 'bg-colored' : '';
-  const bgStylePage = fmBgColor && fmBgColor !== '#ffffff' ? `<style>@page front-matter { background-color: ${escapeHtml(fmBgColor)} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>` : '';
 
   // 책머리(Front Matter) 렌더링
   let htmlFm = '';
@@ -5356,7 +5368,7 @@ ${mainStyles}
     }
   });
   
-  html += bgStylePage + htmlFm;
+  html += htmlFm;
 
   // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
