@@ -1677,6 +1677,12 @@ async function loadStateSupabase() {
         selectedEpisodeId: null,
         _dirty: false
       };
+      
+      try {
+        const pubSet = localStorage.getItem('novel_pubset_' + p.id);
+        if (pubSet) p.publishSettings = JSON.parse(pubSet);
+      } catch(e) { console.warn(e); }
+      
       // 에피소드 매핑
       if (episodesData) {
         p.episodes = episodesData.filter(e => e.project_id === p.id).map(e => ({
@@ -3121,16 +3127,6 @@ function updateCoverPreviewRender() {
 }
 $('#pubPaperSize').addEventListener('change', updateCoverPreviewRender);
 $('#pubSpineWidth').addEventListener('input', updateCoverPreviewRender);
-$('#pubCoverFillMode').addEventListener('change', updateCoverPreviewRender);
-$('#pubCoverBgColor').addEventListener('input', updateCoverPreviewRender);
-
-$('#pubCoverImageClearBtn').onclick = () => {
-  currentCoverImageObj = null;
-  $('#pubCoverImageInput').value = '';
-  $('#pubCoverImagePreview').style.display = 'none';
-  $('#pubCoverImagePreview').src = '';
-  $('#pubCoverImagePreview').dataset.base64 = '';
-};
 
 let currentFrontCoverObj = null;
 let currentBackCoverObj = null;
@@ -3209,13 +3205,27 @@ $('#openPublishSettingsBtn').onclick = () => {
 
 $('#savePublishSettingsBtn').onclick = () => {
   const p = currentProject(); if(!p) return;
+  
+  const compress = (img) => {
+    if(!img) return null;
+    const cvs = document.createElement('canvas');
+    let w = img.width, h = img.height;
+    if (w > 1200 || h > 1200) {
+      if (w > h) { h *= 1200/w; w = 1200; }
+      else { w *= 1200/h; h = 1200; }
+    }
+    cvs.width = w; cvs.height = h;
+    cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+    return cvs.toDataURL('image/webp', 0.8);
+  };
+
   p.publishSettings = {
     paperSize: $('#pubPaperSize').value,
     autoTOC: $('#pubAutoTOC').checked,
     showTitle: $('#pubShowTitle').checked,
     coverOptions: {
-      frontOriginal: currentFrontCoverObj?.src || null,
-      backOriginal: currentBackCoverObj?.src || null,
+      frontOriginal: compress(currentFrontCoverObj) || p.publishSettings?.coverOptions?.frontOriginal || null,
+      backOriginal: compress(currentBackCoverObj) || p.publishSettings?.coverOptions?.backOriginal || null,
       bgColor: $('#pubCoverBgColor').value,
       logo: $('#pubPublisherLogo').value,
       spineWidthMm: parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p)
@@ -3231,6 +3241,13 @@ $('#savePublishSettingsBtn').onclick = () => {
       homepage: $('#pubHomepage').value
     }
   };
+  
+  try {
+    localStorage.setItem('novel_pubset_' + p.id, JSON.stringify(p.publishSettings));
+  } catch(e) {
+    console.warn('Failed to save publish settings to localStorage', e);
+  }
+
   touchProject(); queueSaveFS();
   closeModal('publishSettingsModal');
   showToast('출판 설정이 저장되었습니다.');
@@ -3387,8 +3404,8 @@ async function exportPODCover() {
     img.src = src;
   });
 
-  const frontImg = await loadImg(opts.frontOriginal);
-  const backImg = await loadImg(opts.backOriginal);
+  const frontImg = currentFrontCoverObj || await loadImg(opts.frontOriginal);
+  const backImg = currentBackCoverObj || await loadImg(opts.backOriginal);
   const logoImg = await loadImg(opts.logo);
 
   // 앞표지 그리기 (Center Crop)
