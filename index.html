@@ -4337,6 +4337,10 @@ function runPaged() {
     return;
   }
   class LiveHandler extends Paged.Handler {
+    afterPageLayout(pageElement, page, breakToken) {
+      var pgNum = pageElement.dataset.pageNumber || pageElement.getAttribute('data-page-number');
+      try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: pgNum }, '*'); } catch(err) {}
+    }
     afterRendered(pages) {
       var map = [];
       pages.forEach(function(p, idx) {
@@ -4466,6 +4470,19 @@ ${mainStyles}
 // ── pagedjs-rendered 메시지 수신 → 트리 업데이트 ──────────────────
 window.addEventListener('message', (e) => {
   if (!e.data) return;
+  
+  if (e.data.type === 'pagedjs-progress') {
+    const st = $('#podLiveRenderStatus');
+    if (st && st.textContent.includes('진행 중')) {
+      st.textContent = `조판 렌더링 진행 중... (${e.data.pageNum}쪽 계산 완료)`;
+    }
+    const treeSt = $('#podTreeProgress');
+    if (treeSt) {
+      treeSt.textContent = `${e.data.pageNum}쪽 계산 완료...`;
+    }
+    return;
+  }
+  
   if (e.data.type === 'pagedjs-rendered') {
     const total = e.data.totalPages || 0;
     podLastRenderedTotalPages = total;
@@ -4779,7 +4796,7 @@ function renderPodPageTree() {
     // 렌더링 전: 트리 목록 대신 안내 메시지 노출
     const loadingDiv = document.createElement('div');
     loadingDiv.style.cssText = 'padding:40px 20px; text-align:center; color:var(--c-muted); font-size:12px; line-height:1.6;';
-    loadingDiv.innerHTML = '<div style="margin-bottom:12px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg></div><style>@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }</style>조판 렌더링을 계산하고 있습니다.<br>잠시만 기다려주세요...';
+    loadingDiv.innerHTML = '<div style="margin-bottom:12px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg></div><style>@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }</style>조판 렌더링을 계산하고 있습니다.<br><span id="podTreeProgress">잠시만 기다려주세요...</span>';
     innerSec.appendChild(loadingDiv);
     treeEl.appendChild(innerSec);
     return; // 그리드 렌더링 중단
