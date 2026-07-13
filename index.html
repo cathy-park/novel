@@ -4337,11 +4337,8 @@ function runPaged() {
     return;
   }
   class LiveHandler extends Paged.Handler {
-    afterPageLayout(pageElement, page, breakToken) {
-      var pgNum = pageElement.dataset.pageNumber || pageElement.getAttribute('data-page-number');
-      try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: pgNum }, '*'); } catch(err) {}
-    }
     afterRendered(pages) {
+      if (window.podProgressTimer) clearInterval(window.podProgressTimer);
       var map = [];
       pages.forEach(function(p, idx) {
         if (!p.pageNode) return;
@@ -4387,6 +4384,14 @@ function runPaged() {
     });
     window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
   });
+
+  window.podProgressTimer = setInterval(function() {
+    var count = document.querySelectorAll('.pagedjs_page').length;
+    if (count > 0) {
+      try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: count }, '*'); } catch(err) {}
+    }
+  }, 250);
+
   PagedPolyfill.preview().catch(function(e) {
     try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message }, '*'); } catch(e2) {}
   });
