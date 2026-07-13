@@ -4733,19 +4733,23 @@ function renderPodPageTree() {
 
   // Paged.js가 모든 페이지 정보를 주므로 여기서 전면부를 별도로 계산하지 않습니다.
 
-  // 본문 에피소드 (Paged.js 렌더링 완료 전에는 관찪 팬이지에서 1에피 = N페이지 로 보여줄)
+  // 본문 에피소드 (Paged.js 렌더링 완료 시에만 생성)
   if (window.podPageMap && window.podPageMap.length > 0) {
     // 렌더링 완료: postMessage로 받은 실제 페이지 맵 사용
     window.podPageMap.forEach(pg => {
-      pagesData.push({ pageNum: pg.pageNum, label: pg.label, sublabel: pg.epTitle || '', type: 'inner', accent: null });
+      let isFm = false;
+      const FM_LABELS = ['속표지', '본표지', '판권지', '목차', '헌정', '제사', '여백'];
+      if (FM_LABELS.includes(pg.label)) isFm = true;
+      pagesData.push({ pageNum: pg.pageNum, label: pg.label, sublabel: pg.epTitle || '', type: isFm ? 'fm' : 'inner', accent: isFm ? '#7c6bf6' : null });
     });
   } else {
-    // 렌더링 전: 에피소드 목록에서 예상 구성
-    eps.forEach((e, ei) => {
-      const title = cleanText(e.title) || `화수 ${ei+1}`;
-      pagesData.push({ pageNum: pageNum, label: `${pageNum}쪽…`, sublabel: title.slice(0,10), type: 'inner', accent: null });
-      pageNum += 2; // 대략 예상 (챙터 하나당 여러 페이지)
-    });
+    // 렌더링 전: 트리 목록 대신 안내 메시지 노출
+    const loadingDiv = document.createElement('div');
+    loadingDiv.style.cssText = 'padding:40px 20px; text-align:center; color:var(--c-muted); font-size:12px; line-height:1.6;';
+    loadingDiv.innerHTML = '<div style="margin-bottom:12px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg></div><style>@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }</style>조판 렌더링을 계산하고 있습니다.<br>잠시만 기다려주세요...';
+    innerSec.appendChild(loadingDiv);
+    treeEl.appendChild(innerSec);
+    return; // 그리드 렌더링 중단
   }
 
   // InDesign 스프레드 레이아웃: 2열 그리드 (좌=짝수, 우=홈수)
