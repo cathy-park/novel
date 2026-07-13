@@ -4408,7 +4408,7 @@ function podSaveSettings() {
       logoSpineBottom: parseFloat($('#podLogoSpineBottom').value) || 15
     },
     frontMatter: {
-      showCopyright: $('#podShowCopyright').checked,
+      showCopyright: window.fmOrder ? !!window.fmOrder.find(x => x.id === 'copyright' && x.active) : false,
       author:        $('#podAuthor').value,
       publishDate:   $('#podPublishDate').value,
       order: window.fmOrder || [
