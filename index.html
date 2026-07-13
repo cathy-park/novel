@@ -4072,17 +4072,7 @@ function getPublishSettings(p) {
 }
 
 function calculateSpineWidth(p) {
-  const eps = p.episodes || [];
-  let estimatedPages = 0;
-  
-  for (const e of eps) {
-    if (!e.body) continue;
-    const textLen = e.body.replace(/<[^>]*>?/gm, '').length;
-    let epPages = Math.max(2, Math.ceil(textLen / 350));
-    estimatedPages += epPages;
-  }
-  
-  estimatedPages += 10;
+  const estimatedPages = podEstimatePages(p);
   return Math.max(1, Math.round(estimatedPages * 0.05 * 10) / 10);
 }
 
@@ -4201,12 +4191,29 @@ function hidePodStudio() {
 
 function podEstimatePages(p) {
   let total = 0;
-  for (const e of (p.episodes || [])) {
+  const set = p.publishSettings || {};
+  const paperKey = set.paperSize || 'A5';
+  
+  // 용지 크기에 따른 한 페이지당 대략적인 글자 수 (여백 포함 보수적 산정)
+  let charsPerPage = 500;
+  if (paperKey === 'B6') charsPerPage = 400;
+  else if (paperKey === '46') charsPerPage = 450;
+  
+  const eps = orderedEpisodes(p);
+  for (const e of eps) {
     if (!e.body) continue;
-    const len = e.body.replace(/<[^>]*>?/gm, '').length;
-    total += Math.max(2, Math.ceil(len / 350));
+    const text = e.body.replace(/<[^>]*>?/gm, '').trim();
+    if (text.length === 0 && !e.title) continue; // 내용이 완전히 없는 회차 제외
+    
+    let pages = Math.ceil(text.length / charsPerPage);
+    if (pages === 0) pages = 1; // 최소 1페이지
+    
+    // 장이 시작될 때 우측면(홀수) 시작이므로 평균 1.5쪽 소모, 여유분 1쪽 추가
+    total += pages + 1;
   }
-  return total + 10;
+  
+  // 앞/뒷부속(속표지, 본표지, 판권지, 목차 등) 대략 8쪽 추가
+  return total + 8;
 }
 
 // ── 내지 미리보기 실시간 업데이트 ────────────────────────────
