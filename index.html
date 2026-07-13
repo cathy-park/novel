@@ -1232,12 +1232,15 @@ window.addEventListener('unhandledrejection', function(e) {
             </div>
           </div>
           
-          <img id="pubCoverImagePreview" src="" style="display:none; width:100%; height:auto; max-height:220px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
+          <img id="pubCoverImagePreview" src="" style="display:none; width:100%; height:auto; max-height:500px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
 
           <div style="display:flex; gap:12px;">
             <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
               <label style="font-size:11px; font-weight:600; color:var(--c-sub);">전체 배경색 (빈 영역)</label>
-              <input type="color" id="pubCoverBgColor" value="#2c2c2c" style="width:100%; height:32px; border:1px solid var(--c-line); border-radius:4px; cursor:pointer;">
+              <div style="display:flex; gap:6px;">
+                <input type="color" id="pubCoverBgColor" value="#2c2c2c" style="width:32px; height:32px; border:1px solid var(--c-line); border-radius:4px; cursor:pointer; padding:0;">
+                <input type="text" id="pubCoverBgColorHex" value="#2c2c2c" style="flex:1; padding:6px; font-size:12px; border-radius:4px; border:1px solid var(--c-line); outline:none;">
+              </div>
             </div>
             <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
               <label style="font-size:11px; font-weight:600; color:var(--c-sub);">출판사 로고 선택</label>
@@ -1251,11 +1254,22 @@ window.addEventListener('unhandledrejection', function(e) {
             </div>
           </div>
           
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 두께 (mm)</label>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <input type="number" id="pubSpineWidth" style="width:80px; padding:6px; border-radius:4px; border:1px solid #E2E2E2; outline:none;" min="1" step="0.5">
-              <span style="font-size:11px; color:var(--c-muted);" id="pubSpineCalcText"></span>
+          <div style="display:flex; gap:12px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 두께 (mm)</label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" id="pubSpineWidth" style="width:80px; padding:6px; border-radius:4px; border:1px solid #E2E2E2; outline:none;" min="1" step="0.5">
+                <span style="font-size:11px; color:var(--c-muted);" id="pubSpineCalcText"></span>
+              </div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 폰트</label>
+              <select id="pubSpineFont" style="padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--c-line); outline:none;">
+                <option value="'KoPub Batang', serif">KoPub 바탕 (명조)</option>
+                <option value="'Noto Serif KR', serif">Noto Serif (바탕)</option>
+                <option value="'Noto Sans KR', sans-serif">Noto Sans (고딕)</option>
+                <option value="Pretendard, sans-serif">Pretendard</option>
+              </select>
             </div>
           </div>
         </div>
@@ -3102,22 +3116,40 @@ async function generateCoverPreview(p, set) {
   }
 
   // 책등 텍스트
+  const title = p.title || '제목 없음';
+  const author = set.frontMatter?.author || '저자';
+  const spineFont = $('#pubSpineFont').value || "'KoPub Batang', serif";
+  
   ctx.save();
-  ctx.translate(spineX + spineW_px / 2, fullH / 2);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = $('#pubCoverBgColor').value.toLowerCase() === '#ffffff' ? '#000' : '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
-  ctx.font = `bold ${Math.max(16, spineW_px * 0.4)}px "Noto Sans KR", sans-serif`;
-  ctx.fillText(p.title, 0, -fullH * 0.2);
+  const titleFontSize = Math.min(Math.max(16, spineW_px * 0.4), spineW_px * 0.8);
+  ctx.font = `bold ${titleFontSize}px ${spineFont}`;
+  
+  let startY = fullH * 0.15; // 상단 여백
+  for (let i = 0; i < title.length; i++) {
+    if (title[i] === ' ') { startY += titleFontSize * 0.5; continue; }
+    ctx.fillText(title[i], spineX + spineW_px / 2, startY);
+    startY += titleFontSize * 1.1; // 줄간격
+  }
   
   if (opts.logo && logoImg) {
     const logoW = spineW_px * 0.6;
     const logoH = logoImg.height * (logoW / logoImg.width);
-    ctx.drawImage(logoImg, -logoW / 2, fullH * 0.35 - logoH / 2, logoW, logoH);
+    ctx.drawImage(logoImg, spineX + (spineW_px - logoW) / 2, fullH * 0.85 - logoH, logoW, logoH);
   } else {
-    ctx.font = `${Math.max(12, spineW_px * 0.3)}px "Noto Sans KR", sans-serif`;
-    ctx.fillText(set.frontMatter?.author || '저자', 0, fullH * 0.35);
+    const authorFontSize = Math.min(Math.max(12, spineW_px * 0.3), spineW_px * 0.6);
+    ctx.font = `normal ${authorFontSize}px ${spineFont}`;
+    
+    // 저자는 중앙 아래부터 그리기 (로고가 없으므로)
+    startY = fullH * 0.7; 
+    for (let i = 0; i < author.length; i++) {
+      if (author[i] === ' ') { startY += authorFontSize * 0.5; continue; }
+      ctx.fillText(author[i], spineX + spineW_px / 2, startY);
+      startY += authorFontSize * 1.1;
+    }
   }
   ctx.restore();
 
@@ -3157,7 +3189,17 @@ let currentFrontCoverObj = null;
 let currentBackCoverObj = null;
 
 $('#pubSpineWidth').addEventListener('input', updateCoverPreviewRender);
-$('#pubCoverBgColor').addEventListener('input', updateCoverPreviewRender);
+$('#pubCoverBgColor').addEventListener('input', (e) => {
+  $('#pubCoverBgColorHex').value = e.target.value;
+  updateCoverPreviewRender();
+});
+$('#pubCoverBgColorHex').addEventListener('input', (e) => {
+  if (/^#[0-9A-Fa-f]{6}$/i.test(e.target.value)) {
+    $('#pubCoverBgColor').value = e.target.value;
+    updateCoverPreviewRender();
+  }
+});
+$('#pubSpineFont').addEventListener('change', updateCoverPreviewRender);
 
 $('#pubFrontCoverInput').onchange = (e) => {
   const file = e.target.files[0];
@@ -3191,6 +3233,8 @@ $('#openPublishSettingsBtn').onclick = () => {
   
   // Cover options
   $('#pubCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
+  $('#pubCoverBgColorHex').value = set.coverOptions?.bgColor || '#2c2c2c';
+  $('#pubSpineFont').value = set.coverOptions?.spineFont || "'KoPub Batang', serif";
   $('#pubSpineWidth').value = calculateSpineWidth(p); // 항상 최신 페이지 수에 기반해 자동 계산된 값을 기본값으로 넣음
   $('#pubSpineCalcText').textContent = `(자동 계산됨: ${calculateSpineWidth(p)}mm)`;
   $('#pubPublisherLogo').value = set.coverOptions?.logo || '';
@@ -3469,26 +3513,35 @@ async function exportPODCover() {
     ctx.restore();
   }
 
-  // 책등 텍스트 그리기 (가로 정렬, 세로로 회전)
+  // 책등 텍스트 그리기 (세로쓰기)
   const title = p.title || '제목 없음';
   const author = set.frontMatter?.author || '저자';
+  const spineFont = $('#pubSpineFont').value || "'KoPub Batang', serif";
   
   ctx.save();
-  ctx.translate(spineX + spineW_px / 2, Math.round((BLEED_MM + 20) * MM_TO_PX)); // 상단 여백 20mm
-  ctx.rotate(Math.PI / 2); // 90도 회전
-  
   ctx.fillStyle = (opts.bgColor || '#2c2c2c').toLowerCase() === '#ffffff' ? '#000' : '#fff'; // 배경이 흰색이면 검은 글씨
-  ctx.textAlign = 'left';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
-  // 제목 폰트
-  ctx.font = `bold ${Math.round(4 * MM_TO_PX)}px 'KoPub Batang', serif`;
-  ctx.fillText(title, 0, 0);
+  const titleFontSize = Math.min(Math.round(4 * MM_TO_PX), spineW_px * 0.8);
+  ctx.font = `bold ${titleFontSize}px ${spineFont}`;
   
-  // 저자 폰트
-  const titleWidth = ctx.measureText(title).width;
-  ctx.font = `normal ${Math.round(3 * MM_TO_PX)}px 'KoPub Batang', serif`;
-  ctx.fillText(author, titleWidth + Math.round(10 * MM_TO_PX), 0);
+  let startY = Math.round((BLEED_MM + 20) * MM_TO_PX);
+  for (let i = 0; i < title.length; i++) {
+    if (title[i] === ' ') { startY += titleFontSize * 0.5; continue; }
+    ctx.fillText(title[i], spineX + spineW_px / 2, startY);
+    startY += titleFontSize * 1.1; // 줄간격
+  }
+  
+  const authorFontSize = Math.min(Math.round(3 * MM_TO_PX), spineW_px * 0.6);
+  ctx.font = `normal ${authorFontSize}px ${spineFont}`;
+  
+  startY += Math.round(10 * MM_TO_PX); // 제목과 저자 사이 여백
+  for (let i = 0; i < author.length; i++) {
+    if (author[i] === ' ') { startY += authorFontSize * 0.5; continue; }
+    ctx.fillText(author[i], spineX + spineW_px / 2, startY);
+    startY += authorFontSize * 1.1;
+  }
   
   ctx.restore();
 
@@ -3655,9 +3708,14 @@ async function exportPODPdf() {
     margin: 0 !important;
     word-break: keep-all;
   }
-  .chapter-content h1, .chapter-content h2, .chapter-content h3 {
+  .chapter-content h1, .chapter-content h3 {
     margin-top: 1.5em !important;
     margin-bottom: 1em !important;
+    line-height: 1.4;
+  }
+  .chapter-content h2 {
+    margin-top: 1.5em !important;
+    margin-bottom: 2.75em !important; /* ## 제목 아래 1줄 여백 추가 */
     line-height: 1.4;
   }
   .chapter-content .ql-size-huge,
@@ -3750,10 +3808,10 @@ async function exportPODPdf() {
       <div style="color: #444;">발행처</div><div>퍼플</div>
     </div>
     <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 30px;">
-      <div style="color: #444;">출판등록</div><div>제 000-0000-000 호 (0000년 00월 00일)</div>
-      <div style="color: #444;">주 소</div><div>주소를 입력하세요</div>
-      <div style="color: #444;">대표전화</div><div>0000-0000</div>
-      <div style="color: #444;">홈페이지</div><div>www.example.com</div>
+      <div style="color: #444;">출판등록</div><div>제 300-2012-167 호 (2012년 09월 07일)</div>
+      <div style="color: #444;">주 소</div><div>서울시 종로구 종로 1 (종로1가) 교보생명빌딩 15층 ㈜교보문고</div>
+      <div style="color: #444;">대표전화</div><div>1544-1900</div>
+      <div style="color: #444;">홈페이지</div><div>www.kyobobook.co.kr</div>
     </div>
     <div style="font-size: 8pt; color: #333; line-height: 1.6;">
       <p style="margin-bottom: 6px;">ⓒ ${escapeHtml(pubSet.frontMatter.author || '박소연')} ${new Date().getFullYear()}</p>
