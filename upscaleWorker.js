@@ -55,7 +55,12 @@ self.onmessage = async (e) => {
       
       // Tensor -> OffscreenCanvas -> Blob -> DataURL
       const canvas = new OffscreenCanvas(currentTensor.shape[1], currentTensor.shape[0]);
-      await tf.browser.toPixels(currentTensor, canvas);
+      
+      // UpscalerJS returns float32 tensor with 0-255 values, but toPixels expects float32 to be 0-1, or int32 to be 0-255.
+      const intTensor = currentTensor.clipByValue(0, 255).cast('int32');
+      await tf.browser.toPixels(intTensor, canvas);
+      intTensor.dispose();
+      
       const resultBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
       
       const reader = new FileReaderSync();
