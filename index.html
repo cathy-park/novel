@@ -3146,6 +3146,16 @@ async function generateCoverPreview(p, set) {
     startY += titleFontSize * 1.1; // 줄간격
   }
   
+  const authorFontSize = Math.min(Math.max(12, spineW_px * 0.3), spineW_px * 0.6);
+  ctx.font = `normal ${authorFontSize}px ${spineFont}`;
+  
+  startY += titleFontSize * 1.5; // 제목과 저자 사이 여백
+  for (let i = 0; i < author.length; i++) {
+    if (author[i] === ' ') { startY += authorFontSize * 0.5; continue; }
+    ctx.fillText(author[i], spineX + spineW_px / 2, startY);
+    startY += authorFontSize * 1.1;
+  }
+  
   if (opts.logo && logoImg) {
     const logoW = spineW_px * 0.6;
     const logoH = logoImg.height * (logoW / logoImg.width);
@@ -3157,17 +3167,6 @@ async function generateCoverPreview(p, set) {
     const fLx = frontX + (frontCoverW - frontLogoW) / 2;
     const fLy = fullH - Math.round((BLEED_MM + 15) * MM_TO_PX) - frontLogoH;
     ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
-  } else {
-    const authorFontSize = Math.min(Math.max(12, spineW_px * 0.3), spineW_px * 0.6);
-    ctx.font = `normal ${authorFontSize}px ${spineFont}`;
-    
-    // 저자는 중앙 아래부터 그리기 (로고가 없으므로)
-    startY = fullH * 0.7; 
-    for (let i = 0; i < author.length; i++) {
-      if (author[i] === ' ') { startY += authorFontSize * 0.5; continue; }
-      ctx.fillText(author[i], spineX + spineW_px / 2, startY);
-      startY += authorFontSize * 1.1;
-    }
   }
   ctx.restore();
 
