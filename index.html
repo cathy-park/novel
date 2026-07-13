@@ -2828,24 +2828,24 @@ $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quil
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
-$('#closeDrawerBtn').onclick = togglePlanDrawer;
+if ($('#closeDrawerBtn')) $('#closeDrawerBtn').onclick = togglePlanDrawer;
 
 $('#tabPlanBtn').onclick = () => {
   $('#tabPlanBtn').classList.add('active');
   $('#tabPlanBtn').style.color = '';
   $('#tabCommentBtn').classList.remove('active');
   $('#tabCommentBtn').style.color = 'var(--c-muted)';
-  $('#projectPlanList').classList.remove('hidden');
+  if($('#projectPlanList')) $('#projectPlanList').classList.remove('hidden');
   $('#planToolbar').classList.remove('hidden');
-  $('#projectCommentList').classList.add('hidden');
+  if($('#projectCommentList')) $('#projectCommentList').classList.add('hidden');
 };
 $('#tabCommentBtn').onclick = () => {
   $('#tabCommentBtn').classList.add('active');
   $('#tabCommentBtn').style.color = '';
   $('#tabPlanBtn').classList.remove('active');
   $('#tabPlanBtn').style.color = 'var(--c-muted)';
-  $('#projectCommentList').classList.remove('hidden');
-  $('#projectPlanList').classList.add('hidden');
+  if($('#projectCommentList')) $('#projectCommentList').classList.remove('hidden');
+  if($('#projectPlanList')) $('#projectPlanList').classList.add('hidden');
   $('#planToolbar').classList.add('hidden');
   renderPCCommentList();
 };
@@ -3049,7 +3049,7 @@ async function generateCoverPreview(imgObj, p, set) {
   if(!imgObj) return null;
   const paperSize = $('#pubPaperSize').value;
   const spineWidthMm = parseFloat($('#pubSpineWidth').value) || calculateSpineWidth(p);
-  const fillMode = $('#pubCoverFillMode').checked;
+  const fillMode = false;
   const bgColor = $('#pubCoverBgColor').value;
   const bleedMm = 3;
 
@@ -3112,7 +3112,7 @@ async function generateCoverPreview(imgObj, p, set) {
   return canvas.toDataURL('image/jpeg', 0.85); // 0.85 for slightly smaller base64 size
 }
 
-$('#pubIncludeCover').onchange = (e) => { $('#pubCoverOptions').style.display = e.target.checked ? 'flex' : 'none'; };
+if ($('#pubIncludeCover')) $('#pubIncludeCover').onchange = (e) => { $('#pubCoverOptions').style.display = e.target.checked ? 'flex' : 'none'; };
 $('#pubShowCopyright').onchange = (e) => { $('#pubCopyrightOptions').style.display = e.target.checked ? 'flex' : 'none'; };
 
 function updateCoverPreviewRender() {
