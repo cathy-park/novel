@@ -4358,6 +4358,9 @@ function podUpdatePreview() {
   const mode = $('#podPreviewMode')?.value || 'body';
   const contentEl = $('#podPageContent');
   
+  // pt를 미리보기용 px로 변환하는 헬퍼
+  const pt2px = (pt) => mmToPreviewPx(pt * 0.352778);
+
   if (mode === 'body') {
     card.style.backgroundColor = '#ffffff';
     if (contentEl) {
@@ -4377,9 +4380,9 @@ function podUpdatePreview() {
     if (contentEl) {
       contentEl.innerHTML = `
         <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center;">
-          <div style="font-size:24px; font-weight:700; margin-bottom:20px;">${escapeHtml(pTitle)}</div>
-          <div style="font-size:14px; color:#444; margin-bottom:40px;">${escapeHtml(pSubtitle)}</div>
-          <div style="font-size:14px; font-weight:700;">${escapeHtml(pPublisher)}</div>
+          <div style="font-size:${pt2px(24)}px; font-weight:700; margin-bottom:${pt2px(20)}px;">${escapeHtml(pTitle)}</div>
+          <div style="font-size:${pt2px(12)}px; color:#444; margin-bottom:${pt2px(40)}px;">${escapeHtml(pSubtitle)}</div>
+          <div style="font-size:${pt2px(12)}px; font-weight:700;">${escapeHtml(pPublisher)}</div>
         </div>
       `;
     }
@@ -4392,18 +4395,18 @@ function podUpdatePreview() {
     const pPublisher = $('#podFmPublisher')?.value || '퍼플';
     if (contentEl) {
       contentEl.innerHTML = `
-        <div style="position:absolute; bottom:0; left:0; right:0; font-size:10px; text-align:left; line-height:1.6;">
-          <div style="font-size:14px; margin-bottom:20px; font-weight:700;">${escapeHtml(pTitle)}</div>
-          <div style="display:grid; grid-template-columns:50px 1fr; gap:4px; margin-bottom:12px;">
+        <div style="position:absolute; bottom:0; left:0; right:0; font-size:${pt2px(8)}px; text-align:left; line-height:1.6;">
+          <div style="font-size:${pt2px(12)}px; margin-bottom:${pt2px(20)}px; font-weight:700;">${escapeHtml(pTitle)}</div>
+          <div style="display:grid; grid-template-columns:${pt2px(40)}px 1fr; gap:4px; margin-bottom:${pt2px(12)}px;">
             <div style="color:#666;">발행일</div><div>${escapeHtml(pDate)}</div>
             <div style="color:#666;">지은이</div><div>${escapeHtml(pAuthor)}</div>
             <div style="color:#666;">발행처</div><div>${escapeHtml(pPublisher)}</div>
           </div>
-          <div style="display:grid; grid-template-columns:50px 1fr; gap:4px; margin-bottom:16px;">
+          <div style="display:grid; grid-template-columns:${pt2px(40)}px 1fr; gap:4px; margin-bottom:${pt2px(16)}px;">
             <div style="color:#666;">출판등록</div><div>제 300-2012-167 호</div>
             <div style="color:#666;">주 소</div><div>교보생명빌딩 15층 ㈜교보문고</div>
           </div>
-          <div style="font-size:9px; color:#333; padding-top:12px; border-top:1px solid #ccc;">
+          <div style="font-size:${pt2px(7.5)}px; color:#333; padding-top:${pt2px(12)}px; border-top:1px solid #ccc;">
             <p>ⓒ ${escapeHtml(pAuthor)} 2026</p>
           </div>
         </div>
@@ -5069,6 +5072,12 @@ ${mainStyles}
   html, body {
     background: #fff !important;
   }
+  @page front-matter {
+    @bottom-center { content: none; }
+  }
+  .bg-colored {
+    page: front-matter;
+  }
   @page {
     size: ${pubSet.paperSize};
     margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
@@ -5153,7 +5162,7 @@ ${mainStyles}
     text-decoration: none;
   }
   .toc-title::after {
-    content: leader('.') " " target-counter(attr(href), page);
+    content: leader('.') target-counter(attr(href), page);
   }
   .toc-prefix {
     color: #888;
@@ -5281,21 +5290,24 @@ ${mainStyles}
   const marginOuter = parseFloat(pubSet.margins?.outer || 18);
   const centerOffset = (marginInner - marginOuter) / 2;
   const transformStyle = centerOffset ? `transform: translateX(-${centerOffset}mm);` : '';
-  const bgStyle = fmBgColor && fmBgColor !== '#ffffff' ? `background-color: ${escapeHtml(fmBgColor)}; -webkit-print-color-adjust: exact; print-color-adjust: exact;` : '';
+  const bgStyle = fmBgColor && fmBgColor !== '#ffffff' ? `background-color: ${escapeHtml(fmBgColor)} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;` : '';
+  const bgClass = fmBgColor && fmBgColor !== '#ffffff' ? 'bg-colored' : '';
+  const bgStylePage = fmBgColor && fmBgColor !== '#ffffff' ? `<style>@page front-matter { background-color: ${escapeHtml(fmBgColor)} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>` : '';
 
   // 책머리(Front Matter) 렌더링
+  let htmlFm = '';
   const fmOrder = pubSet.frontMatter?.order || [];
   fmOrder.filter(x => x.active).forEach(item => {
     if (item.id === 'half_title') {
-      html += `
-  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
+      htmlFm += `
+  <div class="chapter matter-page ${bgClass}" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
     <div style="${transformStyle}">
       <h1 style="font-size:20pt; font-weight:700; text-align:center;">${pTitle}</h1>
     </div>
   </div>`;
     } else if (item.id === 'title_page') {
-      html += `
-  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
+      htmlFm += `
+  <div class="chapter matter-page ${bgClass}" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; ${bgStyle}">
     <div style="display:flex; flex-direction:column; align-items:center; ${transformStyle}">
       <h1 style="font-size:24pt; font-weight:700; margin-bottom:20px; text-align:center;">${pTitle}</h1>
       <div style="font-size:12pt; color:#444; margin-bottom:40px; text-align:center;">${fmSubtitle}</div>
@@ -5303,8 +5315,8 @@ ${mainStyles}
     </div>
   </div>`;
     } else if (item.id === 'copyright') {
-      html += `
-  <div class="chapter matter-page" style="break-before: right; position:relative; height:90vh; ${bgStyle}">
+      htmlFm += `
+  <div class="chapter matter-page ${bgClass}" style="break-before: right; position:relative; height:90vh; ${bgStyle}">
     <div style="position:absolute; bottom:0; left:0; right:0; padding:10mm; font-size:8pt !important; font-family:'KoPub Batang', serif; text-align:left; line-height:1.6 !important;">
       <h2 style="font-size:12pt !important; margin-bottom:20px; font-weight:700;">${pTitle}</h2>
       <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:12px;">
@@ -5327,22 +5339,24 @@ ${mainStyles}
     } else if (item.id === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
-        html += `
+        htmlFm += `
   <div class="chapter matter-page toc-page" style="break-before: right;">
     <h2 style="margin-bottom:30px; font-size:16pt; font-weight:700; text-align:center;">목차</h2>
     <ul class="toc-list">`;
         tocEps.forEach((ep) => {
           const displayTitleHtml = getEpisodeDisplayTitle(ep, p, true);
-          html += `<li><a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a></li>`;
+          htmlFm += `<li><a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a></li>`;
         });
-        html += `
+        htmlFm += `
     </ul>
   </div>`;
       }
     } else if (item.id.startsWith('blank_')) {
-      html += `<div class="chapter matter-page" style="break-before: right; height:100vh;"></div>`;
+      htmlFm += `<div class="chapter matter-page" style="break-before: right; height:100vh;"></div>`;
     }
   });
+  
+  html += bgStylePage + htmlFm;
 
   // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
