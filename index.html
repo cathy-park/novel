@@ -1830,13 +1830,22 @@ window.addEventListener('unhandledrejection', function(e) {
             </label>
           </div>
 
-          <!-- 판권지 -->
+          <!-- 책머리 (Front Matter) -->
           <div class="pod-section">
-            <div class="pod-section-title">판권지</div>
-            <label class="pod-check-label">
-              <input type="checkbox" id="podShowCopyright"> 판권지 페이지 추가
-            </label>
-            <div id="podCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:4px;">
+            <div class="pod-section-title">책머리 (Front Matter) 구성</div>
+            <div style="font-size:11px; color:var(--c-muted); margin-bottom:12px; line-height:1.4;">
+              드래그하여 순서를 변경하고, 체크박스로 포함 여부를 설정하세요.<br>
+              각 항목은 인쇄 규격에 맞게 <b>우측 페이지(홀수 쪽)</b>에서 시작합니다.
+            </div>
+            
+            <div id="podFmList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+              <!-- JS로 렌더링됨 -->
+            </div>
+            
+            <button class="pod-btn" id="podAddBlankPageBtn" style="width:100%; font-size:12px; padding:6px; background:var(--c-bg); color:var(--c-ink); border:1px dashed var(--c-line);">+ 빈 페이지(여백) 추가</button>
+            
+            <div id="podCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--c-line);">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">판권지 세부 설정</div>
               <div class="pod-field">
                 <label>지은이 (저자명)</label>
                 <input type="text" id="podAuthor" class="pod-input" placeholder="예: 박소연">
@@ -4170,9 +4179,14 @@ function showPodStudio() {
   $('#podAutoTOC').checked = set.autoTOC !== false;
   $('#podShowTitle').checked = !!set.showTitle;
 
-  // 판권지
-  $('#podShowCopyright').checked = set.frontMatter?.showCopyright || false;
-  $('#podCopyrightOptions').style.display = set.frontMatter?.showCopyright ? 'flex' : 'none';
+  // 책머리(Front Matter) 초기화
+  window.fmOrder = set.frontMatter?.order || window.fmOrder || [
+    { id: 'half_title', name: '속표지 (책 제목)', active: true },
+    { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
+    { id: 'copyright', name: '판권지', active: true },
+    { id: 'toc', name: '목차', active: true }
+  ];
+  renderFmList();
   $('#podAuthor').value = set.frontMatter?.author || '';
   $('#podPublishDate').value = set.frontMatter?.publishDate || '';
 
@@ -4328,6 +4342,12 @@ async function podUpdateCoverPreview() {
     },
     frontMatter: {
       ...(set.frontMatter || {}),
+      order: window.fmOrder || [
+        { id: 'half_title', name: '속표지 (책 제목)', active: true },
+        { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
+        { id: 'copyright', name: '판권지', active: true },
+        { id: 'toc', name: '목차', active: true }
+      ],
       author: $('#podAuthor').value || set.frontMatter?.author || ''
     }
   };
@@ -4390,7 +4410,13 @@ function podSaveSettings() {
     frontMatter: {
       showCopyright: $('#podShowCopyright').checked,
       author:        $('#podAuthor').value,
-      publishDate:   $('#podPublishDate').value
+      publishDate:   $('#podPublishDate').value,
+      order: window.fmOrder || [
+        { id: 'half_title', name: '속표지 (책 제목)', active: true },
+        { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
+        { id: 'copyright', name: '판권지', active: true },
+        { id: 'toc', name: '목차', active: true }
+      ]
     }
   };
 
@@ -4490,6 +4516,80 @@ $('#podPublisherLogo')?.addEventListener('change', (e) => {
   if(el) el.addEventListener('input', () => { podUpdateCoverPreview(); });
 });
 
+window.fmOrder = window.fmOrder || [
+  { id: 'half_title', name: '속표지 (책 제목)', active: true },
+  { id: 'title_page', name: '본표지 (제목, 저자, 출판사)', active: true },
+  { id: 'copyright', name: '판권지', active: true },
+  { id: 'toc', name: '목차', active: true }
+];
+
+function renderFmList() {
+  const container = $('#podFmList');
+  if (!container) return;
+  container.innerHTML = '';
+  window.fmOrder.forEach((item, index) => {
+    const el = document.createElement('div');
+    el.className = 'fm-item';
+    el.draggable = true;
+    el.dataset.index = index;
+    el.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--c-bg); border:1px solid var(--c-line); border-radius:4px; cursor:grab; font-size:12px;';
+    
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = item.active;
+    cb.onchange = (e) => {
+      item.active = e.target.checked;
+      if (item.id === 'copyright') {
+        $('#podCopyrightOptions').style.display = item.active ? 'flex' : 'none';
+      }
+      podSaveSettings();
+    };
+    
+    const label = document.createElement('span');
+    label.style.flex = '1';
+    label.textContent = item.name;
+    
+    let delBtn = '';
+    if (item.id.startsWith('blank_')) {
+      delBtn = `<span style="cursor:pointer; color:var(--danger); padding:0 4px;" onclick="removeFmItem('${item.id}')">×</span>`;
+    }
+    
+    el.innerHTML = `<span style="color:#ccc;">≡</span>`;
+    el.insertBefore(cb, el.firstChild);
+    el.appendChild(label);
+    if(delBtn) el.insertAdjacentHTML('beforeend', delBtn);
+    
+    el.ondragstart = (e) => { e.dataTransfer.setData('text/plain', index); el.style.opacity = 0.5; };
+    el.ondragover = (e) => e.preventDefault();
+    el.ondragend = () => el.style.opacity = 1;
+    el.ondrop = (e) => {
+      e.preventDefault();
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+      const toIndex = index;
+      const moved = window.fmOrder.splice(fromIndex, 1)[0];
+      window.fmOrder.splice(toIndex, 0, moved);
+      renderFmList();
+      podSaveSettings();
+    };
+    container.appendChild(el);
+  });
+  
+  const hasCopyright = window.fmOrder.find(x => x.id === 'copyright')?.active;
+  if($('#podCopyrightOptions')) $('#podCopyrightOptions').style.display = hasCopyright ? 'flex' : 'none';
+}
+window.removeFmItem = (id) => {
+  window.fmOrder = window.fmOrder.filter(x => x.id !== id);
+  renderFmList();
+  podSaveSettings();
+};
+if ($('#podAddBlankPageBtn')) {
+  $('#podAddBlankPageBtn').onclick = () => {
+    window.fmOrder.push({ id: 'blank_' + Date.now(), name: '빈 페이지 (여백)', active: true });
+    renderFmList();
+    podSaveSettings();
+  };
+}
+
 // 창 크기 변경 시 미리보기 크기 업데이트
 window.addEventListener('resize', () => {
   if ($('#podStudioView') && $('#podStudioView').classList.contains('active')) {
@@ -4513,11 +4613,6 @@ $$('.pod-preset-btn').forEach(btn => {
     podUpdatePreview();
     showToast(`${preset.name} 여백 프리셋이 적용되었습니다.`);
   });
-});
-
-// 판권지 토글
-$('#podShowCopyright').addEventListener('change', (e) => {
-  $('#podCopyrightOptions').style.display = e.target.checked ? 'flex' : 'none';
 });
 
 // 표지 배경색 동기화
@@ -4941,7 +5036,6 @@ ${mainStyles}
   .toc-title {
     color: inherit;
     text-decoration: none;
-    display: block;
   }
   .toc-title::after {
     content: leader('.') " " target-counter(attr(href), page);
@@ -5060,68 +5154,75 @@ ${mainStyles}
 
   // 1. 표지 (옵션) - 표지는 분리되어 이미지로 다운로드되므로 PDF에는 포함하지 않습니다.
 
-  // 2. 판권지 (옵션)
-  if (pubSet.frontMatter?.showCopyright) {
-    html += `
-  <div class="chapter matter-page" style="break-before: page; break-after: page; display: flex; flex-direction: column; justify-content: flex-end; height: 80vh; font-size: 9pt; font-family: 'KoPub Batang', serif; text-align: left; padding: 0 10mm 15mm 10mm;">
-    <h2 style="font-size: 16pt; margin-bottom: 30px; font-weight: 700;">${escapeHtml(p.title)}</h2>
-    <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 20px;">
-      <div style="color: #444;">발행일</div><div>${escapeHtml(pubSet.frontMatter.publishDate || '2026년 07월 13일')}</div>
-      <div style="color: #444;">지은이</div><div>${escapeHtml(pubSet.frontMatter.author || '박소연')}</div>
-      <div style="color: #444;">발행처</div><div>퍼플</div>
-    </div>
-    <div style="display: grid; grid-template-columns: 70px 1fr; gap: 6px; margin-bottom: 30px;">
-      <div style="color: #444;">출판등록</div><div>제 300-2012-167 호 (2012년 09월 07일)</div>
-      <div style="color: #444;">주 소</div><div>서울시 종로구 종로 1 (종로1가) 교보생명빌딩 15층 ㈜교보문고</div>
-      <div style="color: #444;">대표전화</div><div>1544-1900</div>
-      <div style="color: #444;">홈페이지</div><div>www.kyobobook.co.kr</div>
-    </div>
-    <div style="font-size: 8pt; color: #333; line-height: 1.6;">
-      <p style="margin-bottom: 6px;">ⓒ ${escapeHtml(pubSet.frontMatter.author || '박소연')} ${new Date().getFullYear()}</p>
-      <p>본 책 내용의 전부 또는 일부를 재사용하려면<br>반드시 저작권자의 동의를 받으셔야 합니다.</p>
+  const pTitle = escapeHtml(p.title);
+  const pAuthor = escapeHtml(pubSet.frontMatter.author || '박소연');
+  const pDate = escapeHtml(pubSet.frontMatter.publishDate || '2026년 07월 13일');
+
+  // 책머리(Front Matter) 렌더링
+  const fmOrder = pubSet.frontMatter?.order || [];
+  fmOrder.filter(x => x.active).forEach(item => {
+    if (item.id === 'half_title') {
+      html += `
+  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh;">
+    <h1 style="font-size:20pt; font-weight:700;">${pTitle}</h1>
+  </div>`;
+    } else if (item.id === 'title_page') {
+      html += `
+  <div class="chapter matter-page" style="break-before: right; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh;">
+    <h1 style="font-size:24pt; font-weight:700; margin-bottom:20px;">${pTitle}</h1>
+    <div style="font-size:12pt; color:#444; margin-bottom:40px;">${pAuthor} 지음</div>
+    <div style="font-size:12pt; font-weight:700;">퍼플</div>
+  </div>`;
+    } else if (item.id === 'copyright') {
+      html += `
+  <div class="chapter matter-page" style="break-before: right; position:relative; height:90vh;">
+    <div style="position:absolute; bottom:0; left:0; right:0; padding:10mm; font-size:9pt; font-family:'KoPub Batang', serif; text-align:left;">
+      <h2 style="font-size:14pt; margin-bottom:24px; font-weight:700;">${pTitle}</h2>
+      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:16px;">
+        <div style="color:#666;">발행일</div><div>${pDate}</div>
+        <div style="color:#666;">지은이</div><div>${pAuthor}</div>
+        <div style="color:#666;">발행처</div><div>퍼플</div>
+      </div>
+      <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; margin-bottom:24px;">
+        <div style="color:#666;">출판등록</div><div>제 300-2012-167 호 (2012년 09월 07일)</div>
+        <div style="color:#666;">주 소</div><div>서울시 종로구 종로 1 (종로1가) 교보생명빌딩 15층 ㈜교보문고</div>
+        <div style="color:#666;">대표전화</div><div>1544-1900</div>
+        <div style="color:#666;">홈페이지</div><div>www.kyobobook.co.kr</div>
+      </div>
+      <div style="font-size:8pt; color:#333; line-height:1.6; padding-top:16px; border-top:1px solid #ccc;">
+        <p style="margin-bottom:4px;">ⓒ ${pAuthor} ${new Date().getFullYear()}</p>
+        <p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p>
+      </div>
     </div>
   </div>`;
-  }
+    } else if (item.id === 'toc') {
+      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
+      if (pubSet.autoTOC !== false && tocEps.length > 0) {
+        html += `
+  <div class="chapter matter-page toc-page" style="break-before: right;">
+    <h2 style="margin-bottom:30px; font-size:16pt; font-weight:700; text-align:center;">목차</h2>
+    <ul class="toc-list">`;
+        tocEps.forEach((ep) => {
+          const displayTitleHtml = getEpisodeDisplayTitle(ep, p, true);
+          html += `<li><a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a></li>`;
+        });
+        html += `
+    </ul>
+  </div>`;
+      }
+    } else if (item.id.startsWith('blank_')) {
+      html += `<div class="chapter matter-page" style="break-before: right; height:100vh;"></div>`;
+    }
+  });
 
   // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
     const processed = processEpisodeBody(ep.body, ep.title, true);
     html += `
-  <div class="chapter matter-page" id="ep-${ep.id}">
+  <div class="chapter matter-page" id="ep-${ep.id}" style="break-before: right;">
     <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
   });
-
-  // 4. 제목 페이지 (자동 생성)
-  // 사용자가 직접 앞부속을 만들지 않았을 때만 제목 페이지를 생성
-  if (beforeTocEps.length === 0) {
-    html += `
-  <div class="title-page">
-    <h1>${escapeHtml(p.title)}</h1>
-    <p style="margin-top: 20px; font-size: 14pt;">${escapeHtml(pubSet.frontMatter?.author || '')}</p>
-  </div>
-`;
-  }
-
-  // 4. 목차 (옵션) - 부속 타입 제외
-  const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
-  if (pubSet.autoTOC && tocEps.length > 0) {
-    html += `
-  <div class="toc-page">
-    <h2>목차</h2>
-    <ul class="toc-list">
-`;
-    tocEps.forEach((ep, i) => {
-      const displayTitleHtml = getEpisodeDisplayTitle(ep, p, true);
-      html += `<li>
-        <a href="#ep-${ep.id}" class="toc-title">${displayTitleHtml}</a>
-      </li>`;
-    });
-    html += `
-    </ul>
-  </div>
-`;
-  }
 
   // 5. 본문 (목차 이후의 회차 및 뒷부속)
   afterTocEps.forEach((ep, i) => {
