@@ -1463,15 +1463,15 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   left: var(--margin-left-px, 30px);
   right: var(--margin-right-px, 30px);
   overflow: hidden;
-  font-size: 8px;
-  line-height: 1.75;
+  font-size: var(--font-size-px, 12px);
+  line-height: var(--line-height, 1.75);
   color: #333;
   font-family: 'KoPub Batang', 'Noto Serif KR', serif;
 }
 .pod-page-content p {
-  margin: 0 0 4px;
-  text-indent: 10px;
-  font-size: 7px;
+  margin: 0 0 calc(var(--font-size-px, 12px) * 0.5);
+  text-indent: calc(var(--font-size-px, 12px) * 1.2);
+  font-size: var(--font-size-px, 12px);
   color: #444;
   word-break: keep-all;
 }
@@ -1480,7 +1480,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   bottom: calc(var(--margin-bottom-px, 40px) / 2);
   left: 50%;
   transform: translateX(-50%);
-  font-size: 6px;
+  font-size: calc(var(--font-size-px, 12px) * 0.8);
   color: #999;
   font-family: serif;
 }
@@ -4230,6 +4230,8 @@ function podUpdatePreview() {
   const inner  = parseFloat($('#podMarginInner').value)  || 25;
   const outer  = parseFloat($('#podMarginOuter').value)  || 18;
   const bleed  = parseFloat($('#podBleed').value)        || 0;
+  const fontSizePt = parseFloat($('#podFontSize').value) || 10;
+  const lineHeight = parseFloat($('#podLineHeight').value) || 1.75;
 
   // 홀수/짝수에 따른 좌/우 여백 결정
   // 홀수(우측 페이지): 내측=왼쪽, 외측=오른쪽
@@ -4243,6 +4245,7 @@ function podUpdatePreview() {
   const rightPx  = mmToPreviewPx(rightMm);
   const bleedPx  = mmToPreviewPx(bleed);
   const gutterPx = mmToPreviewPx(inner);
+  const fontSizeMm = fontSizePt * 0.352778; // 1pt = 0.352778mm
 
   // CSS variables 적용
   card.style.setProperty('--margin-top-px',    topPx    + 'px');
@@ -4251,6 +4254,8 @@ function podUpdatePreview() {
   card.style.setProperty('--margin-right-px',  rightPx  + 'px');
   card.style.setProperty('--bleed-px',         bleedPx  + 'px');
   card.style.setProperty('--gutter-px',        gutterPx + 'px');
+  card.style.setProperty('--font-size-px',     mmToPreviewPx(fontSizeMm) + 'px');
+  card.style.setProperty('--line-height',      lineHeight);
 
   // 제본여백 사선 표시 — 홀수면 왼쪽, 짝수면 오른쪽
   $('#podGutterLeft').style.display  = podIsOddPage  ? 'block' : 'none';
@@ -4431,7 +4436,7 @@ $('#podToggleEven').addEventListener('click', () => {
 });
 
 // 여백 등 입력 실시간 반영
-['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize'].forEach(id => {
+['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight'].forEach(id => {
   const el = $('#' + id);
   if(el) el.addEventListener('input', () => { podUpdatePreview(); });
 });
