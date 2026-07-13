@@ -2171,9 +2171,9 @@ window.addEventListener('unhandledrejection', function(e) {
 
         <!-- 내지 라이브 미리보기 캔버스 (Paged.js 연동) -->
         <!-- display는 JS가 제어. 인라인 style 없이 초기엔 flex로 보임 -->
-        <div class="pod-preview-canvas" id="podPreviewInner" style="flex-direction:column; align-items:center; justify-content:flex-start; width:100%; height:100%; background:var(--c-bg); padding:20px; display:flex;">
+        <div class="pod-preview-canvas" id="podPreviewInner" style="flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:var(--c-bg); padding:20px; display:flex;">
           <div style="font-size:12px; color:var(--c-muted); margin-bottom:12px;" id="podLiveRenderStatus">실시간 본문 렌더러 대기 중...</div>
-          <iframe id="podLiveIframe" style="border:1px solid #ddd; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.15); width:100%; min-height:80vh;"></iframe>
+          <iframe id="podLiveIframe" style="border:1px solid #ddd; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.15); transition: transform 0.3s; transform-origin: top center; overflow: hidden;"></iframe>
         </div>
 
         <!-- 표지 미리보기 이미지 -->
@@ -4290,10 +4290,25 @@ async function renderLivePodPreview() {
   
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
+  const paperKey = pubSet.paperSize || 'A5';
+  const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
+  iframe.style.width = paper.w + 'mm';
+  iframe.style.height = paper.h + 'mm';
+  
+  const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
+  const paperH_px = paper.h * (96 / 25.4);
+  const scale = Math.max(0.2, Math.min(1, (canvasH - 40) / paperH_px));
+  iframe.style.transform = `scale(${scale})`;
+
   // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
   const srcdocScripts = `
 <script>window.PagedConfig = { auto: false };<\/script>
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
+<style>
+  /* 단일 페이지 뷰어로 보이기 위해 여백 및 그림자 제거 */
+  .pagedjs_pages { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+  .pagedjs_page { margin: 0 !important; border: none !important; box-shadow: none !important; }
+</style>
 <script>
 function runPaged() {
   if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
@@ -4303,9 +4318,13 @@ function runPaged() {
   class LiveHandler extends Paged.Handler {
     afterRendered(pages) {
       var map = [];
-      pages.forEach(function(p) {
+      pages.forEach(function(p, idx) {
         if (!p.pageNode) return;
         var el = p.pageNode;
+        
+        // 렌더링 직후 첫 페이지만 남기고 모두 숨기기
+        if (idx !== 0) el.style.display = 'none';
+
         var pgNum = el.dataset.pageNumber || el.getAttribute('data-page-number') || '';
         var fmBlock = el.querySelector('.matter-page');
         var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
@@ -4319,8 +4338,17 @@ function runPaged() {
   Paged.registerHandlers(LiveHandler);
   window.addEventListener('message', function(ev) {
     if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
+    
+    // 1. 모든 페이지 숨기기
+    var allPages = document.querySelectorAll('.pagedjs_page');
+    allPages.forEach(function(p) { p.style.display = 'none'; });
+    
+    // 2. 요청된 페이지만 보이기
     var el = document.querySelector('.pagedjs_page[data-page-number="' + ev.data.page + '"]');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) {
+      el.style.display = 'block';
+      window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
+    }
   });
   PagedPolyfill.preview().catch(function(e) {
     try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message }, '*'); } catch(e2) {}
