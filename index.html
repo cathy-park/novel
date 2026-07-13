@@ -1903,11 +1903,36 @@ window.addEventListener('unhandledrejection', function(e) {
               <label>출판사 로고</label>
               <select id="podPublisherLogo" class="pod-input">
                 <option value="">없음</option>
-                <option value="pod_logo/흑백_타입(한글ver).png">퍼플 흑백 (한글)</option>
-                <option value="pod_logo/흑백_타입(영문ver).png">퍼플 흑백 (영문)</option>
-                <option value="pod_logo/흰색_타입(한글ver).png">퍼플 흰색 (한글)</option>
-                <option value="pod_logo/흰색_타입(영문ver).png">퍼플 흰색 (영문)</option>
+                <option value="pod_logo/logo_black_kr.png">퍼플 흑백 (한글)</option>
+                <option value="pod_logo/logo_black_en.png">퍼플 흑백 (영문)</option>
+                <option value="pod_logo/logo_white_kr.png">퍼플 흰색 (한글)</option>
+                <option value="pod_logo/logo_white_en.png">퍼플 흰색 (영문)</option>
               </select>
+            </div>
+            
+            <div id="podLogoOptions" style="display:none; padding:12px; background:var(--c-bg); border-radius:4px; margin-top:8px;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:8px;">앞표지 로고 설정</div>
+              <div style="display:flex; gap:12px; margin-bottom:12px;">
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">가로 크기 (mm)</label>
+                  <input type="number" id="podLogoFrontSize" value="20" min="5" max="100" class="pod-input" style="padding:6px;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">하단 여백 (mm)</label>
+                  <input type="number" id="podLogoFrontBottom" value="15" min="0" max="150" class="pod-input" style="padding:6px;">
+                </div>
+              </div>
+              <div style="font-size:12px; font-weight:700; margin-bottom:8px;">책등 로고 설정</div>
+              <div style="display:flex; gap:12px;">
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">가로 크기 비율 (%)</label>
+                  <input type="number" id="podLogoSpineRatio" value="60" min="10" max="100" class="pod-input" style="padding:6px;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">하단 여백 (mm)</label>
+                  <input type="number" id="podLogoSpineBottom" value="15" min="0" max="150" class="pod-input" style="padding:6px;">
+                </div>
+              </div>
             </div>
           </div>
 
@@ -3997,15 +4022,19 @@ async function generateCoverPreview(p, set) {
   }
   
   if (opts.logo && logoImg) {
-    const logoW = spineW_px * 0.6;
+    const spineRatio = (opts.logoSpineRatio || 60) / 100;
+    const spineBottomMm = opts.logoSpineBottom ?? 15;
+    const logoW = spineW_px * spineRatio;
     const logoH = logoImg.height * (logoW / logoImg.width);
-    ctx.drawImage(logoImg, spineX + (spineW_px - logoW) / 2, fullH * 0.85 - logoH, logoW, logoH);
+    const sLy = fullH - Math.round((BLEED_MM + spineBottomMm) * MM_TO_PX) - logoH;
+    ctx.drawImage(logoImg, spineX + (spineW_px - logoW) / 2, sLy, logoW, logoH);
 
-    // 앞표지 중앙 하단 로고 (표준 크기 20mm, 도련 포함 하단에서 15mm 위)
-    const frontLogoW = Math.round(20 * MM_TO_PX);
+    const frontLogoW_mm = opts.logoFrontSize ?? 20;
+    const frontBottomMm = opts.logoFrontBottom ?? 15;
+    const frontLogoW = Math.round(frontLogoW_mm * MM_TO_PX);
     const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
     const fLx = frontX + (frontCoverW - frontLogoW) / 2;
-    const fLy = fullH - Math.round((BLEED_MM + 15) * MM_TO_PX) - frontLogoH;
+    const fLy = fullH - Math.round((BLEED_MM + frontBottomMm) * MM_TO_PX) - frontLogoH;
     ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   }
   ctx.restore();
@@ -4291,7 +4320,11 @@ async function podUpdateCoverPreview() {
       bgColor: $('#podCoverBgColor').value,
       logo: $('#podPublisherLogo').value,
       spineFont: $('#podSpineFont').value,
-      spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p)
+      spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
+      logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 20,
+      logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
+      logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
+      logoSpineBottom: parseFloat($('#podLogoSpineBottom').value) || 15
     },
     frontMatter: {
       ...(set.frontMatter || {}),
@@ -4348,7 +4381,11 @@ function podSaveSettings() {
       bgColor:       $('#podCoverBgColor').value,
       logo:          $('#podPublisherLogo').value,
       spineFont:     $('#podSpineFont').value,
-      spineWidthMm:  parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p)
+      spineWidthMm:  parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
+      logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 20,
+      logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
+      logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
+      logoSpineBottom: parseFloat($('#podLogoSpineBottom').value) || 15
     },
     frontMatter: {
       showCopyright: $('#podShowCopyright').checked,
@@ -4439,8 +4476,14 @@ $('#podToggleEven').addEventListener('click', () => {
 ['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight'].forEach(id => {
   const el = $('#' + id);
   if(el) el.addEventListener('input', () => { podUpdatePreview(); });
+// 출판사 로고 선택 시 옵션 패널 보이기/숨기기
+$('#podPublisherLogo')?.addEventListener('change', (e) => {
+  const optsEl = $('#podLogoOptions');
+  if (optsEl) optsEl.style.display = e.target.value ? 'block' : 'none';
+  podUpdateCoverPreview();
 });
-['podCoverBgColorHex', 'podPublisherLogo', 'podSpineWidth', 'podShowCopyright', 'podAuthor'].forEach(id => {
+
+['podCoverBgColorHex', 'podSpineWidth', 'podShowCopyright', 'podAuthor', 'podLogoFrontSize', 'podLogoFrontBottom', 'podLogoSpineRatio', 'podLogoSpineBottom'].forEach(id => {
   const el = $('#' + id);
   if(el) el.addEventListener('input', () => { podUpdateCoverPreview(); });
 });
