@@ -4476,6 +4476,8 @@ $('#podToggleEven').addEventListener('click', () => {
 ['podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight'].forEach(id => {
   const el = $('#' + id);
   if(el) el.addEventListener('input', () => { podUpdatePreview(); });
+});
+
 // 출판사 로고 선택 시 옵션 패널 보이기/숨기기
 $('#podPublisherLogo')?.addEventListener('change', (e) => {
   const optsEl = $('#podLogoOptions');
