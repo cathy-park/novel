@@ -3607,6 +3607,7 @@ async function exportPODPdf() {
   }
   
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const pubSet = getPublishSettings(p);
   
   showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
@@ -3619,6 +3620,9 @@ async function exportPODPdf() {
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
+<style>
+${mainStyles}
+</style>
 <style>
   html, body {
     background: #fff !important;
