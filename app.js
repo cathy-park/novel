@@ -2065,33 +2065,28 @@ async function renderLivePodPreview(forceMode = null) {
   const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
   let bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
 
-  // --- 강력한 DOM 정제 (PagedJS 크래시 원천 차단) ---
+  // 1. Paged.js 크래시 주범인 HTML 주석 완벽 제거
+  bodyHTML = bodyHTML.replace(/<!--[\s\S]*?-->/g, ''); 
+  
+  // 2. 안전한 DOMParser 사용
   const parser = new DOMParser();
   const doc = parser.parseFromString(bodyHTML, 'text/html');
   
-  // A. 이미지 크래시 방지
-  doc.querySelectorAll('img').forEach(img => {
-    img.style.display = 'block';
-    img.style.maxWidth = '100%';
-    img.style.breakInside = 'avoid';
-  });
+  // 3. 래핑되지 않은 고아 텍스트(Naked Text)를 <p>로 안전하게 감싸기
+  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
+  const textNodes = [];
+  let tNode;
+  while (tNode = walker.nextNode()) textNodes.push(tNode);
   
-  // B. 엔진을 뻗게 만드는 빈 인라인 태그 청소
-  doc.querySelectorAll('span, b, i, u, em, strong').forEach(el => {
-    if (!el.textContent.trim() && !el.querySelector('img')) el.remove();
-  });
-  
-  // C. 래핑되지 않은 고아 텍스트 노드를 <p>로 감싸기
-  Array.from(doc.body.childNodes).forEach(node => {
-    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-      const pTag = document.createElement('p');
-      pTag.textContent = node.textContent;
-      node.replaceWith(pTag);
+  textNodes.forEach(txt => {
+    if (txt.textContent.trim() && (txt.parentNode === doc.body || txt.parentNode.tagName === 'DIV')) {
+      const pTag = doc.createElement('p');
+      pTag.textContent = txt.textContent;
+      txt.replaceWith(pTag);
     }
   });
-  
+
   bodyHTML = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
-  // --------------------------------------------------------
 
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
@@ -2137,20 +2132,13 @@ async function renderLivePodPreview(forceMode = null) {
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   
   /* 재단선 및 안전영역 가이드라인 CSS */
-  body.show-guides .pagedjs_page::before {
-    content: "";
-    position: absolute;
-    top: 3mm; bottom: 3mm; left: 3mm; right: 3mm; /* Bleed (재단선) */
-    border: 1px dashed #FF6B6B;
-    pointer-events: none;
-    z-index: 99;
+  body.show-guides .pagedjs_page .pagedjs_sheet {
+    outline: 1px dashed red; /* 재단선 */
+    outline-offset: -3mm;
   }
-  body.show-guides .pagedjs_page > .pagedjs_sheet::after {
-    content: "";
-    position: absolute;
-    top: 15mm; bottom: 15mm; left: 15mm; right: 15mm; /* Safe Area (안전영역) - 임의 여백 */
-    border: 1px dashed #3B82F6;
-    pointer-events: none;
+  body.show-guides .pagedjs_page::after {
+    content: ""; position: absolute; top: 15mm; bottom: 15mm; left: 15mm; right: 15mm;
+    border: 1px solid rgba(0, 0, 255, 0.3); pointer-events: none; /* 안전영역 */
     z-index: 99;
   }
 <\/style>
@@ -3037,6 +3025,10 @@ function openFmBlockEditor(index) {
     const label = FM_LABELS[block.type] || block.type;
     const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
     if (pm) {
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
+      
       const iframe = document.getElementById('podLiveIframe');
       if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'single', pageNum: pm.pageNum }, '*');
