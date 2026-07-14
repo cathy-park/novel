@@ -3919,7 +3919,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     if (targetEpId && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
     const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-    const renderTitle = false; // !isMatter && pubSet.showTitle && !processed.hasTitle;
+    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
     const displayTitle = getEpisodeDisplayTitle(ep, p);
 
     const tempDiv = document.createElement('div');
