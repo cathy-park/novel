@@ -2347,7 +2347,8 @@ async function renderLivePodPreview(forceMode = null) {
   .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; position: relative; }
   .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  
+</style>
+<style data-pagedjs-ignore="true">
   /* 재단선(Bleed) 가이드라인 - sheet에 after 적용 */
   body.show-guides .pagedjs_left_page .pagedjs_sheet::after {
     content:""; position:absolute; top:${b}mm; bottom:${b}mm; left:${b}mm; right:0; border:1px dashed red; pointer-events:none; z-index:99;

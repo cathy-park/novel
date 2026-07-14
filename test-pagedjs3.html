@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+  body.show-guides .pagedjs_left_page .pagedjs_sheet::after {
+    content:""; position:absolute; top:3mm; bottom:3mm; left:3mm; right:0; border:1px dashed red; pointer-events:none; z-index:99;
+  }
+  </style>
+  <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+</head>
+<body>
+  <div>Test</div>
+  <script>
+    window.addEventListener('error', function(e) {
+      console.log('Error caught:', e.message);
+    });
+  </script>
+</body>
+</html>

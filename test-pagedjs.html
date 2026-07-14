@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+  <style>
+  body.show-guides .pagedjs_left_page .pagedjs_sheet::after {
+    content:""; position:absolute; top:3mm; bottom:3mm; left:3mm; right:0; border:1px dashed red; pointer-events:none; z-index:99;
+  }
+  </style>
+</head>
+<body>
+  <div>Test</div>
+</body>
+</html>
