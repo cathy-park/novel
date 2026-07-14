@@ -1917,7 +1917,21 @@ function podScheduleLiveRender() {
 
 
 
-async function renderLivePodPreview(forceMode = null) {
+const activePane = activeTab ? activeTab.dataset.pane : 'inner';
+  const isTreeMode = forceMode === 'tree' || activePane === 'tree';
+  const isCoverMode = forceMode === 'cover' || activePane === 'cover';
+  const isFmMode = forceMode === 'fm' || activePane === 'fm';
+  
+  if (isCoverMode) {
+    if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'block';
+    if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
+    if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
+    return; // Cover handles its own preview
+  } else {
+    if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+    if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+    if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = isTreeMode ? 'none' : 'flex';
+  }async function renderLivePodPreview(forceMode = null) {
   const p = currentProject();
   if(!p) return;
   
@@ -2121,10 +2135,14 @@ ${mainStyles}
   .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
 </style>
 </head>
-<body>
-${bodyContentHTML}
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 ${srcdocScripts}
-</body>
+<style>
+${mainStyles}
+</style>
+... // We'll just manually replace this part since it's cleaner to rewrite the template
 </html>`;
 
   // Always re-inject srcdoc to trigger reload with new content/mode
@@ -3504,7 +3522,8 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
     const pSub    = escapeHtml(c.subtitle || '');
     const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
     const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
-    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
+    const presetObj = POD_PRESETS[pubSet.preset] || {};
+    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || presetObj.name || '');
     const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
     const pQuote  = escapeHtml(c.quoteAuthor || '');
 
