@@ -2204,7 +2204,10 @@ window.addEventListener('message', function(ev) {
     // 4. [크래시 완벽 차단] 이미지가 완전히 로드될 때까지 기다렸다가 조판 시작 (핵심!)
     var wrap = document.createElement('div');
     wrap.innerHTML = htmlContent;
-    wrap.style.display = 'none'; // 화면에 보이지 않게 DOM에 임시 추가
+    // display:none 대신 화면 밖으로 빼서 브라우저 레이아웃 트리가 확실히 생성되도록 유도 (PagedJS 크래시 방지)
+    wrap.style.position = 'absolute';
+    wrap.style.left = '-9999px';
+    wrap.style.top = '-9999px';
     document.body.appendChild(wrap);
 
     var imgs = Array.from(wrap.querySelectorAll('img'));
@@ -2215,7 +2218,8 @@ window.addEventListener('message', function(ev) {
         img.onerror = resolve; // 에러가 나도 조판은 진행되도록 처리
       });
     })).then(function() {
-      wrap.style.display = 'block';
+      // 렌더링 시작 시 다시 원상 복구 (PagedJS가 복제해서 사용함)
+      wrap.style.position = 'static';
       PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
         window.parent.postMessage({ type:'pagedjs-error', error:'preview:'+err.message }, '*');
       });
