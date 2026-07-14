@@ -2701,10 +2701,24 @@ $$('.pod-settings-tab').forEach(btn => {
     $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
     $$('.pod-settings-pane').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    const pane = $('#podPane-' + btn.dataset.pane);
-    if (pane) pane.classList.add('active');
-
     const tab = btn.dataset.pane;
+
+    const pane = $('#podPane-' + tab);
+    if (pane) {
+      pane.classList.add('active');
+      
+      // 첫 진입 시 자동 클릭 처리
+      if (!pane.dataset.initialized) {
+        pane.dataset.initialized = 'true';
+        if (tab === 'inner') {
+          const kyoboBtn = document.querySelector('.pod-preset-btn[data-preset="kyobo"]');
+          if (kyoboBtn) kyoboBtn.click();
+        } else if (tab === 'fm') {
+          const firstBlock = document.querySelector('#podFmBlockList .fm-block-item');
+          if (firstBlock) firstBlock.click();
+        }
+      }
+    }
 
     if (tab === 'cover') {
       // 표지: 표지 Canvas 노출, Iframe 숨김
@@ -2713,24 +2727,13 @@ $$('.pod-settings-tab').forEach(btn => {
       if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
       podUpdateCoverPreview();
     } else {
-      // 내지, 전면부, 페이지 구조: Iframe 노출
+      // 내지, 전면부, 페이지 구조: Iframe 노출 및 즉시 렌더링
       if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
       if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
       if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
 
-      const iframe = document.getElementById('podLiveIframe');
-      if (iframe && iframe.contentWindow) {
-        if (tab === 'inner') {
-          // 내지 설정 탭: 스프레드(양면) 모드 및 가이드라인 제어 연동
-          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'spread', pageNum: 2 }, '*');
-          const showGuides = $('#podShowGuides') && $('#podShowGuides').checked;
-          iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: showGuides }, '*');
-        } else {
-          // 전면부, 페이지 구조 탭: 단면 모드로 노출 및 가이드라인 강제 끄기
-          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'single', pageNum: 1 }, '*');
-          iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: false }, '*');
-        }
-      }
+      // 탭마다 렌더링 컨텐츠가 다르므로 무조건 렌더링을 다시 돌려줌
+      renderLivePodPreview();
     }
   });
 });
