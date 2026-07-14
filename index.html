@@ -3531,7 +3531,7 @@ function parseBeatSheet(text) {
   return blocks;
 }
 
-function matchEpisodeForBeat(header, episodes) {
+function matchEpisodeForBeat(header, episodes, index, totalBlocks) {
   const h = header.trim().toLowerCase();
   
   if (h.includes('프롤로그') || h.includes('prologue')) {
@@ -3572,11 +3572,32 @@ function matchEpisodeForBeat(header, episodes) {
   }
   
   // 제목 부분 매핑 (빈 문자열 제외)
-  return episodes.find(e => {
+  const exactMatched = episodes.find(e => {
     const t = e.title ? e.title.trim().toLowerCase() : '';
     if (!t) return false;
     return t.includes(h) || h === t;
-  }) || null;
+  });
+  if (exactMatched) return exactMatched;
+
+  // 제목/번호 등 명시적 매칭 실패 시 -> 순서 기반 위치 추론
+  if (typeof index === 'number' && typeof totalBlocks === 'number' && totalBlocks > 0) {
+    if (index === 0) {
+      return episodes.find(e => e.type === 'prologue') || null;
+    } else if (index === totalBlocks - 1 && totalBlocks > 1) {
+      return episodes.find(e => e.type === 'epilogue') || null;
+    } else {
+      const targetNum = index;
+      const chapters = episodes.filter(e => {
+         if (e.type !== 'chapter') return false;
+         const t = e.title ? e.title.replace(/\s+/g, '') : '';
+         if (t.includes('프롤로그') || t.includes('에필로그')) return false;
+         return true;
+      });
+      return chapters[targetNum - 1] || null;
+    }
+  }
+
+  return null;
 }
 
 function distributeBeatSheet(sectionId) {
@@ -3595,16 +3616,21 @@ function distributeBeatSheet(sectionId) {
   if (!blocks.length) { alert('비트시트 내용이 없거나 #, ##, ### 기호로 구분된 회차 헤더(예: "## 1화")를 찾을 수 없습니다.'); return; }
   let eps = orderedEpisodes(p);
   let matched = 0, created = 0; const matchedEpNames = [];
-  for (const block of blocks) {
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
     if (!block.body) continue;
-    let ep = matchEpisodeForBeat(block.header, eps);
+    let ep = matchEpisodeForBeat(block.header, eps, i, blocks.length);
     if (!ep) {
       let type = 'chapter';
       const lh = block.header.toLowerCase();
       if (lh.includes('프롤로그') || lh.includes('prologue')) type = 'prologue';
       else if (lh.includes('에필로그') || lh.includes('epilogue')) type = 'epilogue';
-      const chapCount = eps.filter(e => e.type === 'chapter').length;
-      ep = defaultEpisode(type, chapCount + 1);
+      else {
+        if (i === 0) type = 'prologue';
+        else if (i === blocks.length - 1 && blocks.length > 1) type = 'epilogue';
+      }
+      
+      ep = defaultEpisode(type, 0);
       ep.title = block.header;
       p.episodes.push(ep);
       eps = orderedEpisodes(p);
