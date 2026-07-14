@@ -479,6 +479,10 @@ window.addEventListener('unhandledrejection', function(e) {
                 <label>인용 출처</label>
                 <input type="text" id="fmContentQuoteAuthor" class="pod-input" placeholder="예: — 헤르만 헤세">
               </div>
+              <div class="pod-field" id="fmFieldTocManual">
+                <label>수동 페이지 번호 <span style="color:var(--c-muted); font-weight:400;">(줄바꿈으로 구분)</span></label>
+                <textarea id="fmContentTocManual" class="pod-input" rows="5" placeholder="예:&#10;12&#10;34&#10;56"></textarea>
+              </div>
             </div>
 
             <button id="fmApplyBlockBtn" class="primary" style="width:100%; font-size:13px; padding:10px;">✓ 이 블록에 적용</button>
@@ -828,6 +832,6 @@ window.addEventListener('unhandledrejection', function(e) {
 <input id="importInput" type="file" accept=".json,.gz,application/json" hidden />
 <div id="toast" class="toast" role="status"></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20260715_0349"></script>
 </body>
 </html>
