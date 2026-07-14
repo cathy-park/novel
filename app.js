@@ -2314,10 +2314,8 @@ async function renderLivePodPreview(forceMode = null) {
     }
   };
   removeComments(doc.body);
-  doc.querySelectorAll('span, b, i, em, strong, u, p').forEach(el => {
-    if (el.innerHTML.trim() === '' && !el.querySelector('img')) el.remove();
-  });
-  bodyHTML = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
+  removeComments(doc.body);
+  bodyHTML = doc.body.innerHTML;
 
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
@@ -4836,10 +4834,8 @@ function runHiddenPagedJsForTree(p) {
     }
   };
   removeComments(doc.body);
-  doc.querySelectorAll('span, b, i, em, strong, u, p').forEach(el => {
-    if (el.innerHTML.trim() === '' && !el.querySelector('img')) el.remove();
-  });
-  htmlContent = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
+  removeComments(doc.body);
+  htmlContent = doc.body.innerHTML;
 
   const m = {
     top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
