@@ -2056,7 +2056,8 @@ async function renderLivePodPreview(forceMode = null) {
   const canvasEl = $('#podPreviewInner');
   const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
   const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
-  const tw = isTreeMode ? paper.w * 2 : paper.w;
+  const isSpreadMode = (activePane === 'inner' || activePane === 'tree');
+  const tw = isSpreadMode ? paper.w * 2 : paper.w;
   const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
 
   iframe.style.width = tw + 'mm';
@@ -2067,7 +2068,38 @@ async function renderLivePodPreview(forceMode = null) {
   iframe.style.background = 'transparent';
 
   const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
-  const bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
+  let bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
+  
+  // --- Paged.js 파싱 크래시(nextSibling null) 방지용 정제 로직 ---
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = bodyHTML;
+  
+  // 1. 의미 없는 빈 텍스트 노드 제거 및 래핑 안 된 텍스트 p태그로 감싸기
+  Array.from(tempDiv.childNodes).forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent.trim() !== '') {
+        const p = document.createElement('p');
+        p.textContent = node.textContent;
+        tempDiv.replaceChild(p, node);
+      } else {
+        tempDiv.removeChild(node);
+      }
+    }
+  });
+  // 2. 엔진을 터뜨리는 텅 빈 p태그 삭제
+  tempDiv.querySelectorAll('p').forEach(pTag => {
+    if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+  });
+  // 3. 문서 끝부분 nextSibling 참조 에러를 막기 위한 투명 방어막(Terminator) 추가
+  const terminator = document.createElement('div');
+  terminator.style.breakBefore = 'avoid';
+  terminator.style.height = '1px';
+  terminator.style.visibility = 'hidden';
+  terminator.innerHTML = '&nbsp;';
+  tempDiv.appendChild(terminator);
+  
+  bodyHTML = tempDiv.innerHTML; // 정제된 안전한 HTML로 덮어쓰기
+  // --------------------------------------------------------
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
   const pageCSS = `@page {
