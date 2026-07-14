@@ -2034,8 +2034,8 @@ async function renderLivePodPreview(forceMode = null) {
 
   const st = $('#podLiveRenderStatus');
 
-  // [요구사항 반영] 내지 설정 탭일 경우 PagedJS를 완전히 배제하고 순수 CSS 2장(Spread) 뷰어를 하드코딩으로 보여줌
-  if (activePane === 'inner') {
+  // [요구사항 반영] 내지 설정 탭 및 페이지 구조도 탭일 경우 PagedJS를 완전히 배제하고 순수 CSS 2장(Spread) 뷰어를 하드코딩으로 보여줌
+  if (activePane === 'inner' || activePane === 'tree') {
     const iframe = document.getElementById('podLiveIframe');
     if (!iframe) return;
     
@@ -2068,7 +2068,7 @@ async function renderLivePodPreview(forceMode = null) {
 
     const showGuides = $('#podShowGuides') && $('#podShowGuides').checked;
 
-    const dummyText = `
+    const dummyText = activePane === 'tree' ? '' : `
       <p style="text-indent:10pt; margin-bottom:12px;">이 화면은 출판될 책의 실제 여백과 재단선을 확인하기 위한 <strong>순수 CSS 미리보기 화면</strong>입니다.</p>
       <p style="text-indent:10pt; margin-bottom:12px;">좌측과 우측 페이지가 실제 책을 펼쳤을 때와 동일하게 일렬로 배치되어 있습니다. 빨간 점선은 인쇄소에서 잘려나가는 <strong>재단선(Bleed)</strong>을 의미하며, 파란 실선은 텍스트가 안전하게 배치되어야 하는 <strong>안전영역(여백)</strong>을 의미합니다.</p>
       <p style="text-indent:10pt; margin-bottom:12px;">좌측 메뉴에서 상단, 하단, 내측, 외측 여백을 조절하면 실시간으로 가이드라인이 움직입니다. 완벽한 레이아웃을 위해 여백을 세밀하게 조정해 보세요.</p>
@@ -2131,6 +2131,10 @@ async function renderLivePodPreview(forceMode = null) {
     if (st) {
       st.style.display = 'block';
       st.textContent = `렌더링 완료 ✓ (내지 여백 확인 모드)`;
+    }
+    
+    if (activePane === 'tree') {
+      renderPodPageTree();
     }
     return;
   }
@@ -2856,10 +2860,26 @@ function renderPodPageTree() {
   innerSec.style.cssText = 'padding:0 8px;';
   innerSec.appendChild(mkSectionHead('─ 내지 (전체 페이지) ─'));
 
-  if (!window.podPageMap || window.podPageMap.length === 0) {
+  if (!p) return;
+  const pubSet = getPublishSettings(p);
+  const fmBlocks = window.fmBlocks || pubSet.fmBlocks || [];
+  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  
+  let mapData = [];
+  let pageCounter = 1;
+  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '빈면지' };
+
+  fmBlocks.forEach(b => {
+    mapData.push({ pageNum: pageCounter++, label: FM_LABELS[b.type] || b.type, data: b, type: 'fm' });
+  });
+  eps.forEach(ep => {
+    mapData.push({ pageNum: pageCounter++, label: ep.title || '무제', data: ep, type: 'ep' });
+  });
+
+  if (mapData.length === 0) {
     const loading = document.createElement('div');
     loading.style.cssText = 'text-align:center; padding:20px; font-size:12px; color:var(--c-muted);';
-    loading.textContent = '조판 렌더링 중입니다... (완료 시 전체 페이지 트리가 표시됩니다)';
+    loading.textContent = '원고 데이터가 없습니다.';
     innerSec.appendChild(loading);
     treeEl.appendChild(innerSec);
     return;
@@ -2875,36 +2895,40 @@ function renderPodPageTree() {
   spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;z-index:1;';
   grid.appendChild(spine);
 
-  let maxPage = window.podPageMap[window.podPageMap.length - 1].pageNum;
-
-  for (let i = 1; i <= maxPage; i++) {
-    const pageData = window.podPageMap.find(m => m.pageNum === i);
-    const isOdd = i % 2 !== 0; // 홀수면 우측
+  for (let i = 0; i < mapData.length; i++) {
+    const pageData = mapData[i];
+    const isOdd = pageData.pageNum % 2 !== 0; // 홀수면 우측
     const cell = document.createElement('div');
 
     // 홀수(우측)면 왼쪽(책등)으로 붙고, 짝수(좌측)면 오른쪽(책등)으로 붙게 flex 정렬
     cell.style.cssText = `display:flex; justify-content:${isOdd ? 'flex-start' : 'flex-end'}; align-items:flex-start;`;
-    if (i === 1) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
-
-    let label = '';
-    if (pageData) label = pageData.label || '';
+    if (pageData.pageNum === 1) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
 
     const thumb = mkThumb(
-      i,
-      label.substring(0, 12),
-      '',
-      pageData ? '#7c6bf6' : null,
+      pageData.pageNum,
+      pageData.label.substring(0, 12),
+      pageData.type === 'ep' ? '본문' : '전면',
+      '#7c6bf6',
       () => {
         if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
         if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-        if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
+        
         const iframe = document.getElementById('podLiveIframe');
-        if (iframe && iframe.contentWindow) {
-          // 3. 페이지 구조도 클릭 시 양면(spread) 모드로 라우팅
-          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: i, mode: 'spread' }, '*');
+        if (iframe && iframe.contentDocument) {
+          const rightTitle = iframe.contentDocument.querySelector('.page-right h2');
+          const rightBody = iframe.contentDocument.querySelector('.page-right > div > div:nth-child(2)');
+          const leftTitle = iframe.contentDocument.querySelector('.page-left h2');
+          const leftBody = iframe.contentDocument.querySelector('.page-left > div > div:nth-child(2)');
+          
+          if (rightTitle) rightTitle.textContent = pageData.label;
+          if (rightBody) {
+             rightBody.innerHTML = pageData.type === 'ep' ? pageData.data.body : `<div style="text-align:center; padding-top:40px; color:#666;">(${pageData.label} 템플릿)</div>`;
+          }
+          
+          if (leftTitle) leftTitle.textContent = '';
+          if (leftBody) leftBody.innerHTML = '';
         }
-        const pi = $('#podPageInfo');
-        if (pi) pi.textContent = i + 'p';
+        
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
         cell.classList.add('tree-thumb-active');
       }
