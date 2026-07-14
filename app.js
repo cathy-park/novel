@@ -850,10 +850,33 @@ function renderEpisode() {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           [{ 'narrative': [false, 'msg', 'msg-y', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo'] }],
-          ['bold', 'italic', 'underline', 'strike', 'ui', 'hideicon', 'divider'],
+          ['bold', 'italic', 'underline', 'strike', 'ui', 'hideicon', 'divider', 'image'],
           ['clean']
         ]
       }
+    });
+
+    // Custom Image Handler for Compression and Resizing
+    quill.getModule('toolbar').addHandler('image', function() {
+      const input = document.createElement('input');
+      input.setAttribute('type', 'file');
+      input.setAttribute('accept', 'image/*');
+      input.click();
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        showToast('이미지 최적화 중...');
+        try {
+          const compressedDataUrl = await compressImage(file, 1200); // Max width 1200px
+          const range = quill.getSelection(true);
+          quill.insertEmbed(range.index, 'image', compressedDataUrl, Quill.sources.USER);
+          quill.setSelection(range.index + 1, Quill.sources.SILENT);
+          showToast('이미지가 삽입되었습니다.');
+        } catch (e) {
+          console.error(e);
+          showToast('이미지 처리 실패');
+        }
+      };
     });
 
     quill.getModule('toolbar').addHandler('divider', function() {
@@ -875,6 +898,24 @@ function renderEpisode() {
         divBtn.innerHTML = '<span style="font-size:14px; font-weight:700; color:#444; line-height:24px; display:inline-block;">―</span>';
       }
     }, 100);
+
+    
+    quill.root.addEventListener('paste', async (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (const item of items) {
+        if (item.type.indexOf('image') === 0) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            showToast('붙여넣은 이미지 최적화 중...');
+            const compressedDataUrl = await compressImage(file, 1200);
+            const range = quill.getSelection(true);
+            quill.insertEmbed(range.index, 'image', compressedDataUrl, Quill.sources.USER);
+            quill.setSelection(range.index + 1, Quill.sources.SILENT);
+          }
+        }
+      }
+    });
 
     quill.on('text-change', (delta, oldDelta, source) => {
       const ep = currentEpisode();
@@ -1947,7 +1988,7 @@ async function renderLivePodPreview(forceMode = null) {
     return;
   }
 
-  if (st) st.textContent = isTreeMode ? '전체 조판 렌더링 중...' : '미리보기 렌더링 중...';
+  if (st) st.textContent = '스크립트 초기화 중... (Paged.js)';
 
   const iframe = document.getElementById('podLiveIframe');
   if (!iframe) return;
@@ -1993,13 +2034,15 @@ async function renderLivePodPreview(forceMode = null) {
   .chapter-title { font-size:14pt; font-weight:700; margin-bottom:30px; text-align:center; }
   .chapter-content span { background-color:transparent !important; }
   .chapter-content p { text-indent:10pt !important; margin:0 !important; }
-  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }`;
+  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
+  img { max-width: 100% !important; width: 100% !important; height: auto !important; display: block; margin: 10px auto; }`;
 
-  // isTreeMode をJS文字列として埋め込む
-  const treeModeStr = isTreeMode ? 'true' : 'false';
+  // 메인 UI 메모리에 렌더링할 데이터를 저장해둡니다.
+  window.podPendingRenderHTML = bodyHTML;
+  window.podPendingRenderIsTreeMode = isTreeMode;
 
   const headScripts = `<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js"><\/script>
+<script src="https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js" onload="window.parent.postMessage({ type: 'PAGEDJS_READY' }, '*')" onerror="window.parent.postMessage({ type: 'pagedjs-error', error: 'PagedJS 스크립트 로드 실패' }, '*')"><\/script>
 <style>
   html,body { margin:0; padding:0; background:transparent !important; }
   .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
@@ -2008,18 +2051,19 @@ async function renderLivePodPreview(forceMode = null) {
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
 <\/style>
 <script>
-(function(){
-  var TREE = ` + treeModeStr + `;
-  var waitN = 0;
-  function boot() {
-    if (!document.body) return setTimeout(boot, 50);
+window.addEventListener('message', function(ev) {
+  if (!ev.data) return;
+
+  // 1. START_RENDER 수신 시 PagedJS 조판 시작
+  if (ev.data.type === 'START_RENDER') {
     if (typeof Paged === 'undefined') {
-      if (++waitN > 300) {
-        window.parent.postMessage({ type:'pagedjs-error', error:'PagedJS 로드 실패' }, '*');
-        return;
-      }
-      return setTimeout(boot, 50);
+      window.parent.postMessage({ type:'pagedjs-error', error:'Paged 객체가 존재하지 않습니다.' }, '*');
+      return;
     }
+    
+    var TREE = ev.data.isTreeMode;
+    var htmlContent = ev.data.html;
+
     Paged.registerHandlers(class extends Paged.Handler {
       afterRendered(pages) {
         try {
@@ -2040,23 +2084,18 @@ async function renderLivePodPreview(forceMode = null) {
         }
       }
     });
-    var snap = document.body.innerHTML;
-    document.body.innerHTML = '';
+
     var wrap = document.createElement('div');
-    wrap.innerHTML = snap;
+    wrap.innerHTML = htmlContent;
     PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
       window.parent.postMessage({ type:'pagedjs-error', error:'preview:'+err.message }, '*');
     });
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-  window.addEventListener('message', function(ev) {
-    if (!ev.data || ev.data.type !== 'SHOW_PAGES') return;
+
+  // 2. SHOW_PAGES 수신 시 특정 페이지만 표시
+  if (ev.data.type === 'SHOW_PAGES') {
     var tgt  = parseInt(ev.data.pageNum, 10);
-    var mode = ev.data.mode || (TREE ? 'spread' : 'single');
+    var mode = ev.data.mode;
     var all  = Array.from(document.querySelectorAll('.pagedjs_page'));
     all.forEach(function(el) { el.style.display = 'none'; });
     if (mode === 'single') {
@@ -2071,10 +2110,11 @@ async function renderLivePodPreview(forceMode = null) {
         if (n === lp || n === rp) el.style.display = 'block';
       });
     }
-  });
-})();
+  }
+});
 <\/script>`;
 
+  // Iframe 내부는 빈 <body>로 초기화
   const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2090,7 +2130,6 @@ ${bodyCSS}
 </style>
 </head>
 <body>
-${bodyHTML}
 </body>
 </html>`;
 
@@ -2099,9 +2138,24 @@ ${bodyHTML}
   iframe.srcdoc = html;
 }
 
-// ── pagedjs-rendered / pagedjs-error 메시지 수신 ─────────────
+// ── iframe 통신 메시지 수신 ─────────────
 window.addEventListener('message', (e) => {
   if (!e.data) return;
+  
+  if (e.data.type === 'PAGEDJS_READY') {
+    const st = $('#podLiveRenderStatus');
+    if (st) st.textContent = window.podPendingRenderIsTreeMode ? '전체 조판 렌더링 중... (Paged.js)' : '미리보기 렌더링 중...';
+    
+    const iframe = document.getElementById('podLiveIframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({
+        type: 'START_RENDER',
+        html: window.podPendingRenderHTML || '',
+        isTreeMode: window.podPendingRenderIsTreeMode || false
+      }, '*');
+    }
+  }
+
   if (e.data.type === 'pagedjs-rendered') {
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
@@ -2121,13 +2175,12 @@ window.addEventListener('message', (e) => {
     const st = $('#podLiveRenderStatus');
     if (st) st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
   }
+  
   if (e.data.type === 'pagedjs-error') {
     const st = $('#podLiveRenderStatus');
     if (st) st.textContent = `렌더링 에러: ${e.data.error}`;
   }
 });
-
-
 function updateSpineThickness(totalPages) {
   const paperType = $('#podPaperType')?.value || 'standard';
   // 종이 종류별 1장(2쪽)당 두께 대략 추정 (단위: mm)
