@@ -2088,6 +2088,7 @@ async function renderLivePodPreview(forceMode = null) {
     position: relative;
     box-shadow: 0 4px 16px rgba(0,0,0,.12);
     text-align: left; /* 좌측 정렬 요구사항 */
+    overflow: hidden; /* 강제로 스크롤 방지 */
   }
   .page-left { padding: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
   .page-right { padding: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
@@ -4878,7 +4879,9 @@ function runHiddenPagedJsForTree(p) {
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
+<script>
+  ${(window.POD_PAGEDJS_CODE || '').replace(/<\/script>/gi, '<\\/script>')}
+</script>
 <style>
   html, body { background: transparent !important; }
   ${mainStyles}
@@ -4889,33 +4892,47 @@ function runHiddenPagedJsForTree(p) {
 <body>
   ${htmlContent}
   <script>
-    class HiddenPrintHandler extends window.Paged.Handler {
-      afterRendered(pages) {
-        try {
-          var map = pages.map(function(pg) {
-            var el  = pg.element || pg.pageNode || pg.wrapper;
-            var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
-            var fm  = el && el.querySelector('[data-fm-label]');
-            var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
+    if (!window.Paged || !window.Paged.Handler) {
+      window.parent.postMessage({ type:'pagedjs-error', error:'PagedJS 로드 실패' }, '*');
+    } else {
+      class HiddenPrintHandler extends window.Paged.Handler {
+        afterRendered(pages) {
+          try {
+            var map = pages.map(function(pg) {
+              var el  = pg.element || pg.pageNode || pg.wrapper;
+              var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
+              var fm  = el && el.querySelector('[data-fm-label]');
+              var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
+              
+              var contentNode = el && el.querySelector('.pagedjs_page_content');
+              var innerHtml = contentNode ? contentNode.innerHTML : '';
+              
+              return {
+                pageNum: num,
+                label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,14) : num+'쪽'),
+                epTitle: ch ? ch.textContent.trim() : '',
+                htmlContent: innerHtml
+              };
+            });
             
-            var contentNode = el && el.querySelector('.pagedjs_page_content');
-            var innerHtml = contentNode ? contentNode.innerHTML : '';
-            
-            return {
-              pageNum: num,
-              label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,14) : num+'쪽'),
-              epTitle: ch ? ch.textContent.trim() : '',
-              htmlContent: innerHtml
-            };
-          });
-          
-          window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:true }, '*');
-        } catch(err) {
-          window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+            window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:true }, '*');
+          } catch(err) {
+            window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+          }
         }
       }
+      window.Paged.registerHandlers(HiddenPrintHandler);
+      
+      // 이미지 및 폰트 대기 후 수동 렌더링 시작
+      Promise.all([
+        document.fonts ? document.fonts.ready : Promise.resolve(),
+        ...Array.from(document.images).filter(img => !img.complete).map(img => new Promise(res => { img.onload = img.onerror = res; }))
+      ]).then(function() {
+        window.PagedPolyfill.preview(document.body, [], document.body).catch(function(err) {
+          window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
+        });
+      });
     }
-    window.Paged.registerHandlers(HiddenPrintHandler);
   </script>
 </body>
 </html>`;
@@ -4949,10 +4966,9 @@ function podGoToPage(pageNum, isSpread) {
          if (pData.htmlContent) {
            bodyEl.innerHTML = pData.htmlContent;
          } else {
-           bodyEl.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">내용이 없습니다.</div>';
+           bodyEl.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">빈 면지</div>';
          }
          bodyEl.style.display = 'block';
-         bodyEl.style.height = 'auto';
       }
     };
 
