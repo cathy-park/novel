@@ -61,7 +61,22 @@ function autoRescue() {
 
 async function initApp() {
   // OAuth 리다이렉트 후 세션 감지를 위한 리스너
+
+  // OAuth 리다이렉트 후 에러 확인용 디버그
+  const urlHash = window.location.hash;
+  const urlSearch = window.location.search;
+  if (urlHash.includes('error') || urlSearch.includes('error')) {
+    const errParams = new URLSearchParams(urlHash.replace('#', '?') || urlSearch);
+    const errDesc = errParams.get('error_description') || errParams.get('error');
+    if ($('#authError')) {
+      $('#authError').innerHTML = '인증 에러: ' + decodeURIComponent(errDesc);
+      $('#authError').style.display = 'block';
+    }
+    showToast('인증 에러가 발생했습니다.');
+  }
+
   sb.auth.onAuthStateChange(async (event, session) => {
+
     console.log('Auth event:', event);
     if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session && !currentUser) {
       localStorage.removeItem('novel_emergency_backup'); // 불필요해진 로컬 백업 삭제
@@ -99,7 +114,14 @@ async function initApp() {
   });
 
   // 새로고침 시 INITIAL_SESSION이 누락되는 경우를 대비한 수동 세션 복구
-  sb.auth.getSession().then(async ({ data: { session } }) => {
+  sb.auth.getSession().then(async ({ data: { session }, error }) => {
+    if (error) {
+      console.error("getSession error:", error);
+      if($('#authError')) {
+        $('#authError').innerHTML = '세션 확인 에러: ' + error.message;
+        $('#authError').style.display = 'block';
+      }
+    }
     if (session && !currentUser) {
       console.log('Manual session recovery successful');
       showToast('세션을 복구했습니다. 서재를 불러옵니다...');
@@ -121,10 +143,7 @@ if ($('#googleLoginBtn')) {
     $('#googleLoginBtn').textContent = '로그인 중...';
     try {
       const { data, error } = await sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
+        provider: 'google'
       });
       if(error) throw error;
     } catch(err) {
