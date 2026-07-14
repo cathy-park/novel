@@ -2860,24 +2860,24 @@ function renderPodPageTree() {
     return el;
   };
 
-  const mkThumb = (pageNum, label, sublabel, accentColor, clickFn) => {
+  const mkThumb = (pageNum, label, sublabel, accentColor, clickFn, isBlank = false) => {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;';
 
     const thumb = document.createElement('div');
     thumb.style.cssText = `
       width:56px; height:78px;
-      background:#fff; border:1.5px solid var(--border-color);
+      background:${isBlank ? '#f0f0f0' : '#fff'}; border:1.5px solid var(--border-color);
       border-radius:2px; box-shadow:1px 2px 5px rgba(0,0,0,.1);
       position:relative; overflow:hidden;
       transition:border-color .15s, box-shadow .15s;
       flex-shrink:0;
     `;
     // 스켈레톤 라인
-    const skLines = accentColor
+    const skLines = isBlank ? '' : (accentColor
       ? `<div style="width:70%;height:5px;background:${accentColor};opacity:.6;border-radius:2px;margin:14px auto 8px;"></div>`
       + `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:0 auto 4px;"></div>`.repeat(5)
-      : `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:8px auto 4px;"></div>`.repeat(7);
+      : `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:8px auto 4px;"></div>`.repeat(7));
     thumb.innerHTML = `<div style="padding:4px 3px;">${skLines}</div>`;
     if (pageNum) {
       const badge = document.createElement('div');
