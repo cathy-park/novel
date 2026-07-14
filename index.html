@@ -2661,7 +2661,7 @@ async function loadStateSupabase() {
         }
       } catch(e) {}
       currentUser = null;
-      window.location.href = window.location.origin;
+      showToast('⚠️ JWT 토큰 만료 또는 인증 오류가 발생했습니다. 로그아웃 후 다시 로그인해주세요.');
     }
     return; 
   }
@@ -4202,14 +4202,20 @@ async function showPodStudio() {
     $('#podLogoSpineBottom').value = set.coverOptions?.logoSpineBottom || 15;
   }
 
-  // 기타 탭 통계
+  // 기타 탭 통계 (UI 요소가 삭제되었으므로 접근할 때 null 체크 필수)
   const estPages = p.podExactPages || podEstimatePages(p);
-  if (p.podExactPages) {
-    $('#podEstPages').innerHTML = `${p.podExactPages} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
-  } else {
-    $('#podEstPages').textContent = estPages;
+  const podEstPagesEl = $('#podEstPages');
+  const podEstSpineEl = $('#podEstSpine');
+  if (podEstPagesEl) {
+    if (p.podExactPages) {
+      podEstPagesEl.innerHTML = `${p.podExactPages} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
+    } else {
+      podEstPagesEl.textContent = estPages;
+    }
   }
-  $('#podEstSpine').textContent = Math.max(1, Math.round(estPages * (8.8 / 96) * 10) / 10).toFixed(1);
+  if (podEstSpineEl) {
+    podEstSpineEl.textContent = Math.max(1, Math.round(estPages * (8.8 / 96) * 10) / 10).toFixed(1);
+  }
 
   // 이미지 로드 (표지) - async 로딩 보장
   const loadImg = src => src ? new Promise(res => {
