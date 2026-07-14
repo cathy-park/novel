@@ -4880,6 +4880,7 @@ function runHiddenPagedJsForTree(p) {
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
 <script>
+  window.PagedConfig = { auto: false };
   ${(window.POD_PAGEDJS_CODE || '').replace(/<\/script>/gi, '<\\/script>')}
 </script>
 <style>
