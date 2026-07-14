@@ -3920,7 +3920,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     if (targetEpId && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
     const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
+    const renderTitle = false; // !isMatter && pubSet.showTitle && !processed.hasTitle;
     const displayTitle = getEpisodeDisplayTitle(ep, p);
 
     const tempDiv = document.createElement('div');
@@ -4868,7 +4868,7 @@ function runHiddenPagedJsForTree(p) {
   .ql-align-right  { text-align:right  !important; }
   .chapter { break-before:page; margin-top:40px; }
   .chapter.matter-page { break-before:right; }
-  .chapter-title { font-size:14pt; font-weight:700; margin-bottom:30px; text-align:center; display:none !important; }
+  .chapter-title { font-size:14pt; font-weight:700; margin-bottom:30px; text-align:center; }
   .chapter-content span { background-color:transparent !important; }
   .chapter-content p { text-indent:10pt !important; margin:0 !important; }
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
