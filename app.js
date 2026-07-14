@@ -3247,6 +3247,7 @@ function syncFmBlockLive() {
 
 [
   '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity', '#fmHideText',
+  '#fmPaddingTop', '#fmPaddingBottom', '#fmPaddingLeft', '#fmPaddingRight',
   '#fmContentTitle', '#fmContentSubtitle', '#fmContentPublisher', '#fmContentAuthor', '#fmContentDate', '#fmContentCustom', '#fmContentQuoteAuthor'
 ].forEach(sel => {
   const el = $(sel);
