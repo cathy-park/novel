@@ -2010,17 +2010,16 @@ function podScheduleLiveRender() {
 }
 
 async function renderLivePodPreview(forceMode = null) {
-  // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
   if (!window.POD_PAGEDJS_CODE) {
     try {
       const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/paged.polyfill.js');
-      if (!res.ok) throw new Error('CDN 응답 실패');
+      if (!res.ok) throw new Error('CDN 에러');
       const text = await res.text();
-      if (text.includes('<html') || text.trim() === '') throw new Error('잘못된 응답 (HTML 반환됨)');
+      if (text.includes('<html') || text.trim() === '') throw new Error('잘못된 응답');
       window.POD_PAGEDJS_CODE = text;
     } catch (e) {
       const st = $('#podLiveRenderStatus');
-      if (st) st.textContent = '렌더링 에러: PagedJS 스크립트 로드 실패';
+      if (st) st.textContent = '렌더링 에러: PagedJS 로드 실패';
       return;
     }
   }
@@ -2030,33 +2029,50 @@ async function renderLivePodPreview(forceMode = null) {
 
   const activeTab = document.querySelector('.pod-settings-tab.active');
   const activePane = activeTab ? activeTab.dataset.pane : 'inner';
-  const isTreeMode = forceMode === 'tree' || activePane === 'tree';
+  
+  // 요구사항 1: 출판사 프리셋 기본값 (교보 퍼플)
+  const pubSet = getPublishSettings(p);
+  if (!pubSet.preset && activePane === 'inner') pubSet.preset = 'kyobo';
 
   const st = $('#podLiveRenderStatus');
-
   if (p.episodes.some(e => e.body === undefined)) {
-    if (st) st.textContent = '내용 데이터를 불러오는 중...';
+    if (st) st.textContent = '데이터 불러오는 중...';
     await ensureProjectBodiesLoaded(p);
   }
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if (loadedEps.length === 0) {
-    if (st) st.textContent = '출판할 본문 내용이 없습니다.';
-    return;
-  }
+  if (loadedEps.length === 0) return;
 
-  if (st) st.textContent = '스크립트 초기화 중... (Paged.js)';
+  if (st) st.textContent = '조판 엔진 준비 중...';
 
   const iframe = document.getElementById('podLiveIframe');
   if (!iframe) return;
-  const pubSet = getPublishSettings(p);
+
   const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
   const canvasEl = $('#podPreviewInner');
   const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
   const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
 
-  // 1. [레이아웃 버그 해결] 가로 폭(tw)에 5mm 안전 버퍼를 주어 구겨짐 방지
+  // 전체 페이지 백그라운드 렌더링
+  let bodyHTML = generatePODBodyContent(p, pubSet, loadedEps);
+
+  // [중요] 완벽한 DOM 정제로 크래시 원천 차단
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(bodyHTML, 'text/html');
+  const removeComments = (node) => {
+    for (let i = node.childNodes.length - 1; i >= 0; i--) {
+      if (node.childNodes[i].nodeType === 8) node.childNodes[i].remove();
+      else if (node.childNodes[i].nodeType === 1) removeComments(node.childNodes[i]);
+    }
+  };
+  removeComments(doc.body);
+  doc.querySelectorAll('span, b, i, em, strong, u, p').forEach(el => {
+    if (el.innerHTML.trim() === '' && !el.querySelector('img')) el.remove();
+  });
+  bodyHTML = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
+
+  // 요구사항: 내지 및 페이지 구조도 탭은 양면 폭(spread) 유지
   const isSpreadMode = (activePane === 'inner' || activePane === 'tree');
-  const tw = (isSpreadMode ? paper.w * 2 : paper.w) + 5;
+  const tw = (isSpreadMode ? paper.w * 2 : paper.w) + 10; 
   const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
 
   iframe.style.width = tw + 'mm';
@@ -2066,46 +2082,7 @@ async function renderLivePodPreview(forceMode = null) {
   iframe.style.border = 'none';
   iframe.style.background = 'transparent';
 
-  const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
-  let bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
-
-  // 1. Paged.js 크래시 주범인 HTML 주석 완벽 제거
-  bodyHTML = bodyHTML.replace(/<!--[\s\S]*?-->/g, ''); 
-  
-  // 2. 안전한 DOMParser 사용
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(bodyHTML, 'text/html');
-  
-  // 2.5 모든 코멘트(주석) 노드 완벽 제거
-  const commentWalker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
-  const comments = [];
-  let cNode;
-  while(cNode = commentWalker.nextNode()) comments.push(cNode);
-  comments.forEach(c => c.remove());
-
-  // 2.6 빈 태그(의미 없는 공간 차지) 삭제하되, 빈 문단(<p><br></p>)은 보존
-  doc.querySelectorAll('span, b, i, u, em, strong').forEach(el => {
-    if (!el.textContent.trim() && !el.querySelector('img') && !el.className && !el.style.cssText) el.remove();
-  });
-
-  // 3. 래핑되지 않은 고아 텍스트(Naked Text)를 <p>로 안전하게 감싸기
-  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
-  const textNodes = [];
-  let tNode;
-  while (tNode = walker.nextNode()) textNodes.push(tNode);
-  
-  textNodes.forEach(txt => {
-    if (txt.textContent.trim() && (txt.parentNode === doc.body || txt.parentNode.tagName === 'DIV')) {
-      const pTag = doc.createElement('p');
-      pTag.textContent = txt.textContent;
-      txt.replaceWith(pTag);
-    }
-  });
-
-  bodyHTML = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
-
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
-
   const pageCSS = `@page {
     size: ${pubSet.paperSize || 'A5'};
     margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
@@ -2116,70 +2093,16 @@ async function renderLivePodPreview(forceMode = null) {
   @page:first { @bottom-center { content:none; } }
   @page cover { margin:0; @bottom-center { content:none; } }`;
 
-  const bodyCSS = `body {
-    font-family:'KoPub Batang','Noto Serif KR',serif;
-    font-size:${pubSet.fontSize || 10}pt;
-    line-height:${pubSet.lineHeight || 1.75};
-    color:#111; text-align:justify; word-break:keep-all;
-  }
-  .ql-align-center { text-align:center !important; }
-  .ql-align-right  { text-align:right  !important; }
+  const bodyCSS = `body { font-family:'KoPub Batang','Noto Serif KR',serif; font-size:${pubSet.fontSize || 10}pt; line-height:${pubSet.lineHeight || 1.75}; color:#111; text-align:justify; word-break:keep-all; }
   .chapter { break-before:page; margin-top:40px; }
-  .chapter.matter-page { break-before:right; }
   .chapter-title { font-size:14pt; font-weight:700; margin-bottom:30px; text-align:center; }
-  .chapter-content span { background-color:transparent !important; }
-  .chapter-content p { text-indent:10pt !important; margin:0 !important; }
-  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width: 100% !important; width: 100% !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; }`;
+  img { max-width: 100% !important; height: auto !important; display: block; margin: 0 auto; break-inside: avoid; }`;
 
   const currentRenderSessionId = ++podRenderSessionId;
   window.podPendingRenderHTML = bodyHTML;
-  window.podPendingRenderIsTreeMode = isTreeMode;
   window.podPendingRenderId = currentRenderSessionId;
 
   const headScripts = `<script>window.PagedConfig = { auto: false };<\/script>
-<script>${window.POD_PAGEDJS_CODE}<\/script>
-<script>window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*');<\/script>
-<style>
-  html,body { margin:0; padding:0; background:transparent !important; }
-  .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
-  .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; position: relative; }
-  .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  
-  /* 재단선 및 안전영역 가이드라인 CSS */
-  body.show-guides .pagedjs_page .pagedjs_sheet {
-    outline: 1px dashed red; /* 재단선 */
-    outline-offset: -3mm;
-  }
-  body.show-guides .pagedjs_page::after {
-    content: ""; position: absolute; top: 15mm; bottom: 15mm; left: 15mm; right: 15mm;
-    border: 1px solid rgba(0, 0, 255, 0.3); pointer-events: none; /* 안전영역 */
-    z-index: 99;
-  }
-<\/style>
-<script>
-var _pagedHandlerRegistered = false;
-window.addEventListener('message', function(ev) {
-  if (!ev.data) return;
-
-  if (ev.data.type === 'START_RENDER') {
-    if (typeof Paged === 'undefined') {
-      window.parent.postMessage({ type:'pagedjs-error', error:'Paged 객체가 존재하지 않습니다.' }, '*');
-      return;
-    }
-    
-    var TREE = ev.data.isTreeMode;
-    var htmlContent = ev.data.html;
-    var rid = ev.data.renderId;
-
-    if (!_pagedHandlerRegistered) {
-      _pagedHandlerRegistered = true;
-      Paged.registerHandlers(class extends Paged.Handler {
-        afterRendered(pages) {
-          try {
-            var map = pages.map(function(pg) {
-              var el  = pg.element || pg.pageNode || pg.wrapper;
               var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
               var fm  = el && el.querySelector('[data-fm-label]');
               var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
