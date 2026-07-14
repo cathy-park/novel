@@ -2009,7 +2009,8 @@ async function renderLivePodPreview(forceMode = null) {
   // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
   if (!window.POD_PAGEDJS_CODE) {
     try {
-      const res = await fetch('https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js');
+      // unpkg 대신 가장 안정적인 cdnjs를 사용하여 CORS 차단 방지
+      const res = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pagedjs/0.4.3/paged.polyfill.min.js');
       window.POD_PAGEDJS_CODE = await res.text();
     } catch(err) {
       console.error('PagedJS 대리 Fetch 실패:', err);
