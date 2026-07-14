@@ -2431,18 +2431,22 @@ $$('.pod-settings-tab').forEach(btn => {
       if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'flex';
       if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
       podUpdateCoverPreview();
-    } else if (tab === 'tree') {
-      // 페이지 구조: Iframe 2장 스프레드 렌더링
-      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
-      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
-      renderLivePodPreview('tree');
     } else {
-      // 내지·전면부 설정: Iframe 1장 단면 렌더링
+      // 내지, 전면부, 페이지 구조: Iframe 노출
       if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
       if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
       if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
-      renderLivePodPreview('single');
+      
+      const iframe = document.getElementById('podLiveIframe');
+      if (iframe && iframe.contentWindow) {
+        if (tab === 'inner') {
+          // 내지 설정 탭: 스프레드(양면) 모드로 노출
+          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'spread', pageNum: 2 }, '*');
+        } else {
+          // 전면부 디자인, 페이지 구조 탭: 기본 진입 시 단면 모드로 노출
+          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'single', pageNum: 1 }, '*');
+        }
+      }
     }
   });
 });
@@ -2939,6 +2943,19 @@ function openFmBlockEditor(index) {
   const meta = FM_BLOCK_META[block.type] || { name: block.type };
   const s = block.style;
   const c = block.content;
+
+  // [전면부 디자인] 목록 클릭 시 pageMap 연동
+  if (window.podPageMap) {
+    const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
+    const label = FM_LABELS[block.type] || block.type;
+    const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
+    if (pm) {
+      const iframe = document.getElementById('podLiveIframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'single', pageNum: pm.pageNum }, '*');
+      }
+    }
+  }
 
   // 에디터 패널 표시
   const ed = $('#fmBlockEditor'); if (!ed) return;
@@ -3627,7 +3644,35 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
   </div>`;
   });
 
-  return bodyHtml;
+  // ── [DOM 정제 (Sanitization) - 크래시 방지] ──
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(bodyHtml, 'text/html');
+  
+  doc.querySelectorAll('.chapter-content, .matter-page > div').forEach(container => {
+    // 1. Naked Text 노드를 <p>로 감싸기
+    Array.from(container.childNodes).forEach(node => {
+      if (node.nodeType === 3) { // Node.TEXT_NODE
+        const text = node.textContent.trim();
+        if (text.length > 0) {
+          const p = doc.createElement('p');
+          p.textContent = text;
+          container.replaceChild(p, node);
+        } else {
+          node.remove();
+        }
+      }
+    });
+    
+    // 2. 비어있는 <p> 태그 및 무의미한 줄바꿈 제거
+    container.querySelectorAll('p').forEach(pTag => {
+      const html = pTag.innerHTML.trim();
+      if (html === '' || html === '<br>' || html === '&nbsp;' || html === '<br/>') {
+        pTag.remove();
+      }
+    });
+  });
+
+  return doc.body.innerHTML;
 }
 
 async function exportPODPdf(isSilent = false) {
