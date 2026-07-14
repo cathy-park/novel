@@ -4819,7 +4819,7 @@ function runHiddenPagedJsForTree(p) {
   if (!hiddenIframe) {
     hiddenIframe = document.createElement('iframe');
     hiddenIframe.id = 'podHiddenPagedjsIframe';
-    hiddenIframe.style.cssText = 'position:absolute; width:0; height:0; border:0; visibility:hidden; pointer-events:none;';
+    hiddenIframe.style.cssText = 'position:absolute; width:1000px; height:1000px; left:-9999px; top:-9999px; visibility:hidden; pointer-events:none;';
     document.body.appendChild(hiddenIframe);
   }
 
