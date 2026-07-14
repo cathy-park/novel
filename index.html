@@ -1613,6 +1613,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
     <div id="episodeList" class="episode-list"></div>
     <div class="sidebar-foot">
+      <button id="openPublishSettingsFromEditorBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
       <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
       <button id="openSearchBtn" class="ghost border" type="button">⌘ K · 전체 검색</button>
       <div style="display:flex;gap:6px;">
@@ -1628,6 +1629,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <div class="top-actions">
         <span id="saveStatus" class="save-status">저장됨</span>
         <button id="openPCEbookBtn" class="ghost" type="button">📖 이북 뷰어</button>
+        <button id="openPublishSettingsTopBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
         <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
       </div>
     </header>
@@ -3668,7 +3670,7 @@ function syncPlanToBeatSheet(ep) {
 }
 
 function renderProjectPlan() {
-  const p = currentProject(), list = $('#projectPlanList'), sections = p.planSections||[];
+  const p = currentProject(), list = $('#planBodyWrapper'), sections = p.planSections||[];
   if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
   list.innerHTML = sections.map(x => {
     const isPdf = x.type === 'pdf_attachment';
@@ -3759,7 +3761,7 @@ function updateCommentBadge() {
 
 function renderPCCommentList() {
   const p = currentProject();
-  const list = $('#projectCommentList');
+  const list = $('#commentBodyWrapper');
   if (!p) return;
   
   let html = '';
@@ -3907,24 +3909,24 @@ $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quil
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
-if ($('#closeDrawerBtn')) $('#closeDrawerBtn').onclick = togglePlanDrawer;
+if ($('#closePlanDrawerBtn')) $('#closePlanDrawerBtn').onclick = togglePlanDrawer;
 
 $('#tabPlanBtn').onclick = () => {
   $('#tabPlanBtn').classList.add('active');
   $('#tabPlanBtn').style.color = '';
   $('#tabCommentBtn').classList.remove('active');
   $('#tabCommentBtn').style.color = 'var(--c-muted)';
-  if($('#projectPlanList')) $('#projectPlanList').classList.remove('hidden');
+  $('#planBodyWrapper').style.display = 'flex';
   $('#planToolbar').classList.remove('hidden');
-  if($('#projectCommentList')) $('#projectCommentList').classList.add('hidden');
+  $('#commentBodyWrapper').style.display = 'none';
 };
 $('#tabCommentBtn').onclick = () => {
   $('#tabCommentBtn').classList.add('active');
   $('#tabCommentBtn').style.color = '';
   $('#tabPlanBtn').classList.remove('active');
   $('#tabPlanBtn').style.color = 'var(--c-muted)';
-  if($('#projectCommentList')) $('#projectCommentList').classList.remove('hidden');
-  if($('#projectPlanList')) $('#projectPlanList').classList.add('hidden');
+  $('#commentBodyWrapper').style.display = 'flex';
+  $('#planBodyWrapper').style.display = 'none';
   $('#planToolbar').classList.add('hidden');
   renderPCCommentList();
 };
@@ -4336,10 +4338,10 @@ function runPaged() {
       window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 5초 이상 로드되지 않았습니다.' }, '*');
       return;
     }
-    setTimeout(runPaged, 50);
+    window.setTimeout(runPaged, 50);
     return;
   }
-  window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: Paged.js 초기화 시작' }, '*');
+  window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 0 }, '*');
   class LiveHandler extends Paged.Handler {
     afterRendered(pages) {
       try {
@@ -4362,11 +4364,20 @@ function runPaged() {
 
           var fmBlock = el.querySelector('.matter-page');
           var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
+          var epBlock = el.querySelector('[data-ep-id]');
           var chTitle = el.querySelector('.chapter-title, .chapter-content h1');
-          var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
-          map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
+          var epTitle = epBlock ? (epBlock.getAttribute('data-ep-title') || '') : (chTitle ? chTitle.textContent.trim() : '');
+          var label = fmLabel ? fmLabel : (epTitle ? epTitle.substring(0,12) : pgNum+'쪽');
+          map.push({
+            pageNum: parseInt(pgNum, 10),
+            label: label,
+            epTitle: epTitle,
+            epId: epBlock ? epBlock.getAttribute('data-ep-id') : '',
+            epType: epBlock ? epBlock.getAttribute('data-ep-type') : '',
+            fmLabel: fmLabel || ''
+          });
         });
-        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*');
+        window.parent.postMessage({ type: window.podSliceMode ? 'pagedjs-slice-rendered' : 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*');
       } catch (err) {
         window.parent.postMessage({ type: 'pagedjs-error', error: 'afterRendered Error: ' + err.message }, '*');
       }
@@ -4377,24 +4388,15 @@ function runPaged() {
   } catch(err) {
     window.parent.postMessage({ type: 'pagedjs-error', error: 'Handler Error: ' + err.message }, '*');
   }
-  window.addEventListener('message', function(ev) {
-    if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
-    
-    var pageNum = parseInt(ev.data.page, 10);
+  function showSpread(pageNum) {
     var targetSpread = [];
-    if (pageNum === 1) {
-      targetSpread = [1];
-    } else if (pageNum % 2 === 0) {
-      targetSpread = [pageNum, pageNum + 1];
-    } else {
-      targetSpread = [pageNum - 1, pageNum];
-    }
-    
-    // 1. 모든 페이지 숨기기
+    if (pageNum === 1) targetSpread = [1];
+    else if (pageNum % 2 === 0) targetSpread = [pageNum, pageNum + 1];
+    else targetSpread = [pageNum - 1, pageNum];
+
     var allPages = document.querySelectorAll('.pagedjs_page');
     allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
-    
-    // 2. 요청된 스프레드(양면) 보이기
+
     targetSpread.forEach(function(num) {
       var el = document.querySelector('.pagedjs_page[data-page-number="' + num + '"]');
       if (el) {
@@ -4405,7 +4407,45 @@ function runPaged() {
         else el.style.right = '0';
       }
     });
-    window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
+    window.scrollTo(0, 0);
+  }
+
+  function showFirstRenderedSpread(startPage) {
+    var allPages = Array.from(document.querySelectorAll('.pagedjs_page'));
+    allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
+    allPages.slice(0, 2).forEach(function(el, idx) {
+      var actualPage = startPage + idx;
+      el.style.display = 'block';
+      el.style.position = 'absolute';
+      el.style.top = '0';
+      if (actualPage % 2 === 0) el.style.left = '0';
+      else el.style.right = '0';
+    });
+    window.scrollTo(0, 0);
+  }
+
+  window.addEventListener('message', function(ev) {
+    if (!ev.data) return;
+    if (ev.data.type === 'pod-scroll-to-page') {
+      showSpread(parseInt(ev.data.page, 10));
+      return;
+    }
+    if (ev.data.type === 'pod-render-slice') {
+      var source = document.getElementById('podSource');
+      if (!source || typeof PagedPolyfill === 'undefined') return;
+      var startPage = Math.max(1, parseInt(ev.data.startPage, 10) || 1);
+      var counterStyle = document.getElementById('podPageCounterStyle');
+      if (counterStyle) counterStyle.textContent = 'body { counter-reset: page ' + (startPage - 1) + '; }';
+      document.querySelectorAll('.pagedjs_pages, .pagedjs_page').forEach(function(el) { el.remove(); });
+      source.innerHTML = ev.data.html || '';
+      window.podSliceMode = true;
+      window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 0 }, '*');
+      PagedPolyfill.preview(source, [], document.body).then(function(flow) {
+        showFirstRenderedSpread(startPage);
+      }).catch(function(err) {
+        window.parent.postMessage({ type: 'pagedjs-error', error: 'slice preview: ' + err.message }, '*');
+      });
+    }
   });
 
   window.podProgressTimer = setInterval(function() {
@@ -4415,10 +4455,9 @@ function runPaged() {
     }
   }, 250);
   try {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 호출 직전' }, '*');
-    PagedPolyfill.preview().then(function() {
-      window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 완료' }, '*');
-    }).catch(function(e) {
+    window.podSliceMode = false;
+    var source = document.getElementById('podSource') || document.body;
+    PagedPolyfill.preview(source, [], document.body).catch(function(e) {
       try { window.parent.postMessage({ type: 'pagedjs-error', error: 'preview catch: ' + e.message }, '*'); } catch(e2) {}
     });
   } catch (err) {
@@ -4489,9 +4528,12 @@ ${mainStyles}
 </style>
 </head>
 <body>
+<style id="podPageCounterStyle"></style>
+<div id="podSource">
 `;
 
   html += generatePODBodyContent(p, pubSet, loadedEps);
+  html += `</div>`;
 
   html += srcdocScripts;
   html += `</body></html>`;
@@ -4714,6 +4756,8 @@ function syncLegacyInputs(s) {
 
 // 스튜디오 열기/닫기
 $('#openPublishSettingsBtn').onclick = showPodStudio;
+if ($('#openPublishSettingsFromEditorBtn')) $('#openPublishSettingsFromEditorBtn').onclick = () => { persistEditor(); queueSaveFS(); showPodStudio(); };
+if ($('#openPublishSettingsTopBtn')) $('#openPublishSettingsTopBtn').onclick = () => { persistEditor(); queueSaveFS(); showPodStudio(); };
 $('#backFromPodStudio').onclick = hidePodStudio;
 
 // 스튜디오 내 내보내기 버튼
@@ -4835,11 +4879,23 @@ function renderPodPageTree() {
   // 본문 에피소드 (Paged.js 렌더링 완료 시에만 생성)
   if (window.podPageMap && window.podPageMap.length > 0) {
     // 렌더링 완료: postMessage로 받은 실제 페이지 맵 사용
+    const seenBlocks = new Set();
     window.podPageMap.forEach(pg => {
-      let isFm = false;
       const FM_LABELS = ['속표지', '본표지', '판권지', '목차', '헌정', '제사', '여백'];
-      if (FM_LABELS.includes(pg.label)) isFm = true;
-      pagesData.push({ pageNum: pg.pageNum, label: pg.label, sublabel: pg.epTitle || '', type: isFm ? 'fm' : 'inner', accent: isFm ? '#7c6bf6' : null });
+      const isFm = FM_LABELS.includes(pg.label) || !!pg.fmLabel;
+      const blockKey = pg.epId ? `ep:${pg.epId}` : `fm:${pg.fmLabel || pg.label}:${pg.pageNum}`;
+      if (seenBlocks.has(blockKey)) return;
+      seenBlocks.add(blockKey);
+      pagesData.push({
+        pageNum: pg.pageNum,
+        label: pg.label,
+        sublabel: pg.epTitle || '',
+        type: isFm ? 'fm' : 'inner',
+        accent: isFm ? '#7c6bf6' : null,
+        epId: pg.epId || '',
+        epType: pg.epType || '',
+        fmLabel: pg.fmLabel || ''
+      });
     });
   } else {
     // 렌더링 전: 트리 목록 대신 안내 메시지 노출
@@ -4880,10 +4936,14 @@ function renderPodPageTree() {
         $('#podPreviewFm').style.display = 'none';
         $('#podPreviewCover').classList.remove('active');
         $('#podPageToggleWrap').style.display = 'flex';
-        // postMessage로 iframe 내부에 스크롤 요청
         const liveIframe = document.getElementById('podLiveIframe');
         if (liveIframe?.contentWindow) {
-          liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
+          const sliceHtml = generatePODSliceContent(p, set, data);
+          if (sliceHtml) {
+            liveIframe.contentWindow.postMessage({ type: 'pod-render-slice', html: sliceHtml, startPage: data.pageNum }, '*');
+          } else {
+            liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
+          }
         }
         // 활성 표시
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
@@ -6003,20 +6063,36 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
 
   // 5. 본문 (목차 이후의 회차 및 뒷부속)
   afterTocEps.forEach((ep, i) => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
-    const displayTitle = getEpisodeDisplayTitle(ep, p);
-    
-    bodyHtml += `
-  <div class="chapter ${isMatter ? 'matter-page' : ''}">
-    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
-    <div class="chapter-content ql-editor">${processed.body}</div>
-  </div>`;
+    bodyHtml += generatePODEpisodeContent(p, pubSet, ep);
   });
 
 
   return bodyHtml;
+}
+
+
+function generatePODEpisodeContent(p, pubSet, ep) {
+  const processed = processEpisodeBody(ep.body, ep.title, true);
+  const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+  const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
+  const displayTitle = getEpisodeDisplayTitle(ep, p);
+  const typeAttr = escapeHtml(ep.type || 'chapter');
+
+  return `
+  <div class="chapter ${isMatter ? 'matter-page' : ''}" data-ep-id="${escapeHtml(ep.id)}" data-ep-type="${typeAttr}" data-ep-title="${escapeHtml(displayTitle)}">
+    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;">${escapeHtml(displayTitle)}</div>`}
+    <div class="chapter-content ql-editor">${processed.body}</div>
+  </div>`;
+}
+
+function generatePODSliceContent(p, pubSet, slice) {
+  if (!slice) return '';
+  if (slice.epId) {
+    const ep = orderedEpisodes(p).find(e => e.id === slice.epId);
+    if (!ep) return '';
+    return generatePODEpisodeContent(p, pubSet, ep);
+  }
+  return '';
 }
 
 async function exportPODPdf(isSilent = false) {

@@ -1,0 +1,6 @@
+{
+  "service": "novel",
+  "provider": "vercel",
+  "triggeredAt": "2026-07-14T00:00:00Z",
+  "reason": "Force a fresh Vercel deployment after Publish Studio fixes."
+}
