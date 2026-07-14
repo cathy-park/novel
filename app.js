@@ -2009,21 +2009,14 @@ async function renderLivePodPreview(forceMode = null) {
   // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
   if (!window.POD_PAGEDJS_CODE) {
     try {
-      const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/paged.polyfill.js');
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/js/paged.polyfill.js');
+      if (!res.ok) throw new Error('CDN 응답 실패');
       const text = await res.text();
-      // 다운로드된 텍스트가 HTML 에러 페이지인지 검증 (< 기호로 시작하는지)
-      if (text.trim().startsWith('<')) throw new Error('CDN 응답이 자바스크립트가 아닌 HTML입니다.');
+      if (text.includes('<html') || text.trim() === '') throw new Error('잘못된 응답 (HTML 반환됨)');
       window.POD_PAGEDJS_CODE = text;
-    } catch (err) {
-      console.error('PagedJS 대리 Fetch 실패:', err);
-      // 에러 시 UI에 알림
-      const iframe = document.getElementById('podLiveIframe');
-      if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
-        iframe.contentDocument.body.innerHTML = '<div style="color:red; font-size:14px; padding:20px;">렌더링 에러: 조판 엔진 로드 실패 (' + err.message + ')</div>';
-      }
-      const st = document.getElementById('podLiveRenderStatus');
-      if (st) st.textContent = '렌더링 에러: 엔진 로드 실패';
+    } catch (e) {
+      const st = $('#podLiveRenderStatus');
+      if (st) st.textContent = '렌더링 에러: PagedJS 스크립트 로드 실패';
       return;
     }
   }
@@ -2056,8 +2049,10 @@ async function renderLivePodPreview(forceMode = null) {
   const canvasEl = $('#podPreviewInner');
   const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
   const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
+
+  // 1. [레이아웃 버그 해결] 가로 폭(tw)에 5mm 안전 버퍼를 주어 구겨짐 방지
   const isSpreadMode = (activePane === 'inner' || activePane === 'tree');
-  const tw = isSpreadMode ? paper.w * 2 : paper.w;
+  const tw = (isSpreadMode ? paper.w * 2 : paper.w) + 5;
   const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
 
   iframe.style.width = tw + 'mm';
@@ -2069,37 +2064,12 @@ async function renderLivePodPreview(forceMode = null) {
 
   const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
   let bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
-  
-  // --- Paged.js 파싱 크래시(nextSibling null) 방지용 정제 로직 ---
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = bodyHTML;
-  
-  // 1. 의미 없는 빈 텍스트 노드 제거 및 래핑 안 된 텍스트 p태그로 감싸기
-  Array.from(tempDiv.childNodes).forEach(node => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (node.textContent.trim() !== '') {
-        const p = document.createElement('p');
-        p.textContent = node.textContent;
-        tempDiv.replaceChild(p, node);
-      } else {
-        tempDiv.removeChild(node);
-      }
-    }
-  });
-  // 2. 엔진을 터뜨리는 텅 빈 p태그 삭제
-  tempDiv.querySelectorAll('p').forEach(pTag => {
-    if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
-  });
-  // 3. 문서 끝부분 nextSibling 참조 에러를 막기 위한 투명 방어막(Terminator) 추가
-  const terminator = document.createElement('div');
-  terminator.style.breakBefore = 'avoid';
-  terminator.style.height = '1px';
-  terminator.style.visibility = 'hidden';
-  terminator.innerHTML = '&nbsp;';
-  tempDiv.appendChild(terminator);
-  
-  bodyHTML = tempDiv.innerHTML; // 정제된 안전한 HTML로 덮어쓰기
-  // --------------------------------------------------------
+
+  // 2. [크래시 방지] 정규식을 통한 빠르고 안전한 빈 태그 청소 및 방어막 추가
+  bodyHTML = bodyHTML.replace(/<(p|div|span)[^>]*>(\s*|<br\s*\/?>)<\/\1>/gi, ''); // 빈 태그 삭제
+  bodyHTML = bodyHTML.replace(/(<br\s*\/?>\s*)+$/gi, ''); // 끝부분 쓸데없는 줄바꿈 삭제
+  bodyHTML += '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>'; // 방어막(Terminator)
+
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
   const pageCSS = `@page {
@@ -2128,7 +2098,6 @@ async function renderLivePodPreview(forceMode = null) {
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
   img { max-width: 100% !important; width: 100% !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; }`;
 
-  // 렌더 세션 ID 증가 — stale iframe의 READY 메시지를 무시하기 위함
   const currentRenderSessionId = ++podRenderSessionId;
   window.podPendingRenderHTML = bodyHTML;
   window.podPendingRenderIsTreeMode = isTreeMode;
@@ -2139,7 +2108,8 @@ async function renderLivePodPreview(forceMode = null) {
 <script>window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*');<\/script>
 <style>
   html,body { margin:0; padding:0; background:transparent !important; }
-  .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
+  /* 3. [레이아웃 버그 해결] flex-wrap: nowrap 강제 적용으로 양면 구겨짐 완벽 차단 */
+  .pagedjs_pages { position:relative; display:flex; flex-wrap:nowrap !important; justify-content:center; }
   .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; }
   .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
@@ -2176,7 +2146,6 @@ window.addEventListener('message', function(ev) {
               };
             });
             
-            // 2. Iframe 내부 기본 노출 (Fallback 안전장치)
             if (pages[0] && pages[0].wrapper) pages[0].wrapper.style.display = 'block';
             if (pages[1] && pages[1].wrapper) pages[1].wrapper.style.display = 'block';
 
@@ -2188,10 +2157,24 @@ window.addEventListener('message', function(ev) {
       });
     }
 
+    // 4. [크래시 완벽 차단] 이미지가 완전히 로드될 때까지 기다렸다가 조판 시작 (핵심!)
     var wrap = document.createElement('div');
     wrap.innerHTML = htmlContent;
-    PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
-      window.parent.postMessage({ type:'pagedjs-error', error:'preview:'+err.message }, '*');
+    wrap.style.display = 'none'; // 화면에 보이지 않게 DOM에 임시 추가
+    document.body.appendChild(wrap);
+
+    var imgs = Array.from(wrap.querySelectorAll('img'));
+    Promise.all(imgs.map(function(img) {
+      if (img.complete) return Promise.resolve();
+      return new Promise(function(resolve) {
+        img.onload = resolve;
+        img.onerror = resolve; // 에러가 나도 조판은 진행되도록 처리
+      });
+    })).then(function() {
+      wrap.style.display = 'block';
+      PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
+        window.parent.postMessage({ type:'pagedjs-error', error:'preview:'+err.message }, '*');
+      });
     });
   }
 
@@ -2220,12 +2203,9 @@ window.addEventListener('message', function(ev) {
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 ${headScripts}
 <style>
 ${mainStyles}
-</style>
-<style>
 ${pageCSS}
 ${bodyCSS}
 </style>
@@ -3669,7 +3649,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
   beforeTocEps.forEach(ep => {
     if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
-    
+
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = processed.body;
     Array.from(tempDiv.childNodes).forEach(node => {
