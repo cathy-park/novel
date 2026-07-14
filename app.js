@@ -2860,10 +2860,7 @@ function renderPodPageTree() {
   innerSec.style.cssText = 'padding:0 8px;';
   innerSec.appendChild(mkSectionHead('─ 내지 (전체 페이지) ─'));
 
-  if (!p) return;
-  const pubSet = getPublishSettings(p);
-  const fmBlocks = window.fmBlocks || pubSet.fmBlocks || [];
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const fmBlocks = window.fmBlocks || set.fmBlocks || [];
   
   let mapData = [];
   let pageCounter = 1;
