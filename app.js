@@ -2380,14 +2380,9 @@ function renderPodPageTree() {
   coverSec.style.cssText = 'padding:0 8px 16px; display:flex; flex-direction:column; align-items:center;';
   coverSec.appendChild(mkSectionHead('─ 표지 (별도 판형) ─'));
   const coverThumb = mkThumb('', '표지', '앞/뒤', '#555', () => {
-    // 표지 프리뷰 탭으로
-    $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-    const pb = document.querySelector('.pod-preview-tab[data-preview="cover"]');
-    if(pb) pb.classList.add('active');
-    $('#podPreviewInner').style.display = 'none';
-    $('#podPreviewFm').style.display = 'none';
-    $('#podPreviewCover').classList.add('active');
-    $('#podPageToggleWrap').style.display = 'none';
+    if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
+    if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'flex';
+    if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
     podUpdateCoverPreview();
   });
   coverSec.appendChild(coverThumb);
@@ -2437,21 +2432,15 @@ function renderPodPageTree() {
       '',
       pageData ? '#7c6bf6' : null,
       () => {
-        // 프리뷰 탭 갱신
-        $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-        const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-        if(pb) pb.classList.add('active');
-        $('#podPreviewInner').style.display = 'flex';
-        $('#podPreviewFm').style.display = 'none';
-        $('#podPreviewCover').classList.remove('active');
-        $('#podPageToggleWrap').style.display = 'none';
-        
+        if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+        if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+        if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
         const iframe = document.getElementById('podLiveIframe');
         if (iframe && iframe.contentWindow) {
-           iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: i }, '*');
+          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: i, mode: 'single' }, '*');
         }
-        
-        // 활성 표시
+        const pi = $('#podPageInfo');
+        if (pi) pi.textContent = i + 'p';
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
         cell.classList.add('tree-thumb-active');
       }
@@ -2481,58 +2470,36 @@ function renderPodPageTree() {
   if (podLastRenderedTotalPages > 0) updateSpineThickness(podLastRenderedTotalPages);
 }
 
-// 미리보기 탭 전환
-$$('.pod-preview-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    
-    const view = btn.dataset.preview;
-    // 모든 패널 숨김 후 해당 패널만 표시
-    $('#podPreviewInner').style.display = 'none';
-    $('#podPreviewFm').style.display = 'none';
-    $('#podPreviewCover').classList.remove('active');
-    
-    if (view === 'inner') {
-      $('#podPreviewInner').style.display = 'flex';
-      $('#podPageToggleWrap').style.display = 'flex';
-    } else if (view === 'fm') {
-      $('#podPreviewFm').style.display = 'flex';
-      $('#podPageToggleWrap').style.display = 'none';
-      podUpdateFmPreview();
-    } else if (view === 'cover') {
-      $('#podPreviewCover').classList.add('active');
-      $('#podPageToggleWrap').style.display = 'none';
-      podUpdateCoverPreview();
-    }
-  });
-});
 
-// 설정 탭 전환 (display 직접 제어 — .click() 이벤트 버블링 제거)
+// ── 설정 탭 전환 (Single Live Viewer) ───────────────────────
 $$('.pod-settings-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
     $$('.pod-settings-pane').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    const paneId = btn.dataset.pane;
-    const pane = $('#podPane-' + paneId);
+    const pane = $('#podPane-' + btn.dataset.pane);
     if (pane) pane.classList.add('active');
 
-    // 페이지 구조도 탭 전환 시 트리 렌더링
-    if (paneId === 'tree') {
-      renderPodPageTree();
-      // 페이지 구조도에서는 내지 프리뷰를 도시적으로 유지
-      $('#podPreviewInner').style.display = 'flex';
-      $('#podPreviewFm').style.display = 'none';
-      $('#podPreviewCover').classList.remove('active');
-      $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-      const innerTab = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-      if(innerTab) innerTab.classList.add('active');
-      $('#podPageToggleWrap').style.display = 'flex';
+    const tab = btn.dataset.pane;
+    if (tab === 'cover') {
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'flex';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
+      podUpdateCoverPreview();
+    } else if (tab === 'tree') {
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
+      renderLivePodPreview('tree');
+    } else {
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
+      renderLivePodPreview('single');
     }
-    // 다른 탭은 프리뷰를 강제로 바꾼 필요 없음 — 현재 프리뷰 상태 유지
   });
 });
+
 
 function podUpdateFmPreview() {
   const p = currentProject(); if(!p) return;

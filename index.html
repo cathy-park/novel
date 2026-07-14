@@ -601,24 +601,12 @@ window.addEventListener('unhandledrejection', function(e) {
       <!-- ─── 우측: 미리보기 패널 ─── -->
       <div class="pod-preview-panel">
         <!-- 미리보기 툴바 -->
-        <div class="pod-preview-toolbar">
-          <div class="pod-preview-tabs">
-            <button class="pod-preview-tab active" data-preview="inner">내지 미리보기</button>
-            <button class="pod-preview-tab" data-preview="fm">전면부 미리보기</button>
-            <button class="pod-preview-tab" data-preview="cover">표지 미리보기</button>
-          </div>
-          <div class="pod-preview-controls">
-            <!-- 홀수/짝수 토글 (내지 탭에서만) -->
-            <div class="pod-page-toggle" id="podPageToggleWrap">
-              <button id="podToggleOdd" class="active">홀수 페이지 (우측)</button>
-              <button id="podToggleEven">짝수 페이지 (좌측)</button>
-            </div>
-            <!-- 범례 -->
-            <div class="pod-guide-legend">
-              <span class="pod-guide-dot bleed">재단선</span>
-              <span class="pod-guide-dot safe">안전영역</span>
-              <span class="pod-guide-dot gutter">제본여백</span>
-            </div>
+        <div class="pod-preview-toolbar" style="display:flex; align-items:center; justify-content:space-between; padding:8px 16px; border-bottom:1px solid var(--c-line); gap:12px;">
+          <span id="podLiveRenderStatusBar" style="font-size:11px; color:var(--c-muted);">미리보기</span>
+          <div id="podPageToggleWrap" style="display:none; align-items:center; gap:8px;">
+            <button id="podPrevPageBtn" class="ghost border" style="height:28px; padding:0 10px; font-size:12px;">◀ 이전</button>
+            <span id="podPageInfo" style="font-size:12px; color:var(--c-sub); min-width:60px; text-align:center;"></span>
+            <button id="podNextPageBtn" class="ghost border" style="height:28px; padding:0 10px; font-size:12px;">다음 ▶</button>
           </div>
         </div>
 
@@ -626,9 +614,9 @@ window.addEventListener('unhandledrejection', function(e) {
 
         <!-- 내지 라이브 미리보기 캔버스 (Paged.js 연동) -->
         <!-- display는 JS가 제어. 인라인 style 없이 초기엔 flex로 보임 -->
-        <div class="pod-preview-canvas" id="podPreviewInner" style="flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:var(--c-bg); padding:20px; display:flex;">
-          <div style="font-size:12px; color:var(--c-muted); margin-bottom:12px;" id="podLiveRenderStatus">실시간 본문 렌더러 대기 중...</div>
-          <iframe id="podLiveIframe" style="border:none; background:transparent; box-shadow:none; transition: transform 0.3s; transform-origin: top center; overflow: hidden;"></iframe>
+        <div class="pod-preview-canvas" id="podPreviewInner" style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:var(--c-bg); padding:20px; overflow:hidden;">
+          <span id="podLiveRenderStatus" style="font-size:11px; color:var(--c-muted); margin-bottom:10px;"></span>
+          <iframe id="podLiveIframe" style="border:none; background:transparent; flex-shrink:0; transform-origin: top center;"></iframe>
         </div>
 
         <!-- 표지 미리보기 이미지 -->
