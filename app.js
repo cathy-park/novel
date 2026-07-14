@@ -2035,7 +2035,7 @@ async function renderLivePodPreview(forceMode = null) {
   const st = $('#podLiveRenderStatus');
 
   // [요구사항 반영] 내지 설정 탭일 경우 PagedJS를 완전히 배제하고 순수 CSS 2장(Spread) 뷰어를 하드코딩으로 보여줌
-  if (activePane === 'inner') {
+  if (activePane === 'inner' || activePane === 'tree') {
     const iframe = document.getElementById('podLiveIframe');
     if (!iframe) return;
     
@@ -2144,7 +2144,7 @@ async function renderLivePodPreview(forceMode = null) {
     }
     
     if (activePane === 'tree') {
-      renderPodPageTree();
+      runHiddenPagedJsForTree(p);
     }
     return;
   }
@@ -3905,7 +3905,8 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     tempDiv.querySelectorAll('p').forEach(pTag => {
       if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
     });
-    const safeBody = tempDiv.innerHTML;
+    let safeBody = tempDiv.innerHTML;
+    if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
     htmlFm += `<div class="chapter matter-page" style="break-before: right;"><div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
   });
@@ -3934,7 +3935,8 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     tempDiv.querySelectorAll('p').forEach(pTag => {
       if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
     });
-    const safeBody = tempDiv.innerHTML;
+    let safeBody = tempDiv.innerHTML;
+    if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
     bodyHtml += `<div class="chapter ${isMatter ? 'matter-page' : ''}">` +
       (renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : '') +
@@ -4812,13 +4814,106 @@ $('#ebookNext').onclick = () => {
 // 코멘트는 Supabase 에피소드에 저장됨 (ep.comments 필드)
 // forceSaveAllSupabase 에서 ep.plan 저장할 때쳀럼 JSON.stringify로 함께 저장
 // [클릭 이벤트용 공통 함수] 전면부 리스트나 구조도 트리 항목을 클릭할 때 이 함수를 호출하게 하세요!
+function runHiddenPagedJsForTree(p) {
+  let hiddenIframe = document.getElementById('podHiddenPagedjsIframe');
+  if (!hiddenIframe) {
+    hiddenIframe = document.createElement('iframe');
+    hiddenIframe.id = 'podHiddenPagedjsIframe';
+    hiddenIframe.style.cssText = 'position:absolute; width:0; height:0; border:0; visibility:hidden; pointer-events:none;';
+    document.body.appendChild(hiddenIframe);
+  }
+
+  const pubSet = getPublishSettings(p);
+  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const htmlContent = generatePODBodyContent(p, pubSet, loadedEps);
+
+  const pagedjsCode = window.POD_PAGEDJS_CODE || '';
+  const iframeHtml = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style> html, body { background: transparent !important; } </style>
+</head>
+<body>
+  ${htmlContent}
+  <script>
+    ${pagedjsCode}
+    
+    class HiddenPrintHandler extends window.Paged.Handler {
+      afterRendered(pages) {
+        try {
+          var map = pages.map(function(pg) {
+            var el  = pg.element || pg.pageNode || pg.wrapper;
+            var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
+            var fm  = el && el.querySelector('[data-fm-label]');
+            var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
+            
+            var contentNode = el && el.querySelector('.pagedjs_page_content');
+            var innerHtml = contentNode ? contentNode.innerHTML : '';
+            
+            return {
+              pageNum: num,
+              label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,14) : num+'쪽'),
+              epTitle: ch ? ch.textContent.trim() : '',
+              htmlContent: innerHtml
+            };
+          });
+          
+          window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:true }, '*');
+        } catch(err) {
+          window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+        }
+      }
+    }
+    window.Paged.registerHandlers(HiddenPrintHandler);
+    
+    window.PagedPolyfill.preview(document.body, [], document.body).catch(function(err) {
+      window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
+    });
+  </script>
+</body>
+</html>`;
+
+  hiddenIframe.removeAttribute('srcdoc');
+  hiddenIframe.srcdoc = iframeHtml;
+}
+
 function podGoToPage(pageNum, isSpread) {
   const iframe = document.getElementById('podLiveIframe');
-  if (iframe && iframe.contentWindow) {
-    iframe.contentWindow.postMessage({ 
-      type: 'SHOW_PAGES', 
-      pageNum: pageNum, 
-      mode: isSpread ? 'spread' : 'single' 
-    }, '*');
+  if (iframe && iframe.contentDocument) {
+    const rightTitle = iframe.contentDocument.querySelector('.page-right h2');
+    const rightBody = iframe.contentDocument.querySelector('.page-right > div > div:nth-child(2)');
+    const leftTitle = iframe.contentDocument.querySelector('.page-left h2');
+    const leftBody = iframe.contentDocument.querySelector('.page-left > div > div:nth-child(2)');
+    
+    const renderSinglePage = (pData, titleEl, bodyEl) => {
+      if (!pData) {
+        if (titleEl) titleEl.textContent = '';
+        if (bodyEl) bodyEl.innerHTML = '';
+        return;
+      }
+      if (titleEl) {
+         titleEl.textContent = pData.label || pData.pageNum + '쪽';
+         titleEl.style.display = 'block';
+      }
+      if (bodyEl) {
+         if (pData.htmlContent) {
+           bodyEl.innerHTML = pData.htmlContent;
+         } else {
+           bodyEl.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">내용이 없습니다.</div>';
+         }
+         bodyEl.style.display = 'block';
+         bodyEl.style.height = 'auto';
+      }
+    };
+
+    const isOddPage = pageNum % 2 !== 0;
+    const leftPageNum = isOddPage ? pageNum - 1 : pageNum;
+    const rightPageNum = isOddPage ? pageNum : pageNum + 1;
+    const leftPageData = window.podPageMap ? window.podPageMap.find(d => d.pageNum === leftPageNum) : null;
+    const rightPageData = window.podPageMap ? window.podPageMap.find(d => d.pageNum === rightPageNum) : null;
+
+    renderSinglePage(leftPageData, leftTitle, leftBody);
+    renderSinglePage(rightPageData, rightTitle, rightBody);
   }
 }
