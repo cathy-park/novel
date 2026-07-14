@@ -1823,7 +1823,11 @@ $('#copyManuscriptFull').onclick = () => {
 
 // Publish Settings Logic
 function getPublishSettings(p) {
-  return p.publishSettings || { paperSize: 'A5', includeCover: true, autoTOC: true, showTitle: false };
+  if (!p.publishSettings) {
+    const presetObj = POD_PRESETS['purple'] || { margins: { top: 20, bottom: 20, inner: 25, outer: 18, bleed: 3 } };
+    return { preset: 'purple', paperSize: 'A5', margins: presetObj.margins, includeCover: true, autoTOC: true, showTitle: false };
+  }
+  return p.publishSettings;
 }
 
 function calculateSpineWidth(p) {
@@ -2277,33 +2281,51 @@ window.addEventListener('message', (e) => {
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
       window.podLastRenderedTotalPages = e.data.totalPages;
-
-      // 1. 좌측 트리 렌더링 로직 원상 복구 (가장 중요)
       window.podPageMap = e.data.pageMap;
+      
+      // 조판 완료 후 트리 그리기 호출
       if (typeof renderPodPageTree === 'function') renderPodPageTree();
 
       const pubSet = getPublishSettings(currentProject());
       const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-
-      // 3. 트리 생성 "이후" 활성 탭 상태에 따른 SHOW_PAGES 자동 라우팅
+      
       const activeTab = document.querySelector('.pod-settings-tab.active');
       const tabId = activeTab ? activeTab.dataset.pane : 'tree';
 
-      const mode = (tabId === 'inner') ? 'spread' : 'single';
-      const pageNum = (tabId === 'inner') ? 2 : 1;
+      let mode = (tabId === 'inner') ? 'spread' : 'single';
+      let pageNum = (tabId === 'inner') ? 2 : 1;
+
+      if (tabId === 'fm') {
+        // 전면부 디자인: 저장/렌더링 직후 현재 편집 중인 페이지만 단면(single) 노출
+        const block = window.fmBlocks && fmActiveBlockIdx !== null ? window.fmBlocks[fmActiveBlockIdx] : null;
+        if (block && window.podPageMap) {
+          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
+          const label = FM_LABELS[block.type] || block.type;
+          const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
+          if (pm) pageNum = pm.pageNum;
+        }
+      }
 
       const tw = mode === 'spread' ? paper.w * 2 : paper.w;
       const canvasEl = $('#podPreviewInner');
       const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
       const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
       const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+
       iframe.style.width = tw + 'mm';
+      iframe.style.height = paper.h + 'mm';
       iframe.style.transform = `scale(${sc})`;
 
       iframe.contentWindow?.postMessage({ type: 'SHOW_PAGES', pageNum: pageNum, mode: mode }, '*');
+      
+      const showGuides = tabId === 'inner' && $('#podShowGuides') && $('#podShowGuides').checked;
+      iframe.contentWindow?.postMessage({ type: 'TOGGLE_GUIDES', show: showGuides }, '*');
     }
     const st = $('#podLiveRenderStatus');
-    if (st) st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
+    if (st) {
+      st.style.display = 'block';
+      st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
+    }
   }
 
   if (e.data.type === 'pagedjs-error') {
@@ -2506,11 +2528,14 @@ $$('.pod-settings-tab').forEach(btn => {
       const iframe = document.getElementById('podLiveIframe');
       if (iframe && iframe.contentWindow) {
         if (tab === 'inner') {
-          // 내지 설정 탭: 스프레드(양면) 모드로 노출
+          // 내지 설정 탭: 스프레드(양면) 모드 및 가이드라인 제어 연동
           iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'spread', pageNum: 2 }, '*');
+          const showGuides = $('#podShowGuides') && $('#podShowGuides').checked;
+          iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: showGuides }, '*');
         } else {
-          // 전면부 디자인, 페이지 구조 탭: 기본 진입 시 단면 모드로 노출
+          // 전면부, 페이지 구조 탭: 단면 모드로 노출 및 가이드라인 강제 끄기
           iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'single', pageNum: 1 }, '*');
+          iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: false }, '*');
         }
       }
     }
@@ -2519,6 +2544,9 @@ $$('.pod-settings-tab').forEach(btn => {
 
 if ($('#podShowGuides')) {
   $('#podShowGuides').addEventListener('change', (e) => {
+    const activeTab = document.querySelector('.pod-settings-tab.active');
+    if (activeTab && activeTab.dataset.pane !== 'inner') return; // 내지 탭에서만 토글 허용
+
     const iframe = document.getElementById('podLiveIframe');
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: e.target.checked }, '*');
@@ -2652,7 +2680,8 @@ function renderPodPageTree() {
         if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
         const iframe = document.getElementById('podLiveIframe');
         if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: i, mode: 'single' }, '*');
+          // 3. 페이지 구조도 클릭 시 양면(spread) 모드로 라우팅
+          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: i, mode: 'spread' }, '*');
         }
         const pi = $('#podPageInfo');
         if (pi) pi.textContent = i + 'p';
@@ -3152,6 +3181,9 @@ $('#fmApplyBlockBtn').onclick = () => {
   saveFmBlocks();
   renderFmBlockList();
   showToast('✅ 블록 설정이 적용 및 저장되었습니다.');
+  
+  // 2. 전면부 디자인: 저장 직후 백그라운드 렌더링을 다시 돌려 즉시 반영
+  renderLivePodPreview();
 };
 
 // ── 배경색 동기화 ──────────────────────────────────────────────
