@@ -2081,7 +2081,7 @@ async function renderLivePodPreview(forceMode = null) {
   window.podPendingRenderId = currentRenderSessionId;
 
   const headScripts = `<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js" onload="window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*')" onerror="window.parent.postMessage({ type: 'pagedjs-error', error: 'PagedJS 스크립트 로드 실패' }, '*')"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedjs/0.4.3/paged.polyfill.min.js" onload="window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*')" onerror="console.error('PagedJS 로드 실패 상세:', event); window.parent.postMessage({ type: 'pagedjs-error', error: 'PagedJS 스크립트 네트워크 차단 또는 404 에러' }, '*');"><\/script>
 <style>
   html,body { margin:0; padding:0; background:transparent !important; }
   .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
