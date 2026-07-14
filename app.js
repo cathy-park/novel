@@ -1855,10 +1855,6 @@ const POD_PRESETS = {
   }
 };
 
-// ── 내지 라이브 렌더링(Paged.js) ────────────────────────
-let podLiveRenderTimer = null;
-let podLastRenderedTotalPages = 0;
-let podRenderSessionId = 0; // Race Condition 방지용 렌더 세션 ID
 
 
 // ── mm → px 변환 (화면 축척 기준) ────────────────────────────
@@ -1999,6 +1995,7 @@ function podEstimatePages(p) {
 // ── 내지 라이브 렌더링(Paged.js) ────────────────────────────
 let podLiveRenderTimer = null;
 let podLastRenderedTotalPages = 0; // Paged.js 렌더링 후 얻은 실제 페이지 수
+let podRenderSessionId = 0; // Race Condition 방지용 렌더 세션 ID
 
 function podScheduleLiveRender() {
   $('#podLiveRenderStatus').textContent = '조판 재계산 중... (여백/폰트 적용 중)';
