@@ -2105,22 +2105,32 @@ async function renderLivePodPreview(forceMode = null) {
   .page-left .safe-guide { position:absolute; top:${m.top}mm; bottom:${m.bottom}mm; left:${m.outer}mm; right:${m.inner}mm; border:1px solid rgba(0,0,255,0.3); pointer-events:none; z-index:99; }
   .page-right .safe-guide { position:absolute; top:${m.top}mm; bottom:${m.bottom}mm; left:${m.inner}mm; right:${m.outer}mm; border:1px solid rgba(0,0,255,0.3); pointer-events:none; z-index:99; }
   ` : ''}
+  /* 원고 본문 서식 적용 */
+  .page-left > div > div:nth-child(2) p, .page-right > div > div:nth-child(2) p, .ql-editor p {
+    text-indent: ${pubSet.paragraphIndent ? pubSet.paragraphIndent + 'em' : '0'};
+    margin-bottom: ${pubSet.paragraphSpacing ? pubSet.paragraphSpacing + 'em' : '0'};
+    text-align: ${pubSet.align || 'justify'};
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
 </style>
 </head>
 <body>
   <div class="page page-left">
     ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
-    <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
+    <div style="position:relative; z-index:1; height:100%; overflow-y:auto; overflow-x:hidden; padding-bottom:20px;">
       <h2 style="margin-top:0; margin-bottom:30px;">왼쪽 페이지 (짝수 쪽)</h2>
       <div style="opacity:0.8;">${dummyText}</div>
     </div>
+    <div style="position:absolute; bottom:${m.bottom/2}mm; left:0; right:0; text-align:center; font-size:9pt; color:#666;">10</div>
   </div>
   <div class="page page-right">
     ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
-    <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
+    <div style="position:relative; z-index:1; height:100%; overflow-y:auto; overflow-x:hidden; padding-bottom:20px;">
       <h2 style="margin-top:0; margin-bottom:30px;">오른쪽 페이지 (홀수 쪽)</h2>
       <div style="opacity:0.8;">${dummyText}</div>
     </div>
+    <div style="position:absolute; bottom:${m.bottom/2}mm; left:0; right:0; text-align:center; font-size:9pt; color:#666;">11</div>
   </div>
 </body>
 </html>`;
@@ -2867,7 +2877,7 @@ function renderPodPageTree() {
     const thumb = document.createElement('div');
     thumb.style.cssText = `
       width:56px; height:78px;
-      background:${isBlank ? '#f0f0f0' : '#fff'}; border:1.5px solid var(--border-color);
+      background:#fff; border:1.5px solid var(--border-color);
       border-radius:2px; box-shadow:1px 2px 5px rgba(0,0,0,.1);
       position:relative; overflow:hidden;
       transition:border-color .15s, box-shadow .15s;
@@ -2987,7 +2997,7 @@ function renderPodPageTree() {
                 const ep = pageData.data;
                 const processed = processEpisodeBody(ep.body, ep.title, true);
                 const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-                const renderTitle = !isMatter && set.showTitle && !processed.hasTitle;
+                const renderTitle = false; // 원고의 제목들은 비노출시켜줘 요구사항 반영
                 const displayTitle = getEpisodeDisplayTitle(ep, p);
 
                 const tempDiv = document.createElement('div');
@@ -3003,9 +3013,9 @@ function renderPodPageTree() {
                   if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
                 });
                 
-                rightBody.innerHTML = `<div class="chapter ${isMatter ? 'matter-page' : ''}" style="padding-top:20px; padding-bottom:20px; text-align:justify; word-break:keep-all;">` +
+                rightBody.innerHTML = `<div class="chapter ${isMatter ? 'matter-page' : ''}" style="padding-top:10px; padding-bottom:20px;">` +
                   (renderTitle ? `<div class="chapter-title" style="font-size:16pt; font-weight:700; margin-bottom:40px; text-align:center;">${escapeHtml(displayTitle)}</div>` : '') +
-                  `<div class="chapter-content ql-editor" style="padding:0;">${tempDiv.innerHTML}</div></div>`;
+                  `<div class="chapter-content ql-editor" style="padding:0; margin:0;">${tempDiv.innerHTML}</div></div>`;
              } else {
                 rightBody.innerHTML = getSingleFmBlockHtml(pageData.data, p, set, eps, 0);
              }
