@@ -4827,12 +4827,52 @@ function runHiddenPagedJsForTree(p) {
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
   const htmlContent = generatePODBodyContent(p, pubSet, loadedEps);
 
+  const m = {
+    top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
+    bottom: parseFloat($('#podMarginBottom')?.value) || pubSet.margins?.bottom || 20,
+    inner: parseFloat($('#podMarginInner')?.value) || pubSet.margins?.inner || 25,
+    outer: parseFloat($('#podMarginOuter')?.value) || pubSet.margins?.outer || 18,
+    bleed: parseFloat($('#podBleed')?.value) || pubSet.margins?.bleed || 3
+  };
+
+  const pageCSS = `@page {
+    size: ${pubSet.paperSize || 'A5'};
+    margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm;
+  }
+  @page:left  { margin: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
+  @page:right { margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
+  @page:first { @bottom-center { content:none; } }
+  @page cover { margin:0; @bottom-center { content:none; } }`;
+
+  const bodyCSS = `body {
+    font-family:'KoPub Batang','Noto Serif KR',serif;
+    font-size:${parseFloat($('#podFontSize')?.value) || pubSet.fontSize || 10}pt;
+    line-height:${$('#podLineHeight')?.value || pubSet.lineHeight || 1.75};
+    color:#111; text-align:justify; word-break:keep-all;
+  }
+  .ql-align-center { text-align:center !important; }
+  .ql-align-right  { text-align:right  !important; }
+  .chapter { break-before:page; margin-top:40px; }
+  .chapter.matter-page { break-before:right; }
+  .chapter-title { font-size:14pt; font-weight:700; margin-bottom:30px; text-align:center; display:none !important; }
+  .chapter-content span { background-color:transparent !important; }
+  .chapter-content p { text-indent:10pt !important; margin:0 !important; }
+  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
+  img { max-width: 100% !important; width: 100% !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; }`;
+
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+
   const pagedjsCode = window.POD_PAGEDJS_CODE || '';
   const iframeHtml = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<style> html, body { background: transparent !important; } </style>
+<style>
+  html, body { background: transparent !important; }
+  ${mainStyles}
+  ${pageCSS}
+  ${bodyCSS}
+</style>
 </head>
 <body>
   ${htmlContent}
