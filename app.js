@@ -2111,14 +2111,14 @@ async function renderLivePodPreview(forceMode = null) {
   <div class="page page-left">
     ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
     <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
-      <h2 style="margin-top:20%; margin-bottom:30px;">왼쪽 페이지 (짝수 쪽)</h2>
+      <h2 style="margin-top:0; margin-bottom:30px;">왼쪽 페이지 (짝수 쪽)</h2>
       <div style="opacity:0.8;">${dummyText}</div>
     </div>
   </div>
   <div class="page page-right">
     ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
     <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
-      <h2 style="margin-top:20%; margin-bottom:30px;">오른쪽 페이지 (홀수 쪽)</h2>
+      <h2 style="margin-top:0; margin-bottom:30px;">오른쪽 페이지 (홀수 쪽)</h2>
       <div style="opacity:0.8;">${dummyText}</div>
     </div>
   </div>
