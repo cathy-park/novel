@@ -4825,7 +4825,21 @@ function runHiddenPagedJsForTree(p) {
 
   const pubSet = getPublishSettings(p);
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  const htmlContent = generatePODBodyContent(p, pubSet, loadedEps);
+  let htmlContent = generatePODBodyContent(p, pubSet, loadedEps);
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  const removeComments = (node) => {
+    for (let i = node.childNodes.length - 1; i >= 0; i--) {
+      if (node.childNodes[i].nodeType === 8) node.childNodes[i].remove();
+      else if (node.childNodes[i].nodeType === 1) removeComments(node.childNodes[i]);
+    }
+  };
+  removeComments(doc.body);
+  doc.querySelectorAll('span, b, i, em, strong, u, p').forEach(el => {
+    if (el.innerHTML.trim() === '' && !el.querySelector('img')) el.remove();
+  });
+  htmlContent = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
 
   const m = {
     top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
