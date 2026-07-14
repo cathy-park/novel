@@ -2040,9 +2040,17 @@ async function renderLivePodPreview(forceMode = null) {
     if (!iframe) return;
     
     const pubSet = getPublishSettings(p);
-    const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-    const m = pubSet.margins || { top:20, bottom:20, inner:25, outer:18, bleed:3 };
-    const b = m.bleed || 3;
+    const paper = PAPER_SIZES[$('#podPaperSize') ? $('#podPaperSize').value : (pubSet.paperSize || 'A5')] || PAPER_SIZES.A5;
+    
+    // 실시간 입력을 위해 DOM에서 직접 값을 읽어옴 (없으면 pubSet 사용)
+    const m = {
+      top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
+      bottom: parseFloat($('#podMarginBottom')?.value) || pubSet.margins?.bottom || 20,
+      inner: parseFloat($('#podMarginInner')?.value) || pubSet.margins?.inner || 25,
+      outer: parseFloat($('#podMarginOuter')?.value) || pubSet.margins?.outer || 18,
+      bleed: parseFloat($('#podBleed')?.value) || pubSet.margins?.bleed || 3
+    };
+    const b = m.bleed;
     
     const canvasEl = $('#podPreviewInner');
     const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
@@ -2071,7 +2079,7 @@ async function renderLivePodPreview(forceMode = null) {
 <head>
 <meta charset="utf-8">
 <style>
-  html, body { margin: 0; padding: 0; background: transparent; height: 100%; display: flex; font-family:'KoPub Batang','Noto Serif KR',serif; font-size:${pubSet.fontSize||10}pt; line-height:${pubSet.lineHeight||1.75}; color:#111; word-break:keep-all; }
+  html, body { margin: 0; padding: 0; background: transparent; height: 100%; display: flex; font-family:'KoPub Batang','Noto Serif KR',serif; font-size:${parseFloat($('#podFontSize')?.value) || pubSet.fontSize || 10}pt; line-height:${$('#podLineHeight')?.value || pubSet.lineHeight || 1.75}; color:#111; word-break:keep-all; }
   .page {
     width: ${paper.w}mm;
     height: ${paper.h}mm;
@@ -2079,6 +2087,7 @@ async function renderLivePodPreview(forceMode = null) {
     box-sizing: border-box;
     position: relative;
     box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    text-align: left; /* 좌측 정렬 요구사항 */
   }
   .page-left { padding: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
   .page-right { padding: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
@@ -2102,14 +2111,14 @@ async function renderLivePodPreview(forceMode = null) {
   <div class="page page-left">
     ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
     <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
-      <h2 style="text-align:center; margin-top:20%; margin-bottom:30px;">왼쪽 페이지 (짝수 쪽)</h2>
+      <h2 style="margin-top:20%; margin-bottom:30px;">왼쪽 페이지 (짝수 쪽)</h2>
       <div style="opacity:0.8;">${dummyText}</div>
     </div>
   </div>
   <div class="page page-right">
     ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
     <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
-      <h2 style="text-align:center; margin-top:20%; margin-bottom:30px;">오른쪽 페이지 (홀수 쪽)</h2>
+      <h2 style="margin-top:20%; margin-bottom:30px;">오른쪽 페이지 (홀수 쪽)</h2>
       <div style="opacity:0.8;">${dummyText}</div>
     </div>
   </div>
