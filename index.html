@@ -2204,8 +2204,8 @@ window.addEventListener('unhandledrejection', function(e) {
         <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">＋ 항목</button>
       </div>
     </div>
-    <div id="planBodyWrapper" class="drawer-body" style="overflow-y:auto;"></div>
-    <div id="commentBodyWrapper" class="drawer-body" style="display:none; flex-direction:column; background:#fff;"></div>
+    <div id="planBodyWrapper" class="drawer-body" style="overflow-y:auto;"><div id="projectPlanList" style="padding:16px; display:flex; flex-direction:column; gap:16px;"></div></div>
+    <div id="commentBodyWrapper" class="drawer-body" style="display:none; flex-direction:column; background:#fff;"><div id="projectCommentList" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;"></div></div>
   </aside>
 </div>
 
@@ -3668,7 +3668,16 @@ function syncPlanToBeatSheet(ep) {
 }
 
 function renderProjectPlan() {
-  const p = currentProject(), list = $('#projectPlanList'), sections = p.planSections||[];
+  const p = currentProject();
+  let list = $('#projectPlanList');
+  if (!list) {
+    list = document.createElement('div');
+    list.id = 'projectPlanList';
+    list.style.cssText = 'padding:16px; display:flex; flex-direction:column; gap:16px;';
+    const wrapper = $('#planBodyWrapper');
+    if (wrapper) wrapper.appendChild(list);
+  }
+  const sections = p.planSections||[];
   if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
   list.innerHTML = sections.map(x => {
     const isPdf = x.type === 'pdf_attachment';
@@ -3759,7 +3768,14 @@ function updateCommentBadge() {
 
 function renderPCCommentList() {
   const p = currentProject();
-  const list = $('#projectCommentList');
+  let list = $('#projectCommentList');
+  if (!list) {
+    list = document.createElement('div');
+    list.id = 'projectCommentList';
+    list.style.cssText = 'flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;';
+    const wrapper = $('#commentBodyWrapper');
+    if (wrapper) wrapper.appendChild(list);
+  }
   if (!p) return;
   
   let html = '';
@@ -3907,7 +3923,7 @@ $('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quil
 $$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
-if ($('#closeDrawerBtn')) $('#closeDrawerBtn').onclick = togglePlanDrawer;
+if ($('#closePlanDrawerBtn')) $('#closePlanDrawerBtn').onclick = togglePlanDrawer;
 
 $('#tabPlanBtn').onclick = () => {
   $('#tabPlanBtn').classList.add('active');
@@ -4308,26 +4324,12 @@ async function renderLivePodPreview() {
 <script>window.PagedConfig = { auto: false };<\/script>
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
 <style>
-  /* 스프레드(양면) 뷰어용 스타일 */
-  .pagedjs_page { 
-    margin: 0 !important; border: none !important; 
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; 
-    background: #fff !important;
-  }
-  
-  /* 책등(가운데 접히는 부분) 시각적 효과 */
-  .pagedjs_left_page::after {
-    content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 20px;
-    background: linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%);
-    pointer-events: none; z-index: 10;
-  }
-  .pagedjs_right_page::after {
-    content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 20px;
-    background: linear-gradient(to right, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%);
-    pointer-events: none; z-index: 10;
-  }
+  .pagedjs_page { margin: 0 !important; border: none !important; box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; background: #fff !important; flex: 0 0 auto; }
+  .pagedjs_left_page::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 20px; background: linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%); pointer-events: none; z-index: 10; }
+  .pagedjs_right_page::after { content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 20px; background: linear-gradient(to right, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%); pointer-events: none; z-index: 10; }
 </style>
 <script>
+let currentPolisher = null;
 function runPaged() {
   if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
     if (!window.pagedWaitCount) window.pagedWaitCount = 0;
@@ -4339,27 +4341,15 @@ function runPaged() {
     setTimeout(runPaged, 50);
     return;
   }
-  window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: Paged.js 초기화 시작' }, '*');
+  
   class LiveHandler extends Paged.Handler {
     afterRendered(pages) {
       try {
-        if (window.podProgressTimer) clearInterval(window.podProgressTimer);
         var map = [];
         pages.forEach(function(p, idx) {
           var el = p.element || p.pageNode || p.wrapper;
           if (!el) return;
-          
           var pgNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10) || 0;
-          if (el.style) {
-            if (pgNum !== 1) {
-              el.style.display = 'none';
-            } else {
-              el.style.position = 'absolute';
-              el.style.top = '0';
-              el.style.right = '0';
-            }
-          }
-
           var fmBlock = el.querySelector('.matter-page');
           var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
           var chTitle = el.querySelector('.chapter-title, .chapter-content h1');
@@ -4372,58 +4362,33 @@ function runPaged() {
       }
     }
   }
-  try {
-    Paged.registerHandlers(LiveHandler);
-  } catch(err) {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Handler Error: ' + err.message }, '*');
-  }
-  window.addEventListener('message', function(ev) {
-    if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
-    
-    var pageNum = parseInt(ev.data.page, 10);
-    var targetSpread = [];
-    if (pageNum === 1) {
-      targetSpread = [1];
-    } else if (pageNum % 2 === 0) {
-      targetSpread = [pageNum, pageNum + 1];
-    } else {
-      targetSpread = [pageNum - 1, pageNum];
-    }
-    
-    // 1. 모든 페이지 숨기기
-    var allPages = document.querySelectorAll('.pagedjs_page');
-    allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
-    
-    // 2. 요청된 스프레드(양면) 보이기
-    targetSpread.forEach(function(num) {
-      var el = document.querySelector('.pagedjs_page[data-page-number="' + num + '"]');
-      if (el) {
-        el.style.display = 'block';
-        el.style.position = 'absolute';
-        el.style.top = '0';
-        if (num % 2 === 0) el.style.left = '0';
-        else el.style.right = '0';
-      }
-    });
-    window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
-  });
+  Paged.registerHandlers(LiveHandler);
 
-  window.podProgressTimer = setInterval(function() {
-    var count = document.querySelectorAll('.pagedjs_page').length;
-    if (count > 0) {
-      try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: count }, '*'); } catch(err) {}
+  window.addEventListener('message', async function(ev) {
+    if (!ev.data || ev.data.type !== 'RENDER_CHUNK') return;
+    
+    // 이전 콘텐츠 및 페이지 비우기
+    document.body.innerHTML = '';
+    var oldStyle = document.getElementById('dynamic-counter');
+    if (oldStyle) oldStyle.remove();
+    
+    // 새로운 시작 쪽수 주입
+    var startPage = Math.max(1, parseInt(ev.data.startPage, 10) || 1);
+    var style = document.createElement('style');
+    style.id = 'dynamic-counter';
+    style.innerHTML = 'body { counter-reset: page ' + (startPage - 1) + ' !important; }';
+    document.head.appendChild(style);
+    
+    var container = document.createElement('div');
+    container.innerHTML = ev.data.html;
+    
+    try {
+      window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 1 }, '*');
+      currentPolisher = await PagedPolyfill.preview(container, [], document.body);
+    } catch (err) {
+      window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*');
     }
-  }, 250);
-  try {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 호출 직전' }, '*');
-    PagedPolyfill.preview().then(function() {
-      window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 완료' }, '*');
-    }).catch(function(e) {
-      try { window.parent.postMessage({ type: 'pagedjs-error', error: 'preview catch: ' + e.message }, '*'); } catch(e2) {}
-    });
-  } catch (err) {
-    try { window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*'); } catch(e2) {}
-  }
+  });
 }
 runPaged();
 <\/script>`;
@@ -4438,6 +4403,7 @@ ${mainStyles}
 </style>
 <style>
   html, body { background: transparent !important; height: auto !important; overflow: visible !important; margin: 0; padding: 0; }
+  .pagedjs_pages { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; }
   @page front-matter { @bottom-center { content: none; } }
   .bg-colored { page: front-matter; }
   @page {
@@ -4484,45 +4450,36 @@ ${mainStyles}
   .chapter-content p.pdf-group-middle, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-middle, .chapter-content .pdf-group-last { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; padding-top: 4px !important; }
   .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last, .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last { border-top-left-radius: 6px !important; padding-top: 10px !important; }
   .chapter-content p.n-email-body.pdf-group-middle, .chapter-content p.n-email-body.pdf-group-last, .chapter-content p.n-doc.pdf-group-middle, .chapter-content p.n-doc.pdf-group-last { padding-left: 38px !important; }
-  html, body { height: auto !important; overflow: visible !important; }
   .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
 </style>
 </head>
 <body>
-`;
+${srcdocScripts}
+</body>
+</html>`;
 
-  html += generatePODBodyContent(p, pubSet, loadedEps);
-
-  html += srcdocScripts;
-  html += `</body></html>`;
-
-  iframe.removeAttribute('srcdoc');
-  setTimeout(() => { iframe.srcdoc = html; }, 10);
+  if (!iframe.getAttribute('data-sandbox-initialized')) {
+    iframe.removeAttribute('srcdoc');
+    setTimeout(() => { iframe.srcdoc = html; }, 10);
+    iframe.setAttribute('data-sandbox-initialized', 'true');
+  }
+  
+  // 항상 트리는 즉시 렌더링
+  renderPodPageTree();
 }
 
 
-// ── pagedjs-rendered 메시지 수신 → 트리 업데이트 ──────────────────
+// ── pagedjs-rendered 메시지 수신 ──────────────────
 window.addEventListener('message', (e) => {
   if (!e.data) return;
   
   if (e.data.type === 'pagedjs-progress') {
     const st = $('#podLiveRenderStatus');
-    if (st && st.textContent.includes('진행 중')) {
-      st.textContent = `조판 렌더링 진행 중... (${e.data.pageNum}쪽 계산 완료)`;
-    }
-    const treeSt = $('#podTreeProgress');
-    if (treeSt) {
-      treeSt.textContent = `${e.data.pageNum}쪽 계산 완료...`;
-    }
+    if (st) st.textContent = `단건 조판 렌더링 진행 중...`;
     return;
   }
   
   if (e.data.type === 'pagedjs-rendered') {
-    const total = e.data.totalPages || 0;
-    podLastRenderedTotalPages = total;
-    window.podPageMap = e.data.pageMap || []; // ★ pageMap 저장
-    
-    // ★ 렌더링 완료 후 iframe 너비를 양면(스프레드) 크기로 확장
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
       const pubSet = getPublishSettings(currentProject());
@@ -4538,21 +4495,7 @@ window.addEventListener('message', (e) => {
     }
 
     const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 완료 ✓ 총 ${total}쪽`;
-    
-    // 책등 두께 계산 업데이트
-    updateSpineThickness(total);
-    
-    // ★ 조건 없이 항상 트리 footer를 업데이트
-    const totalLabel = document.getElementById('podTreeTotalLabel');
-    if (totalLabel) totalLabel.innerHTML = `내지 총합: ${total}쪽`;
-    
-    // 트리 탭이 열려 있으면 전체 트리 재렌더링
-    const treePane = document.getElementById('podPane-tree');
-    const isTreeVisible = treePane && (treePane.classList.contains('active') || getComputedStyle(treePane).display !== 'none');
-    if (isTreeVisible) {
-      renderPodPageTree();
-    }
+    if(st) st.textContent = `단건 렌더링 완료 ✓`;
   } else if (e.data.type === 'pagedjs-error') {
     const st = $('#podLiveRenderStatus');
     if(st) st.textContent = `렌더링 에러: ${e.data.error}`;
@@ -4826,36 +4769,51 @@ function renderPodPageTree() {
   innerSec.style.cssText = 'padding:0 8px;';
   innerSec.appendChild(mkSectionHead('─ 내지 (속표지 ~ 본문) ─'));
 
-  // 페이지 데이터 구성 (에피소드 데이터 기반 — iframe DOM 쿼리 하지 않음)
+  // 페이지 데이터 구성 (추정 기반으로 즉시 생성)
   const pagesData = [];
   let pageNum = 1;
 
-  // Paged.js가 모든 페이지 정보를 주므로 여기서 전면부를 별도로 계산하지 않습니다.
-
-  // 본문 에피소드 (Paged.js 렌더링 완료 시에만 생성)
-  if (window.podPageMap && window.podPageMap.length > 0) {
-    // 렌더링 완료: postMessage로 받은 실제 페이지 맵 사용
-    window.podPageMap.forEach(pg => {
-      let isFm = false;
-      const FM_LABELS = ['속표지', '본표지', '판권지', '목차', '헌정', '제사', '여백'];
-      if (FM_LABELS.includes(pg.label)) isFm = true;
-      pagesData.push({ pageNum: pg.pageNum, label: pg.label, sublabel: pg.epTitle || '', type: isFm ? 'fm' : 'inner', accent: isFm ? '#7c6bf6' : null });
-    });
-  } else {
-    // 렌더링 전: 트리 목록 대신 안내 메시지 노출
-    const loadingDiv = document.createElement('div');
-    loadingDiv.style.cssText = 'padding:40px 20px; text-align:center; color:var(--c-muted); font-size:12px; line-height:1.6;';
-    loadingDiv.innerHTML = '<div style="margin-bottom:12px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg></div><style>@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }</style>조판 렌더링을 계산하고 있습니다.<br><span id="podTreeProgress">잠시만 기다려주세요...</span>';
-    innerSec.appendChild(loadingDiv);
-    treeEl.appendChild(innerSec);
-    return; // 그리드 렌더링 중단
+  // Front matter (앞부속)
+  pagesData.push({ pageNum: 1, label: '속표지', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 1 });
+  pagesData.push({ pageNum: 3, label: '표제지', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 3 });
+  if (set.frontMatter?.showCopyright) {
+    pagesData.push({ pageNum: 5, label: '판권지', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 5 });
   }
+  pagesData.push({ pageNum: 7, label: '목차', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 7 });
 
-  // InDesign 스프레드 레이아웃: 2열 그리드 (좌=짝수, 우=홈수)
+  pageNum = 9; // 본문 시작 쪽수 임의 배정
+
+  const charsPerPage = (set.paperSize === 'B6') ? 400 : 500;
+  
+  eps.forEach((ep) => {
+    // 장 시작은 항상 우측 홀수면
+    if (pageNum % 2 === 0) pageNum++;
+    
+    pagesData.push({ 
+      pageNum: pageNum, 
+      label: ep.title.substring(0,12), 
+      sublabel: '', 
+      type: 'inner', 
+      accent: null,
+      htmlType: 'ep',
+      epId: ep.id,
+      startPage: pageNum
+    });
+    
+    const len = stats(ep.body||'').withSpaces;
+    let epPages = Math.max(1, Math.ceil(len / charsPerPage));
+    pageNum += epPages;
+  });
+
+  // 총 예상 페이지 수 계산
+  const totalPages = pageNum + 2;
+  podLastRenderedTotalPages = totalPages;
+
+  // InDesign 스프레드 레이아웃: 2열 그리드 (좌=짝수, 우=홀수)
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:16px 8px; padding:0 4px 24px; position:relative;';
 
-  // 체등 중앙선
+  // 책등 중앙선
   const spine = document.createElement('div');
   spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;';
   grid.appendChild(spine);
@@ -4872,19 +4830,27 @@ function renderPodPageTree() {
       data.sublabel,
       data.accent,
       () => {
-        // 모든 트리 노드(전면부, 내지) 클릭 시 내지 프리뷰(Paged.js)로 전환 후 스크롤
+        // 프리뷰 탭 갱신
         $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
         const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
         if(pb) pb.classList.add('active');
         $('#podPreviewInner').style.display = 'flex';
         $('#podPreviewFm').style.display = 'none';
         $('#podPreviewCover').classList.remove('active');
-        $('#podPageToggleWrap').style.display = 'flex';
-        // postMessage로 iframe 내부에 스크롤 요청
-        const liveIframe = document.getElementById('podLiveIframe');
-        if (liveIframe?.contentWindow) {
-          liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
+        $('#podPageToggleWrap').style.display = 'none';
+        
+        let chunkHtml = '';
+        if (data.htmlType === 'fm') {
+          chunkHtml = generatePODBodyContent(p, set, eps, 'fm');
+        } else {
+          chunkHtml = generatePODBodyContent(p, set, eps, data.epId);
         }
+        
+        const iframe = document.getElementById('podLiveIframe');
+        if (iframe && iframe.contentWindow) {
+           iframe.contentWindow.postMessage({ type: 'RENDER_CHUNK', html: chunkHtml, startPage: data.startPage }, '*');
+        }
+        
         // 활성 표시
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
         cell.classList.add('tree-thumb-active');
@@ -5994,15 +5960,21 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
 
   // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
+    if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
-    bodyHtml += `
+    htmlFm += `
   <div class="chapter matter-page" style="break-before: right;">
     <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
   </div>`;
   });
 
+  if (targetEpId === 'fm') return htmlFm;
+
+  bodyHtml = targetEpId ? '' : htmlFm;
+
   // 5. 본문 (목차 이후의 회차 및 뒷부속)
   afterTocEps.forEach((ep, i) => {
+    if (targetEpId && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
     const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
     const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
@@ -6014,7 +5986,6 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
     <div class="chapter-content ql-editor">${processed.body}</div>
   </div>`;
   });
-
 
   return bodyHtml;
 }
