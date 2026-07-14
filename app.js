@@ -2009,12 +2009,22 @@ async function renderLivePodPreview(forceMode = null) {
   // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
   if (!window.POD_PAGEDJS_CODE) {
     try {
-      // unpkg 대신 가장 안정적인 cdnjs를 사용하여 CORS 차단 방지
-      const res = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pagedjs/0.4.3/paged.polyfill.min.js');
-      window.POD_PAGEDJS_CODE = await res.text();
+      const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/js/paged.polyfill.js');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const text = await res.text();
+      // 다운로드된 텍스트가 HTML 에러 페이지인지 검증 (< 기호로 시작하는지)
+      if (text.trim().startsWith('<')) throw new Error('CDN 응답이 자바스크립트가 아닌 HTML입니다.');
+      window.POD_PAGEDJS_CODE = text;
     } catch(err) {
       console.error('PagedJS 대리 Fetch 실패:', err);
-      return; // Fetch 실패 시 렌더링 중단
+      // 에러 시 UI에 알림
+      const iframe = document.getElementById('podLiveIframe');
+      if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
+        iframe.contentDocument.body.innerHTML = '<div style="color:red; font-size:14px; padding:20px;">렌더링 에러: 조판 엔진 로드 실패 (' + err.message + ')</div>';
+      }
+      const st = document.getElementById('podLiveRenderStatus');
+      if (st) st.textContent = '렌더링 에러: 엔진 로드 실패';
+      return; 
     }
   }
 
