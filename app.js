@@ -2006,6 +2006,17 @@ function podScheduleLiveRender() {
 }
 
 async function renderLivePodPreview(forceMode = null) {
+  // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
+  if (!window.POD_PAGEDJS_CODE) {
+    try {
+      const res = await fetch('https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js');
+      window.POD_PAGEDJS_CODE = await res.text();
+    } catch(err) {
+      console.error('PagedJS 대리 Fetch 실패:', err);
+      return; // Fetch 실패 시 렌더링 중단
+    }
+  }
+
   const p = currentProject();
   if (!p) return;
 
@@ -2081,7 +2092,8 @@ async function renderLivePodPreview(forceMode = null) {
   window.podPendingRenderId = currentRenderSessionId;
 
   const headScripts = `<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedjs/0.4.3/paged.polyfill.min.js" onload="window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*')" onerror="console.error('PagedJS 로드 실패 상세:', event); window.parent.postMessage({ type: 'pagedjs-error', error: 'PagedJS 스크립트 네트워크 차단 또는 404 에러' }, '*');"><\/script>
+<script>${window.POD_PAGEDJS_CODE}<\/script>
+<script>window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*');<\/script>
 <style>
   html,body { margin:0; padding:0; background:transparent !important; }
   .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
