@@ -3072,18 +3072,29 @@ function migrateFmOrder(oldOrder) {
 // ── fmBlocks 초기화 ────────────────────────────────────────────
 function initFmBlocks(p) {
   const saved = p.publishSettings?.fmBlocks;
+  let blocks = [];
   if (saved && Array.isArray(saved) && saved.length > 0) {
-    window.fmBlocks = saved;
+    blocks = saved;
   } else if (p.publishSettings?.frontMatter?.order) {
-    window.fmBlocks = migrateFmOrder(p.publishSettings.frontMatter.order);
+    blocks = migrateFmOrder(p.publishSettings.frontMatter.order);
   } else {
-    window.fmBlocks = [
+    blocks = [
       { id: 'fm_half_title', type: 'half_title', active: true, style: defaultFmStyle('half_title'), content: defaultFmContent('half_title') },
       { id: 'fm_title_page', type: 'title_page', active: true, style: defaultFmStyle('title_page'), content: defaultFmContent('title_page') },
       { id: 'fm_copyright', type: 'copyright', active: true, style: defaultFmStyle('copyright'), content: defaultFmContent('copyright') },
-      { id: 'fm_toc', type: 'toc', active: true, style: defaultFmStyle('toc'), content: defaultFmContent('toc') }
+      { id: 'fm_toc', type: 'toc', active: true, style: defaultFmStyle('toc'), content: defaultFmContent('toc') },
+      { id: 'fm_main_body', type: 'main_body', active: true, style: defaultFmStyle('main_body'), content: defaultFmContent('main_body') }
     ];
   }
+
+  blocks = blocks.filter(block => !['dedication', 'epigraph'].includes(block.type));
+
+  const hasMainBody = blocks.some(block => block.type === 'main_body');
+  if (!hasMainBody) {
+    blocks.push({ id: 'fm_main_body_' + Date.now(), type: 'main_body', active: true, style: defaultFmStyle('main_body'), content: defaultFmContent('main_body') });
+  }
+
+  window.fmBlocks = blocks;
 }
 
 // 현재 편집 중인 블록 인덱스
@@ -3876,11 +3887,13 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
         const manualNumbers = (c.tocManual || '').split(/[\n,]+/).map(s => s.trim());
-        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:inherit;">목차</h2><ul class="toc-list" style="font-family:inherit;">`;
+        const tocFont = s.fontFamily || "'KoPub Batang',serif";
+        const tocColor = s.fontColor || '#1C1813';
+        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
         tocEps.forEach((ep, i) => { 
           let manualNum = manualNumbers[i] !== undefined && manualNumbers[i] !== '' ? manualNumbers[i] : '';
-          let pageRefHTML = manualNum ? `<span class="toc-manual-page" style="float:right;">${escapeHtml(manualNum)}</span>` : `<a href="#ep-${ep.id}" class="toc-page-ref"></a>`;
-          tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span>${pageRefHTML}</li>`; 
+          let pageRefHTML = manualNum ? `<span class="toc-manual-page" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};">${escapeHtml(manualNum)}</span>` : `<a href="#ep-${ep.id}" class="toc-page-ref" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};"></a>`;
+          tocHtml += `<li style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="toc-title" style="font-family:${tocFont};color:${tocColor};">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots" style="flex:1 1 auto;border-bottom:1px dotted currentColor;opacity:0.6;margin:0 8px;position:relative;top:-4px;"></span>${pageRefHTML}</li>`; 
         });
         tocHtml += `</ul></div></div>`;
         htmlFm += tocHtml;
