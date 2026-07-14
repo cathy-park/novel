@@ -1,12 +1,12 @@
 const STORAGE_KEY = 'munjang-novel-writer-v3';
 // --- 강제 캐시 초기화 (Service Worker 킬러) ---
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for(let registration of registrations) { registration.unregister(); }
+  navigator.serviceWorker.getRegistrations().then(function (registrations) {
+    for (let registration of registrations) { registration.unregister(); }
   });
   if (window.caches) {
 
-    caches.keys().then(function(names) {
+    caches.keys().then(function (names) {
       for (let name of names) { caches.delete(name); }
     });
   }
@@ -15,7 +15,7 @@ if ('serviceWorker' in navigator) {
 
 
 const DEFAULT_COVER_COLOR = '#6B5CE7';
-const COVER_COLORS = ['#17141F','#6B5CE7','#6D9DF6','#5CB6C9','#46A57F','#F39AB9','#F5B86C','#B4A5FF','#8C91A5','#E4E6ED'];
+const COVER_COLORS = ['#17141F', '#6B5CE7', '#6D9DF6', '#5CB6C9', '#46A57F', '#F39AB9', '#F5B86C', '#B4A5FF', '#8C91A5', '#E4E6ED'];
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 let quill = null; let dialogTimer = null;
@@ -31,9 +31,9 @@ let episodeScrollState = new Map();
 let currentFrontCoverObj = null;
 let currentBackCoverObj = null;
 
-function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
-function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: '', status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
-function defaultPlanSection(title='새 기획 항목', body='') { return { id: uid('plan'), title, body, open: true }; }
+function uid(prefix = 'id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+function defaultEpisode(type = 'prologue', index = 0) { return { id: uid('ep'), type, title: '', status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
+function defaultPlanSection(title = '새 기획 항목', body = '') { return { id: uid('plan'), title, body, open: true }; }
 
 // ── 이미지 클라이언트 압축 (Canvas API) ──────────────────────
 function compressImage(file, maxWidth = 1200, quality = 0.7) {
@@ -113,7 +113,7 @@ async function initApp() {
           migrateFromLocalStorage(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Migration Timeout')), 15000))
         ]);
-      } catch(err) {
+      } catch (err) {
         console.error('Migration failed or timed out:', err);
       }
       try {
@@ -142,7 +142,7 @@ async function initApp() {
   sb.auth.getSession().then(async ({ data: { session }, error }) => {
     if (error) {
       console.error("getSession error:", error);
-      if($('#authError')) {
+      if ($('#authError')) {
         $('#authError').innerHTML = '세션 확인 에러: ' + error.message;
         $('#authError').style.display = 'block';
       }
@@ -152,8 +152,8 @@ async function initApp() {
       showToast('세션을 복구했습니다. 서재를 불러옵니다...');
       currentUser = session.user;
       $('#welcomeScreen').style.display = 'none';
-      try { await migrateFromLocalStorage(); } catch(e) {}
-      try { await loadStateSupabase(); } catch(e) { showToast('DB 로딩 지연. 새로고침 해주세요.'); }
+      try { await migrateFromLocalStorage(); } catch (e) { }
+      try { await loadStateSupabase(); } catch (e) { showToast('DB 로딩 지연. 새로고침 해주세요.'); }
       autoRescue();
       renderLibrary();
     } else if (!session && !currentUser) {
@@ -170,12 +170,12 @@ if ($('#googleLoginBtn')) {
       const { data, error } = await sb.auth.signInWithOAuth({
         provider: 'google'
       });
-      if(error) throw error;
-    } catch(err) {
+      if (error) throw error;
+    } catch (err) {
       console.error(err);
       $('#googleLoginBtn').style.opacity = '1';
       $('#googleLoginBtn').innerHTML = 'Google 계정으로 시작하기';
-      if($('#authError')) $('#authError').innerHTML = '구글 로그인 실패: ' + err.message;
+      if ($('#authError')) $('#authError').innerHTML = '구글 로그인 실패: ' + err.message;
     }
   };
 }
@@ -188,19 +188,19 @@ if ($('#logoutBtn')) {
       if ($('#saveStatus')) $('#saveStatus').textContent = '저장 중...';
       await forceSaveAllSupabase();
       showToast('저장 완료. 로그아웃합니다.');
-    } catch(saveErr) {
+    } catch (saveErr) {
       console.error('Save before logout failed:', saveErr);
       showToast('⚠️ 저장 실패: ' + (saveErr.message || '알 수 없는 오류') + '\n강제 로그아웃합니다.');
     }
-    
+
     // 강제 로그아웃 처리
     currentUser = null;
     try {
       await sb.auth.signOut();
-    } catch(e) {
+    } catch (e) {
       console.error('Logout error:', e);
     }
-    
+
     // Supabase 토큰 강제 삭제 (만료된 토큰으로 인한 무한 로그인 방지)
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -209,8 +209,8 @@ if ($('#logoutBtn')) {
           localStorage.removeItem(key);
         }
       }
-    } catch(e) {}
-    
+    } catch (e) { }
+
     window.location.href = window.location.origin;
   };
 }
@@ -219,11 +219,11 @@ async function migrateFromLocalStorage() {
   if (!currentUser) return;
   const localDataStr = localStorage.getItem('munjang-novel-writer-v3');
   if (!localDataStr) return;
-  
+
   // 무한 지연을 막기 위해 시도 즉시 키 이름을 변경 (백업으로만 보존)
   localStorage.setItem('munjang-novel-writer-v3_backup', localDataStr);
   localStorage.removeItem('munjang-novel-writer-v3');
-  
+
   try {
     const localData = JSON.parse(localDataStr);
     if (localData && localData.projects && localData.projects.length > 0) {
@@ -247,8 +247,8 @@ async function migrateFromLocalStorage() {
       localStorage.removeItem('munjang-novel-writer-v3'); // 이주 완료 후 삭제
       if ($('#saveStatus')) $('#saveStatus').textContent = '복구 완료';
     }
-  } catch(e) { 
-    console.error('Migration failed:', e); 
+  } catch (e) {
+    console.error('Migration failed:', e);
     // 반복 시도를 방지하기 위해 1회 실패 후 키 이름을 변경하여 백업으로만 남김
     localStorage.setItem('munjang-novel-writer-v3_failed_backup', localDataStr);
     localStorage.removeItem('munjang-novel-writer-v3');
@@ -278,7 +278,7 @@ async function ensureProjectBodiesLoaded(p) {
       if (ep) {
         ep.body = d.body || '';
         ep.plan = deduplicateBeatSheets(d.plan || '');
-        ep.comments = (() => { try { return d.comments ? JSON.parse(d.comments) : []; } catch(_) { return []; } })();
+        ep.comments = (() => { try { return d.comments ? JSON.parse(d.comments) : []; } catch (_) { return []; } })();
         ep._dirty = false;
       }
     });
@@ -289,10 +289,10 @@ function deduplicateBeatSheets(planStr) {
   if (!planStr) return '';
   const blocks = planStr.split(/(?:^|\n)### 📋 비트시트 — /);
   if (blocks.length <= 1) return planStr; // No beatsheets
-  
+
   let result = blocks[0]; // User's manual notes before the first beatsheet
   const seenHeaders = new Set();
-  
+
   for (let i = 1; i < blocks.length; i++) {
     const block = blocks[i];
     const headerMatch = block.match(/^([^\n]+)/);
@@ -306,19 +306,19 @@ function deduplicateBeatSheets(planStr) {
       result += '\n### 📋 비트시트 — ' + block;
     }
   }
-  
+
   return result.replace(/(?:\n\n---\n\n)+/g, '\n\n---\n\n').trim();
 }
 
 async function loadStateSupabase() {
   const newState = { schemaVersion: 6, currentProjectId: null, projects: [] };
-  
+
   // 1. Projects 로드
   const { data: projectsData, error: pErr } = await sb.from('novel_projects').select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false });
-  if (pErr) { 
-    console.error('Project Load Error:', pErr); 
-    showToast('프로젝트 로딩 실패: ' + (pErr.message || '')); 
-    
+  if (pErr) {
+    console.error('Project Load Error:', pErr);
+    showToast('프로젝트 로딩 실패: ' + (pErr.message || ''));
+
     // JWT 만료 등 인증 오류일 경우 강제 로그아웃 처리
     if (pErr.code === 'PGRST301' || (pErr.message && pErr.message.toUpperCase().includes('JWT'))) {
       try {
@@ -326,22 +326,22 @@ async function loadStateSupabase() {
           const key = localStorage.key(i);
           if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) localStorage.removeItem(key);
         }
-      } catch(e) {}
+      } catch (e) { }
       currentUser = null;
       showToast('⚠️ JWT 토큰 만료 또는 인증 오류가 발생했습니다. 로그아웃 후 다시 로그인해주세요.');
     }
-    return; 
+    return;
   }
-  
-  
+
+
   if (projectsData && projectsData.length > 0) {
 
-  // 2. Episodes 로드 (body, plan, comments 제외하여 지연 로딩)
-  const { data: episodesData, error: eErr } = await sb.from('novel_episodes')
-    .select('id,project_id,type,title,status,order_idx,created_at,updated_at')
-    .eq('user_id', currentUser.id);
-  if (eErr) console.error('Episode Load Error:', eErr);
-    
+    // 2. Episodes 로드 (body, plan, comments 제외하여 지연 로딩)
+    const { data: episodesData, error: eErr } = await sb.from('novel_episodes')
+      .select('id,project_id,type,title,status,order_idx,created_at,updated_at')
+      .eq('user_id', currentUser.id);
+    if (eErr) console.error('Episode Load Error:', eErr);
+
     for (const pRow of projectsData) {
       const p = {
         id: pRow.id,
@@ -356,12 +356,12 @@ async function loadStateSupabase() {
         selectedEpisodeId: null,
         _dirty: false
       };
-      
+
       try {
         const pubSet = localStorage.getItem('novel_pubset_' + p.id);
         if (pubSet) p.publishSettings = JSON.parse(pubSet);
-      } catch(e) { console.warn(e); }
-      
+      } catch (e) { console.warn(e); }
+
       // 에피소드 매핑
       if (episodesData) {
         p.episodes = episodesData.filter(e => e.project_id === p.id).map(e => ({
@@ -373,41 +373,41 @@ async function loadStateSupabase() {
           updatedAt: e.updated_at,
           order: e.order_idx,
           _dirty: false
-        })).sort((a,b) => a.order - b.order); // 서버의 order_idx로 정렬
+        })).sort((a, b) => a.order - b.order); // 서버의 order_idx로 정렬
       }
-      if(p.episodes.length > 0) p.selectedEpisodeId = p.episodes[0].id;
+      if (p.episodes.length > 0) p.selectedEpisodeId = p.episodes[0].id;
       newState.projects.push(p);
     }
   } else {
     // 신규 유저 템플릿
-    const p = {id:uid('project'),title:'신이 있는 교실',status:'serializing',cover:'',coverColor:DEFAULT_COVER_COLOR,updatedAt:Date.now(),selectedEpisodeId:null,viewMode:'split',planSections:[defaultPlanSection('작품 핵심','권력을 가진 교사가...')],episodes:[]};
+    const p = { id: uid('project'), title: '신이 있는 교실', status: 'serializing', cover: '', coverColor: DEFAULT_COVER_COLOR, updatedAt: Date.now(), selectedEpisodeId: null, viewMode: 'split', planSections: [defaultPlanSection('작품 핵심', '권력을 가진 교사가...')], episodes: [] };
     const ep = defaultEpisode('prologue'); p.episodes.push(ep); p.selectedEpisodeId = ep.id;
     newState.projects.push(p);
     state = newState;
     await forceSaveAllSupabase();
     return;
   }
-  
+
   state = newState;
-  if(state.projects.length > 0) state.currentProjectId = state.projects[0].id;
+  if (state.projects.length > 0) state.currentProjectId = state.projects[0].id;
 }
 
 async function forceSaveAllSupabase() {
-  if(!currentUser) return;
-  if($('#saveStatus')) $('#saveStatus').textContent = '저장 중...';
+  if (!currentUser) return;
+  if ($('#saveStatus')) $('#saveStatus').textContent = '저장 중...';
   try {
     for (const p of state.projects) { await saveProjectSupabase(p); }
-    if($('#saveStatus')) $('#saveStatus').textContent = `저장됨 · ${new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}`;
-  } catch(e) {
+    if ($('#saveStatus')) $('#saveStatus').textContent = `저장됨 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch (e) {
     console.error(e);
-    if($('#saveStatus')) $('#saveStatus').textContent = '저장 실패';
+    if ($('#saveStatus')) $('#saveStatus').textContent = '저장 실패';
   }
 }
 
 function queueSaveFS() {
-  if(!currentUser) return;
-  if($('#saveStatus')) $('#saveStatus').textContent='저장 중…';
-  
+  if (!currentUser) return;
+  if ($('#saveStatus')) $('#saveStatus').textContent = '저장 중…';
+
 
 
   clearTimeout(saveTimer);
@@ -415,8 +415,8 @@ function queueSaveFS() {
 }
 
 async function saveProjectSupabase(p) {
-  if(!currentUser) return;
-  
+  if (!currentUser) return;
+
   // Project Update
   if (p._dirty) {
     const pData = {
@@ -433,56 +433,56 @@ async function saveProjectSupabase(p) {
     await sb.from('novel_projects').upsert(pData);
     p._dirty = false;
   }
-    
-    // Episodes Update (Bulk Upsert for dirty only)
-    if (p.episodes && p.episodes.length > 0) {
-      const dirtyEps = p.episodes.filter(ep => ep._dirty || typeof ep._dirty === 'undefined');
-      if (dirtyEps.length > 0) {
-        const epData = dirtyEps.map((ep, i) => {
-          const data = {
-            id: ep.id,
-            project_id: p.id,
-            user_id: currentUser.id,
-            type: ep.type,
-            title: ep.title,
-            status: ep.status || 'idea',
-            created_at: ep.createdAt || Date.now(),
-            updated_at: ep.updatedAt || Date.now(),
-            order_idx: p.episodes.indexOf(ep),
-            comments: ep.comments && ep.comments.length ? JSON.stringify(ep.comments) : null
-          };
-          if (ep.body !== undefined) data.body = ep.body;
-          if (ep.plan !== undefined) data.plan = ep.plan;
-          return data;
-        });
-        const { error: epErr } = await sb.from('novel_episodes').upsert(epData);
-        if (epErr) {
-          if (epErr.message && epErr.message.includes('plan')) {
-            console.warn('plan column missing, saving without plan. Please run ALTER TABLE.');
-            const epDataNoPlan = epData.map(({ plan, ...rest }) => rest);
-            await sb.from('novel_episodes').upsert(epDataNoPlan);
-          } else {
-            throw epErr;
-          }
+
+  // Episodes Update (Bulk Upsert for dirty only)
+  if (p.episodes && p.episodes.length > 0) {
+    const dirtyEps = p.episodes.filter(ep => ep._dirty || typeof ep._dirty === 'undefined');
+    if (dirtyEps.length > 0) {
+      const epData = dirtyEps.map((ep, i) => {
+        const data = {
+          id: ep.id,
+          project_id: p.id,
+          user_id: currentUser.id,
+          type: ep.type,
+          title: ep.title,
+          status: ep.status || 'idea',
+          created_at: ep.createdAt || Date.now(),
+          updated_at: ep.updatedAt || Date.now(),
+          order_idx: p.episodes.indexOf(ep),
+          comments: ep.comments && ep.comments.length ? JSON.stringify(ep.comments) : null
+        };
+        if (ep.body !== undefined) data.body = ep.body;
+        if (ep.plan !== undefined) data.plan = ep.plan;
+        return data;
+      });
+      const { error: epErr } = await sb.from('novel_episodes').upsert(epData);
+      if (epErr) {
+        if (epErr.message && epErr.message.includes('plan')) {
+          console.warn('plan column missing, saving without plan. Please run ALTER TABLE.');
+          const epDataNoPlan = epData.map(({ plan, ...rest }) => rest);
+          await sb.from('novel_episodes').upsert(epDataNoPlan);
+        } else {
+          throw epErr;
         }
-        dirtyEps.forEach(ep => ep._dirty = false);
       }
+      dirtyEps.forEach(ep => ep._dirty = false);
     }
+  }
 }
 
 // 에피소드 삭제 (DB)
 async function deleteEpisode(epId) {
-  if(!confirm('정말 이 회차를 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다)')) return;
-  const p = currentProject(); if(!p) return;
-  const idx = p.episodes.findIndex(e=>e.id===epId);
-  if(idx===-1) return;
-  
+  if (!confirm('정말 이 회차를 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다)')) return;
+  const p = currentProject(); if (!p) return;
+  const idx = p.episodes.findIndex(e => e.id === epId);
+  if (idx === -1) return;
+
   const deletedEp = p.episodes[idx];
   p.episodes.splice(idx, 1);
-  if(p.selectedEpisodeId === epId) p.selectedEpisodeId = p.episodes[0]?.id || null;
-  
+  if (p.selectedEpisodeId === epId) p.selectedEpisodeId = p.episodes[0]?.id || null;
+
   // Supabase Delete
-  if(currentUser) {
+  if (currentUser) {
     const { error } = await sb.from('novel_episodes').delete().eq('id', epId);
     if (error) {
       console.error('Failed to delete episode:', error);
@@ -491,43 +491,43 @@ async function deleteEpisode(epId) {
       return;
     }
   }
-  
+
   touchProject();
   queueSaveFS();
   renderWorkspace();
 }
 // --- End Supabase Cloud Logic ---
 
-function currentProject() { return state.projects.find(p=>p.id===state.currentProjectId) || state.projects[0]; }
-function currentEpisode() { const p=currentProject(); return p?.episodes.find(e=>e.id===p.selectedEpisodeId) || p?.episodes[0]; }
-function touchProject() { const p=currentProject(); if(p) { p.updatedAt = Date.now(); p._dirty = true; } }
-function cleanText(t='') { 
+function currentProject() { return state.projects.find(p => p.id === state.currentProjectId) || state.projects[0]; }
+function currentEpisode() { const p = currentProject(); return p?.episodes.find(e => e.id === p.selectedEpisodeId) || p?.episodes[0]; }
+function touchProject() { const p = currentProject(); if (p) { p.updatedAt = Date.now(); p._dirty = true; } }
+function cleanText(t = '') {
   let s = String(t);
   if (s.includes('<p') || s.includes('<br')) {
-    const d = document.createElement('div'); 
-    d.innerHTML = s; 
+    const d = document.createElement('div');
+    d.innerHTML = s;
     s = d.innerText || d.textContent || '';
   }
-  return s.replace(/\r\n/g,'\n').replace(/[\t\u00A0]+/g,' ').replace(/[ ]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim(); 
+  return s.replace(/\r\n/g, '\n').replace(/[\t\u00A0]+/g, ' ').replace(/[ ]+\n/g, '\n').replace(/\n{4,}/g, '\n\n\n').trim();
 }
-function stats(t='') { 
+function stats(t = '') {
   let text = String(t).replace(/<p[^>]*>/gi, '\n').replace(/<br[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
   text = text.replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').trim();
-  const withSpaces = Array.from(text).length; 
-  return { withSpaces, manuscript: Math.ceil(withSpaces/200) }; 
+  const withSpaces = Array.from(text).length;
+  return { withSpaces, manuscript: Math.ceil(withSpaces / 200) };
 }
-function escapeHtml(v='') { return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c])); }
-function showToast(msg) { clearTimeout(toastTimer); $('#toast').textContent=msg; $('#toast').classList.add('show'); toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2100); }
-function openModal(id) { $('#'+id).classList.remove('hidden'); } function closeModal(id) { $('#'+id).classList.add('hidden'); }
+function escapeHtml(v = '') { return String(v).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[c])); }
+function showToast(msg) { clearTimeout(toastTimer); $('#toast').textContent = msg; $('#toast').classList.add('show'); toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 2100); }
+function openModal(id) { $('#' + id).classList.remove('hidden'); } function closeModal(id) { $('#' + id).classList.add('hidden'); }
 
 // Scroll State Management
 function saveEditorScroll() {
-  const ep = currentEpisode(); if(!ep) return;
+  const ep = currentEpisode(); if (!ep) return;
   const body = $('#bodyEditor');
   episodeScrollState.set(ep.id, { plan: $('#planEditor').scrollTop, body: body.scrollTop, start: body.selectionStart, end: body.selectionEnd });
 }
 function restoreEditorScroll() {
-  const ep = currentEpisode(); if(!ep) return;
+  const ep = currentEpisode(); if (!ep) return;
   const st = episodeScrollState.get(ep.id) || { plan: 0, body: 0, start: 0, end: 0 };
   requestAnimationFrame(() => {
     $('#planEditor').scrollTop = st.plan;
@@ -537,7 +537,7 @@ function restoreEditorScroll() {
   });
 }
 
-function autosizePlanSection(el, min=250) {
+function autosizePlanSection(el, min = 250) {
   // resize:vertical이 적용된 경우(기획 드로어 textarea) 자동 높이 조정 생략
   if (el.style.resize === 'vertical' || getComputedStyle(el).resize === 'vertical') return;
   el.style.height = 'auto';
@@ -545,7 +545,7 @@ function autosizePlanSection(el, min=250) {
 }
 
 // Cover
-function coverTextColor(hex) { const v=String(hex||'').trim().slice(1); const r=parseInt(v.slice(0,2),16),g=parseInt(v.slice(2,4),16),b=parseInt(v.slice(4,6),16); return (0.2126*r+0.7152*g+0.0722*b)/255 > 0.67 ? '#17141F' : '#FFFFFF'; }
+function coverTextColor(hex) { const v = String(hex || '').trim().slice(1); const r = parseInt(v.slice(0, 2), 16), g = parseInt(v.slice(2, 4), 16), b = parseInt(v.slice(4, 6), 16); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.67 ? '#17141F' : '#FFFFFF'; }
 function coverPlaceholderMarkup(p) {
   const c = p.coverColor || DEFAULT_COVER_COLOR, t = coverTextColor(c);
   return `<span class="book-placeholder" style="--cover-color:${c};--cover-text:${t}"><strong>${escapeHtml(p.title)}</strong></span>`;
@@ -554,12 +554,12 @@ function coverPlaceholderMarkup(p) {
 // Library
 function renderLibrary() {
   $('#allCount').textContent = state.projects.length;
-  $('#serializingCount').textContent = state.projects.filter(p=>p.status==='serializing').length;
-  $('#completedCount').textContent = state.projects.filter(p=>p.status==='completed').length;
-  $$('.filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===libraryFilter));
-  const projects = (libraryFilter === 'all' ? state.projects : state.projects.filter(p=>p.status===libraryFilter)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
-  $('#projectGrid').innerHTML = projects.length ? projects.map(p=>{
-    const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0);
+  $('#serializingCount').textContent = state.projects.filter(p => p.status === 'serializing').length;
+  $('#completedCount').textContent = state.projects.filter(p => p.status === 'completed').length;
+  $$('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === libraryFilter));
+  const projects = (libraryFilter === 'all' ? state.projects : state.projects.filter(p => p.status === libraryFilter)).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  $('#projectGrid').innerHTML = projects.length ? projects.map(p => {
+    const total = p.episodes.reduce((s, e) => s + stats(e.body || '').withSpaces, 0);
     const cover = p.cover ? `<img src="${p.cover}" alt="표지"/>` : coverPlaceholderMarkup(p);
     const badgeCls = p.status === 'serializing' ? 'serializing' : 'completed';
     const badgeLabel = p.status === 'serializing' ? '연재 중' : '완결';
@@ -592,36 +592,36 @@ function renderLibrary() {
   $$('[data-kebab]').forEach(b => b.onclick = (e) => {
     e.stopPropagation();
     const menu = document.getElementById('kebab-' + b.dataset.kebab);
-    $$('.kebab-menu.show').forEach(m => { if(m !== menu) m.classList.remove('show'); });
+    $$('.kebab-menu.show').forEach(m => { if (m !== menu) m.classList.remove('show'); });
     menu.classList.toggle('show');
   });
   $$('[data-kebab-cover]').forEach(b => b.onclick = (e) => { e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show')); openCoverSettings(b.dataset.kebabCover); });
   $$('[data-rename-project]').forEach(b => b.onclick = (e) => {
     e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show'));
-    const proj = state.projects.find(x => x.id === b.dataset.renameProject); if(!proj) return;
+    const proj = state.projects.find(x => x.id === b.dataset.renameProject); if (!proj) return;
     const nt = prompt('새 작품 제목을 입력하세요.', proj.title);
-    if(nt && nt.trim()) { proj.title = nt.trim(); touchProject(); queueSaveFS(); renderLibrary(); }
+    if (nt && nt.trim()) { proj.title = nt.trim(); touchProject(); queueSaveFS(); renderLibrary(); }
   });
   $$('[data-delete-project]').forEach(b => b.onclick = async (e) => {
     e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show'));
     const proj = state.projects.find(x => x.id === b.dataset.deleteProject);
-    if(confirm((proj ? proj.title : '이 작품') + '을(를) 삭제할까요?\n삭제한 작품은 복구할 수 없습니다.')) {
+    if (confirm((proj ? proj.title : '이 작품') + '을(를) 삭제할까요?\n삭제한 작품은 복구할 수 없습니다.')) {
       const delId = b.dataset.deleteProject;
       state.projects = state.projects.filter(x => x.id !== delId);
-      if(state.currentProjectId === delId) state.currentProjectId = null;
+      if (state.currentProjectId === delId) state.currentProjectId = null;
       // Supabase에서도 삭제
       if (currentUser) {
         try {
           await sb.from('novel_episodes').delete().eq('project_id', delId);
           await sb.from('novel_projects').delete().eq('id', delId);
-        } catch(e) { console.error('Delete from DB failed:', e); }
+        } catch (e) { console.error('Delete from DB failed:', e); }
       }
       renderLibrary();
     }
   });
   // 서재 필터 기본값을 'all'로 초기화
   if (!state.projects.some(p => p.status === libraryFilter) && libraryFilter !== 'all') libraryFilter = 'all';
-  setTimeout(() => window.addEventListener('click', () => $$('.kebab-menu').forEach(m => m.classList.remove('show')), {once: true}), 0);
+  setTimeout(() => window.addEventListener('click', () => $$('.kebab-menu').forEach(m => m.classList.remove('show')), { once: true }), 0);
 }
 function showLibrary() {
   persistEditor();
@@ -669,12 +669,12 @@ async function openProject(id) {
   const p = currentProject();
   migrateTitles(p);
   if (!p.selectedEpisodeId && p.episodes[0]) p.selectedEpisodeId = p.episodes[0].id;
-  
+
   if (p.episodes.some(e => e.body === undefined)) {
     showToast('프로젝트 본문을 불러오는 중입니다...');
     await ensureProjectBodiesLoaded(p);
   }
-  
+
   queueSaveFS();
   // PC에서도 이북 버튼 제공, 모바일은 항상 이북으로
   if (isMobile()) {
@@ -689,34 +689,34 @@ async function openProject(id) {
 }
 
 // Order Logic
-function orderedEpisodes(p=currentProject()) {
-  const fm = p.episodes.filter(e=>e.type==='frontmatter');
-  const pr = p.episodes.filter(e=>e.type==='prologue');
-  const ch = p.episodes.filter(e=>e.type==='chapter' || !['frontmatter', 'prologue', 'epilogue', 'backmatter'].includes(e.type));
-  const ep = p.episodes.filter(e=>e.type==='epilogue');
-  const bm = p.episodes.filter(e=>e.type==='backmatter');
+function orderedEpisodes(p = currentProject()) {
+  const fm = p.episodes.filter(e => e.type === 'frontmatter');
+  const pr = p.episodes.filter(e => e.type === 'prologue');
+  const ch = p.episodes.filter(e => e.type === 'chapter' || !['frontmatter', 'prologue', 'epilogue', 'backmatter'].includes(e.type));
+  const ep = p.episodes.filter(e => e.type === 'epilogue');
+  const bm = p.episodes.filter(e => e.type === 'backmatter');
   return [...fm, ...pr, ...ch, ...ep, ...bm];
 }
 function reorderEpisode(targetId) {
-  if(!draggedId || draggedId===targetId) return;
+  if (!draggedId || draggedId === targetId) return;
   const p = currentProject();
-  const fIdx = p.episodes.findIndex(e=>e.id===draggedId);
-  const tIdx = p.episodes.findIndex(e=>e.id===targetId);
-  if(fIdx < 0 || tIdx < 0) { draggedId=null; return; }
-  
+  const fIdx = p.episodes.findIndex(e => e.id === draggedId);
+  const tIdx = p.episodes.findIndex(e => e.id === targetId);
+  if (fIdx < 0 || tIdx < 0) { draggedId = null; return; }
+
   const [m] = p.episodes.splice(fIdx, 1);
   p.episodes.splice(tIdx, 0, m);
-  
+
   p.episodes = orderedEpisodes(p);
   p.episodes.forEach(e => e._dirty = true);
-  touchProject(); queueSaveFS(); renderEpisodeList(); draggedId=null;
+  touchProject(); queueSaveFS(); renderEpisodeList(); draggedId = null;
 }
 
 // Workspace
 function renderWorkspace() {
-  const p = currentProject(); if(!p) return showLibrary();
+  const p = currentProject(); if (!p) return showLibrary();
   $('#projectTitle').value = p.title; $('#projectStatus').value = p.status; $('#projectBreadcrumb').textContent = p.title;
-  setViewMode(p.viewMode||'split', false);
+  setViewMode(p.viewMode || 'split', false);
   renderEpisodeList(); renderEpisode(); updateProjectStats();
 }
 
@@ -729,14 +729,14 @@ function getEpisodeDisplayTitle(ep, p, asHtml = false) {
   else if (ep.type === 'epilogue') prefix = '에필로그';
   else {
     let chapterIndex = 1;
-    const eps = p.episodes.slice().sort((a,b) => a.order - b.order);
+    const eps = p.episodes.slice().sort((a, b) => a.order - b.order);
     for (const e of eps) {
       if (e.id === ep.id) break;
       if (e.type === 'chapter') chapterIndex++;
     }
     prefix = `${chapterIndex}화`;
   }
-  
+
   if (asHtml) {
     const prefixSpan = `<span class="toc-prefix">${prefix}</span>`;
     return ep.title ? `${prefixSpan} ${escapeHtml(ep.title)}` : prefixSpan;
@@ -749,7 +749,7 @@ function renderEpisodeList() {
   const p = currentProject(), eps = orderedEpisodes(p);
   const listEl = $('#episodeList');
   listEl.innerHTML = '';
-  
+
   // 표지 (고정 항목) - 인디자인 느낌
   const coverRow = document.createElement('div');
   coverRow.className = 'tree-category-label';
@@ -762,15 +762,15 @@ function renderEpisodeList() {
   coverRow.title = "표지 설정 열기";
   coverRow.onclick = () => {
     const btn = $('#openPodSettingsBtn');
-    if(btn) btn.click();
-    setTimeout(() => { if($$('.pod-settings-tab')[3]) $$('.pod-settings-tab')[3].click(); }, 50);
+    if (btn) btn.click();
+    setTimeout(() => { if ($$('.pod-settings-tab')[3]) $$('.pod-settings-tab')[3].click(); }, 50);
   };
   listEl.appendChild(coverRow);
 
   let chapterIdx = 1;
   let currentCategory = null;
 
-  eps.forEach(ep=>{
+  eps.forEach(ep => {
     let cat = 'body';
     if (ep.type === 'frontmatter' || ep.type === 'prologue') cat = 'front';
     else if (ep.type === 'epilogue' || ep.type === 'backmatter') cat = 'back';
@@ -785,10 +785,10 @@ function renderEpisodeList() {
       currentCategory = cat;
     }
 
-    const isChap = ep.type==='chapter';
+    const isChap = ep.type === 'chapter';
     let rawTitle = ep.title;
     let badgeType = '', badgeText = '';
-    
+
     const prologueMatch = rawTitle.match(/^(프롤로그)\s*[-:|]?\s*/);
     const epilogueMatch = rawTitle.match(/^(에필로그)\s*[-:|]?\s*/);
     const chapMatch = rawTitle.match(/^(\d+화)\s*[-:|]?\s*/);
@@ -812,35 +812,35 @@ function renderEpisodeList() {
 
     let badgeHtml = badgeText ? `<span class="ep-badge ${badgeType}">${escapeHtml(badgeText)}</span>` : '';
     let dispTitle = rawTitle || '(제목 없는 회차)';
-    
+
     const row = document.createElement('div');
-    row.className = `episode-row tree-item ${ep.id===p.selectedEpisodeId?'active':''}`;
+    row.className = `episode-row tree-item ${ep.id === p.selectedEpisodeId ? 'active' : ''}`;
     row.draggable = true;
-    row.innerHTML = `<span class="drag" title="드래그하여 순서 변경">⋮</span><div class="episode-main"><strong><span style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">${badgeHtml}<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dispTitle)}</span></span></strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
-                    `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')" style="opacity:0; transition:opacity .15s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
-    row.querySelector('.episode-main').onclick = ()=>selectEpisode(ep.id);
-    row.ondragstart = (e)=>{ draggedId=ep.id; row.classList.add('dragging'); e.dataTransfer.setData('text/plain', ep.id); };
-    row.ondragover = e=>e.preventDefault();
-    row.ondrop = e=>{ e.preventDefault(); reorderEpisode(ep.id); };
-    row.ondragend = ()=>row.classList.remove('dragging');
+    row.innerHTML = `<span class="drag" title="드래그하여 순서 변경">⋮</span><div class="episode-main"><strong><span style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">${badgeHtml}<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dispTitle)}</span></span></strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` +
+      `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')" style="opacity:0; transition:opacity .15s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
+    row.querySelector('.episode-main').onclick = () => selectEpisode(ep.id);
+    row.ondragstart = (e) => { draggedId = ep.id; row.classList.add('dragging'); e.dataTransfer.setData('text/plain', ep.id); };
+    row.ondragover = e => e.preventDefault();
+    row.ondrop = e => { e.preventDefault(); reorderEpisode(ep.id); };
+    row.ondragend = () => row.classList.remove('dragging');
     listEl.appendChild(row);
   });
-  requestAnimationFrame(()=>{ const el = $('.episode-row.active'); if(el) el.scrollIntoView({block:'nearest'}); });
+  requestAnimationFrame(() => { const el = $('.episode-row.active'); if (el) el.scrollIntoView({ block: 'nearest' }); });
 }
 
 
 
 function renderEpisode() {
   const p = currentProject();
-  const ep = currentEpisode(); if(!ep) return;
+  const ep = currentEpisode(); if (!ep) return;
   $('#episodeTitle').value = ep.title; $('#episodeType').value = ep.type; $('#episodeBreadcrumb').textContent = getEpisodeDisplayTitle(ep, p);
-  $('#planEditor').value = ep.plan||'';
-  if($('#planMdPreview')) $('#planMdPreview').innerHTML = window.marked ? marked.parse(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.');
-  if($('#planMdPreview')) $('#planMdPreview').classList.remove('hidden');
-  if($('#planEditor')) $('#planEditor').classList.add('hidden');
-  if(!quill) {
+  $('#planEditor').value = ep.plan || '';
+  if ($('#planMdPreview')) $('#planMdPreview').innerHTML = window.marked ? marked.parse(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.') : escapeHtml(ep.plan || '이번 화 기획이나 메모를 자유롭게 적으세요.');
+  if ($('#planMdPreview')) $('#planMdPreview').classList.remove('hidden');
+  if ($('#planEditor')) $('#planEditor').classList.add('hidden');
+  if (!quill) {
     const icons = Quill.import('ui/icons');
-    
+
     // 서사 블록 (Narrative) Attributor 등록
     const Parchment = Quill.import('parchment');
     const ClassAttributor = Parchment.Attributor.Class;
@@ -858,7 +858,7 @@ function renderEpisode() {
 
     // 구분선(Divider) 블록 등록
     const BlockEmbed = Quill.import('blots/block/embed');
-    class DividerBlot extends BlockEmbed {}
+    class DividerBlot extends BlockEmbed { }
     DividerBlot.blotName = 'divider';
     DividerBlot.tagName = 'hr';
     Quill.register(DividerBlot);
@@ -876,7 +876,7 @@ function renderEpisode() {
     UiBlot.tagName = 'SPAN';
     UiBlot.className = 'n-ui';
     Quill.register(UiBlot, true);
-    
+
     quill = new Quill('#bodyEditor', {
       theme: 'snow',
       placeholder: '첫 문장을 시작하세요...',
@@ -891,7 +891,7 @@ function renderEpisode() {
     });
 
     // Custom Image Handler for Compression and Resizing
-    quill.getModule('toolbar').addHandler('image', function() {
+    quill.getModule('toolbar').addHandler('image', function () {
       const input = document.createElement('input');
       input.setAttribute('type', 'file');
       input.setAttribute('accept', 'image/*');
@@ -913,7 +913,7 @@ function renderEpisode() {
       };
     });
 
-    quill.getModule('toolbar').addHandler('divider', function() {
+    quill.getModule('toolbar').addHandler('divider', function () {
       let range = quill.getSelection(true);
       quill.insertText(range.index, '\n', Quill.sources.USER);
       quill.insertEmbed(range.index + 1, 'divider', true, Quill.sources.USER);
@@ -933,7 +933,7 @@ function renderEpisode() {
       }
     }, 100);
 
-    
+
     quill.root.addEventListener('paste', async (e) => {
       const items = (e.clipboardData || e.originalEvent.clipboardData).items;
       for (const item of items) {
@@ -964,7 +964,7 @@ function renderEpisode() {
       if (target) {
         let blot = Quill.find(target);
         if (blot) {
-          while(blot.parent && blot.parent.domNode !== quill.root) {
+          while (blot.parent && blot.parent.domNode !== quill.root) {
             blot = blot.parent;
           }
           let index = quill.getIndex(blot);
@@ -976,8 +976,8 @@ function renderEpisode() {
       }
     });
   }
-  
-  if (quill.root.innerHTML !== (ep.body||'<p><br></p>')) {
+
+  if (quill.root.innerHTML !== (ep.body || '<p><br></p>')) {
     if (ep.body && !ep.body.startsWith('<')) {
       // 기존 텍스트(마크다운 포함) 호환성: 줄바꿈을 p 태그로.
       const htmlText = ep.body.split('\n').map(line => line ? `<p>${escapeHtml(line)}</p>` : `<p><br></p>`).join('');
@@ -991,26 +991,26 @@ function renderEpisode() {
 
 
 
-function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId=id; touchProject(); queueSaveFS(); showEditor(); renderEpisode(); }
-function persistEditor() { if($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p=currentProject(), ep=currentEpisode(); if(!p||!ep) return; ep.title=$('#episodeTitle').value.trim()||'제목 없는 회차'; ep.type=$('#episodeType').value; ep.plan=$('#planEditor').value; ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; ep._dirty = true; }
-function updateProjectStats() { const p=currentProject(); if(!p) return; const total = p.episodes.reduce((s,e)=>s+stats(e.body||'').withSpaces,0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
-function updateBodyStats() { const s=stats(quill?quill.getText():$('#bodyEditor').innerText||''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
-function setViewMode(mode, save=true) { saveEditorScroll(); const p=currentProject(); if(p) p.viewMode=mode; $('#editorColumns').className=`editor-columns mode-${mode}`; $$('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); if(save) queueSaveFS(); restoreEditorScroll(); }
-function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 불길한 징조)'); if(title===null) return; const t = title.trim(); persistEditor(); const p=currentProject(); const ep=defaultEpisode('chapter', 1); ep.title = t; if(t.includes('프롤로그')) ep.type='prologue'; else if(t.includes('에필로그')) ep.type='epilogue'; p.episodes.push(ep); p.selectedEpisodeId=ep.id; p.episodes=orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('회차를 추가했어요.'); }
+function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId = id; touchProject(); queueSaveFS(); showEditor(); renderEpisode(); }
+function persistEditor() { if ($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p = currentProject(), ep = currentEpisode(); if (!p || !ep) return; ep.title = $('#episodeTitle').value.trim() || '제목 없는 회차'; ep.type = $('#episodeType').value; ep.plan = $('#planEditor').value; ep.body = quill ? quill.root.innerHTML : $('#bodyEditor').innerHTML; ep._dirty = true; }
+function updateProjectStats() { const p = currentProject(); if (!p) return; const total = p.episodes.reduce((s, e) => s + stats(e.body || '').withSpaces, 0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
+function updateBodyStats() { const s = stats(quill ? quill.getText() : $('#bodyEditor').innerText || ''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
+function setViewMode(mode, save = true) { saveEditorScroll(); const p = currentProject(); if (p) p.viewMode = mode; $('#editorColumns').className = `editor-columns mode-${mode}`; $$('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode)); if (save) queueSaveFS(); restoreEditorScroll(); }
+function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 불길한 징조)'); if (title === null) return; const t = title.trim(); persistEditor(); const p = currentProject(); const ep = defaultEpisode('chapter', 1); ep.title = t; if (t.includes('프롤로그')) ep.type = 'prologue'; else if (t.includes('에필로그')) ep.type = 'epilogue'; p.episodes.push(ep); p.selectedEpisodeId = ep.id; p.episodes = orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('회차를 추가했어요.'); }
 
-function addFrontMatter() { 
-  persistEditor(); 
-  const p=currentProject(); 
-  if(!p) return; 
-  const ep=defaultEpisode('frontmatter', 1); 
-  ep.title = '부속 페이지 (속표지/판권지)'; 
-  ep.body = '<p style="text-align: center;"><strong>(도서명)</strong></p><p style="text-align: center;"><br></p><p style="text-align: center;">지은이: (저자명)</p><p style="text-align: center;">발행일: 2026년 00월 00일</p><p style="text-align: center;">출판사: (출판사명)</p><p style="text-align: center;"><br></p><p style="text-align: center;">ⓒ 2026 (저자명). All rights reserved.</p>'; 
-  p.episodes.push(ep); 
-  p.selectedEpisodeId=ep.id; 
-  p.episodes=orderedEpisodes(p); 
-  touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); 
-  setTimeout(() => { const el = $('.episode-row.active'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);
-  showToast('부속 페이지를 맨 위에 추가했습니다. 위아래로 끌어다 놓아 순서를 변경하세요.'); 
+function addFrontMatter() {
+  persistEditor();
+  const p = currentProject();
+  if (!p) return;
+  const ep = defaultEpisode('frontmatter', 1);
+  ep.title = '부속 페이지 (속표지/판권지)';
+  ep.body = '<p style="text-align: center;"><strong>(도서명)</strong></p><p style="text-align: center;"><br></p><p style="text-align: center;">지은이: (저자명)</p><p style="text-align: center;">발행일: 2026년 00월 00일</p><p style="text-align: center;">출판사: (출판사명)</p><p style="text-align: center;"><br></p><p style="text-align: center;">ⓒ 2026 (저자명). All rights reserved.</p>';
+  p.episodes.push(ep);
+  p.selectedEpisodeId = ep.id;
+  p.episodes = orderedEpisodes(p);
+  touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode();
+  setTimeout(() => { const el = $('.episode-row.active'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+  showToast('부속 페이지를 맨 위에 추가했습니다. 위아래로 끌어다 놓아 순서를 변경하세요.');
 }
 if ($('#addFrontMatterBtn')) $('#addFrontMatterBtn').onclick = addFrontMatter;
 
@@ -1018,7 +1018,7 @@ function togglePlanDrawer() {
   saveEditorScroll();
   isPlanDrawerOpen = !isPlanDrawerOpen;
   $('#planDrawer').classList.toggle('open', isPlanDrawerOpen);
-  if(isPlanDrawerOpen) renderProjectPlan();
+  if (isPlanDrawerOpen) renderProjectPlan();
   restoreEditorScroll();
 }
 
@@ -1027,7 +1027,7 @@ function togglePlanDrawer() {
 // Export / Import
 async function exportBackup() {
   persistEditor(); queueSaveFS();
-  
+
   // 전체 백업이므로 안 불러온 모든 본문 로드
   let needsLoading = state.projects.some(p => p.episodes.some(e => e.body === undefined));
   if (needsLoading) {
@@ -1036,10 +1036,10 @@ async function exportBackup() {
       if (p.episodes.some(e => e.body === undefined)) await ensureProjectBodiesLoaded(p);
     }
   }
-  
+
   const jsonString = JSON.stringify(state, null, 2);
-  let blob = new Blob([jsonString], {type:'application/json'});
-  let filename = `야니의_소설창고_backup_${new Date().toISOString().slice(0,10)}.json`;
+  let blob = new Blob([jsonString], { type: 'application/json' });
+  let filename = `야니의_소설창고_backup_${new Date().toISOString().slice(0, 10)}.json`;
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
@@ -1048,29 +1048,29 @@ async function exportBackup() {
 }
 function remapImportedProject(project) {
   const episodeIdMap = new Map();
-  const episodes = (project.episodes||[]).map(ep => {
+  const episodes = (project.episodes || []).map(ep => {
     const newId = uid('ep'); episodeIdMap.set(ep.id, newId);
-    return { ...ep, id: newId, versions: (ep.versions||[]).map(v=>({ ...v, id: uid('ver') })) };
+    return { ...ep, id: newId, versions: (ep.versions || []).map(v => ({ ...v, id: uid('ver') })) };
   });
   return {
     ...project,
     id: uid('project'),
     selectedEpisodeId: episodeIdMap.get(project.selectedEpisodeId) || episodes[0]?.id || null,
-    planSections: (project.planSections||[]).map(sec=>({ ...sec, id: uid('plan') })),
+    planSections: (project.planSections || []).map(sec => ({ ...sec, id: uid('plan') })),
     episodes
   };
 }
 async function handleImport(mode) {
-  if(!importTempData || !importTempData.projects) return;
+  if (!importTempData || !importTempData.projects) return;
   try {
     let newState = mode === 'replace' ? importTempData : { ...state, projects: [...state.projects, ...importTempData.projects.map(remapImportedProject)] };
     state = newState;
     closeModal('importModal');
     showToast('클라우드에 백업 데이터를 동기화 중입니다...');
     await forceSaveAllSupabase();
-    if($('#libraryView').classList.contains('hidden')) { renderWorkspace(); } else { renderLibrary(); }
-    showToast(mode==='replace'?'백업 데이터를 완벽하게 복원했어요!':'백업 데이터를 추가했어요!');
-  } catch(e) {
+    if ($('#libraryView').classList.contains('hidden')) { renderWorkspace(); } else { renderLibrary(); }
+    showToast(mode === 'replace' ? '백업 데이터를 완벽하게 복원했어요!' : '백업 데이터를 추가했어요!');
+  } catch (e) {
     console.error(e);
     showToast('저장 중 오류가 발생했습니다.');
   }
@@ -1079,36 +1079,36 @@ async function handleImport(mode) {
 // Cover Settings
 function openCoverSettings(projectId) {
   coverTargetProjectId = projectId;
-  const p = state.projects.find(x=>x.id===projectId); if(!p) return;
+  const p = state.projects.find(x => x.id === projectId); if (!p) return;
   // Render preview
   const preview = $('#coverPreview');
-  if(p.cover) { preview.innerHTML = `<img src="${p.cover}" alt="표지"/>`; }
+  if (p.cover) { preview.innerHTML = `<img src="${p.cover}" alt="표지"/>`; }
   else { preview.innerHTML = coverPlaceholderMarkup(p); }
   // Color swatches
-  $('#coverColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${p.coverColor===c?'active':''}" data-cover-color="${c}" style="background:${c}"></button>`).join('');
+  $('#coverColors').innerHTML = COVER_COLORS.map(c => `<button class="cover-color-swatch ${p.coverColor === c ? 'active' : ''}" data-cover-color="${c}" style="background:${c}"></button>`).join('');
   $('#coverCustomColor').value = p.coverColor || DEFAULT_COVER_COLOR;
   $('#coverColorValue').textContent = p.coverColor || DEFAULT_COVER_COLOR;
-  $$('#coverColors [data-cover-color]').forEach(b=>b.onclick=()=>{
-    const c=b.dataset.coverColor; p.coverColor=c; p.cover='';
-    $$('#coverColors [data-cover-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-    $('#coverCustomColor').value=c; $('#coverColorValue').textContent=c;
+  $$('#coverColors [data-cover-color]').forEach(b => b.onclick = () => {
+    const c = b.dataset.coverColor; p.coverColor = c; p.cover = '';
+    $$('#coverColors [data-cover-color]').forEach(x => x.classList.remove('active')); b.classList.add('active');
+    $('#coverCustomColor').value = c; $('#coverColorValue').textContent = c;
     $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
     touchProject(); queueSaveFS(); renderLibrary();
   });
   openModal('coverModal');
 }
 $('#coverCustomColor').oninput = () => {
-  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
-  const c = $('#coverCustomColor').value; p.coverColor=c; p.cover='';
-  $('#coverColorValue').textContent=c;
-  $$('#coverColors [data-cover-color]').forEach(x=>x.classList.remove('active'));
+  const p = state.projects.find(x => x.id === coverTargetProjectId); if (!p) return;
+  const c = $('#coverCustomColor').value; p.coverColor = c; p.cover = '';
+  $('#coverColorValue').textContent = c;
+  $$('#coverColors [data-cover-color]').forEach(x => x.classList.remove('active'));
   $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
   touchProject(); queueSaveFS(); renderLibrary();
 };
 $('#uploadCoverBtn').onclick = () => $('#coverInput').click();
 $('#coverInput').onchange = () => {
-  const file = $('#coverInput').files?.[0]; if(!file) return;
-  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
+  const file = $('#coverInput').files?.[0]; if (!file) return;
+  const p = state.projects.find(x => x.id === coverTargetProjectId); if (!p) return;
   const reader = new FileReader();
   reader.onload = () => {
     const img = new Image();
@@ -1132,8 +1132,8 @@ $('#coverInput').onchange = () => {
   reader.readAsDataURL(file);
 };
 $('#removeCoverImageBtn').onclick = () => {
-  const p = state.projects.find(x=>x.id===coverTargetProjectId); if(!p) return;
-  p.cover='';
+  const p = state.projects.find(x => x.id === coverTargetProjectId); if (!p) return;
+  p.cover = '';
   $('#coverPreview').innerHTML = coverPlaceholderMarkup(p);
   touchProject(); queueSaveFS(); renderLibrary();
   showToast('표지 이미지를 지웠어요.');
@@ -1161,7 +1161,7 @@ async function openAttachedPdf(sectionId) {
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
-    } catch(e) {
+    } catch (e) {
       console.error('PDF 다운로드 에러', e);
       window.open(section.pdfUrl, '_blank');
     }
@@ -1178,7 +1178,7 @@ async function openAttachedPdf(sectionId) {
       const file = await pdfFileHandle.getFile();
       const blobUrl = URL.createObjectURL(file);
       window.open(blobUrl, '_blank');
-    } catch(e) {
+    } catch (e) {
       console.error(e);
       showToast('파일을 찾을 수 없습니다.');
     }
@@ -1218,25 +1218,25 @@ function parseBeatSheet(text) {
 
 function matchEpisodeForBeat(header, episodes, index, totalBlocks) {
   const h = header.trim().toLowerCase();
-  
+
   if (h.includes('프롤로그') || h.includes('prologue')) {
     return episodes.find(e => e.type === 'prologue' || (e.title && (e.title.includes('프롤로그') || e.title.toLowerCase().includes('prologue')))) || null;
   }
   if (h.includes('에필로그') || h.includes('epilogue')) {
     return episodes.find(e => e.type === 'epilogue' || (e.title && (e.title.includes('에필로그') || e.title.toLowerCase().includes('epilogue')))) || null;
   }
-  
+
   // 숫자화 매핑: "1화", "1회차", "제1장", "1" 등
   const numMatch = h.match(/(?:제)?\s*(\d+)\s*(?:화|회차|장|회|편)?/);
   if (numMatch) {
     const num = parseInt(numMatch[1]);
-    
+
     // 스마트 타이틀 매칭
     const matchedByTitle = episodes.find(e => {
       if (!e.title) return false;
       // 프롤로그/에필로그는 숫자 매칭에서 무조건 제외
       if (e.title.includes('프롤로그') || e.title.includes('에필로그')) return false;
-      
+
       const regex = /(\d+)\s*(?:화|회|장|편)/g;
       let match;
       while ((match = regex.exec(e.title)) !== null) {
@@ -1245,17 +1245,17 @@ function matchEpisodeForBeat(header, episodes, index, totalBlocks) {
       return false;
     });
     if (matchedByTitle) return matchedByTitle;
-    
+
     // 순서 기반 매칭 시, 프롤로그/에필로그 이름이 들어간 챕터는 제외
     const chapters = episodes.filter(e => {
-       if (e.type !== 'chapter') return false;
-       const t = e.title ? e.title.replace(/\s+/g, '') : '';
-       if (t.includes('프롤로그') || t.includes('에필로그')) return false;
-       return true;
+      if (e.type !== 'chapter') return false;
+      const t = e.title ? e.title.replace(/\s+/g, '') : '';
+      if (t.includes('프롤로그') || t.includes('에필로그')) return false;
+      return true;
     });
     return chapters[num - 1] || null;
   }
-  
+
   // 제목 부분 매핑 (빈 문자열 제외)
   const exactMatched = episodes.find(e => {
     const t = e.title ? e.title.trim().toLowerCase() : '';
@@ -1273,10 +1273,10 @@ function matchEpisodeForBeat(header, episodes, index, totalBlocks) {
     } else {
       const targetNum = index;
       const chapters = episodes.filter(e => {
-         if (e.type !== 'chapter') return false;
-         const t = e.title ? e.title.replace(/\s+/g, '') : '';
-         if (t.includes('프롤로그') || t.includes('에필로그')) return false;
-         return true;
+        if (e.type !== 'chapter') return false;
+        const t = e.title ? e.title.replace(/\s+/g, '') : '';
+        if (t.includes('프롤로그') || t.includes('에필로그')) return false;
+        return true;
       });
       return chapters[targetNum - 1] || null;
     }
@@ -1287,12 +1287,12 @@ function matchEpisodeForBeat(header, episodes, index, totalBlocks) {
 
 function distributeBeatSheet(sectionId) {
   const p = currentProject();
-  
+
   // 편집 중인 내용(textarea)이 있다면 실시간으로 반영 (블러 이벤트 전에 배포 버튼 누를 수 있으므로)
   const tx = document.querySelector(`.plan-section-body[data-bdy="${sectionId}"]`);
-  if(tx) {
+  if (tx) {
     const secObj = (p.planSections || []).find(x => x.id === sectionId);
-    if(secObj) secObj.body = tx.value;
+    if (secObj) secObj.body = tx.value;
   }
 
   const section = (p.planSections || []).find(x => x.id === sectionId);
@@ -1314,7 +1314,7 @@ function distributeBeatSheet(sectionId) {
         if (i === 0) type = 'prologue';
         else if (i === blocks.length - 1 && blocks.length > 1) type = 'epilogue';
       }
-      
+
       ep = defaultEpisode(type, 0);
       ep.title = block.header;
       p.episodes.push(ep);
@@ -1355,20 +1355,20 @@ function syncPlanToBeatSheet(ep) {
   if (!p || !p.planSections) return;
   const bsSection = p.planSections.find(s => s.type === 'beatsheet');
   if (!bsSection || !bsSection.body) return;
-  
+
   const blocks = parseBeatSheet(bsSection.body);
   if (!blocks.length) return;
-  
+
   const regex = /(?:^|\n)### 📋 비트시트 — ([^\n]+)\n([\s\S]*?)(?:\n\n---\n\n|$)/;
   const match = ep.plan.match(regex);
   if (!match) return;
-  
+
   const header = match[1].trim();
   const newBody = match[2].trim();
-  
+
   const blockIndex = blocks.findIndex(b => b.header === header);
   if (blockIndex === -1) return;
-  
+
   if (blocks[blockIndex].body !== newBody) {
     blocks[blockIndex].body = newBody;
     bsSection.body = blocks.map(b => `## ${b.header}\n${b.body}`).join('\n\n');
@@ -1390,8 +1390,8 @@ function renderProjectPlan() {
     const wrapper = $('#planBodyWrapper');
     if (wrapper) wrapper.appendChild(list);
   }
-  const sections = p.planSections||[];
-  if(!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
+  const sections = p.planSections || [];
+  if (!sections.length) { list.innerHTML = `<div class="plan-empty">기획 항목이 없어요.</div>`; return; }
   list.innerHTML = sections.map(x => {
     const isPdf = x.type === 'pdf_attachment';
     const isBeat = x.type === 'beatsheet';
@@ -1403,11 +1403,11 @@ function renderProjectPlan() {
          <textarea class="plan-section-body hidden" data-bdy="${x.id}">${escapeHtml(x.body)}</textarea>`;
     }
     const distributeBtn = isBeat
-      ? (x.distributed 
-          ? `<button class="secondary" style="margin-right:6px; padding:4px 10px; font-size:11px; height:24px; border-radius:4px; line-height:1;" data-distribute-beat="${x.id}">✅ 재배포</button>`
-          : `<button class="primary" style="margin-right:6px; padding:4px 10px; font-size:11px; height:24px; border-radius:4px; line-height:1;" data-distribute-beat="${x.id}">🚀 배포하기</button>`)
+      ? (x.distributed
+        ? `<button class="secondary" style="margin-right:6px; padding:4px 10px; font-size:11px; height:24px; border-radius:4px; line-height:1;" data-distribute-beat="${x.id}">✅ 재배포</button>`
+        : `<button class="primary" style="margin-right:6px; padding:4px 10px; font-size:11px; height:24px; border-radius:4px; line-height:1;" data-distribute-beat="${x.id}">🚀 배포하기</button>`)
       : '';
-    return `<article class="plan-accordion ${x.open?'open':''}" data-plan-sec="${x.id}">
+    return `<article class="plan-accordion ${x.open ? 'open' : ''}" data-plan-sec="${x.id}">
     <div class="plan-accordion-head">
       <button class="accordion-toggle" data-tgl="${x.id}">›</button>
       <input class="plan-section-title" data-ttl="${x.id}" value="${escapeHtml(x.title)}"/>
@@ -1426,27 +1426,27 @@ function renderProjectPlan() {
     ta.classList.remove('hidden');
     ta.focus();
   });
-  $$('[data-tgl]').forEach(b=>b.onclick=()=>{ const s=sections.find(x=>x.id===b.dataset.tgl); s.open=!s.open; touchProject(); queueSaveFS(); renderProjectPlan(); });
-  $$('[data-ttl]').forEach(i=>i.oninput=()=>{ sections.find(x=>x.id===i.dataset.ttl).title=i.value; touchProject(); queueSaveFS(); });
-  $$('[data-bdy]').forEach(t=>{
-    t.oninput=()=>{ sections.find(x=>x.id===t.dataset.bdy).body=t.value; touchProject(); queueSaveFS(); };
-    t.onblur=()=>{
+  $$('[data-tgl]').forEach(b => b.onclick = () => { const s = sections.find(x => x.id === b.dataset.tgl); s.open = !s.open; touchProject(); queueSaveFS(); renderProjectPlan(); });
+  $$('[data-ttl]').forEach(i => i.oninput = () => { sections.find(x => x.id === i.dataset.ttl).title = i.value; touchProject(); queueSaveFS(); });
+  $$('[data-bdy]').forEach(t => {
+    t.oninput = () => { sections.find(x => x.id === t.dataset.bdy).body = t.value; touchProject(); queueSaveFS(); };
+    t.onblur = () => {
       // blur 시 최신값 저장 보장
-      const sec = sections.find(x=>x.id===t.dataset.bdy);
-      if(sec) { sec.body=t.value; touchProject(); queueSaveFS(); }
+      const sec = sections.find(x => x.id === t.dataset.bdy);
+      if (sec) { sec.body = t.value; touchProject(); queueSaveFS(); }
       t.classList.add('hidden');
       const mdv = t.previousElementSibling;
       mdv.classList.remove('hidden');
       mdv.innerHTML = window.marked ? marked.parse(t.value) : escapeHtml(t.value);
     };
-    requestAnimationFrame(()=>autosizePlanSection(t));
+    requestAnimationFrame(() => autosizePlanSection(t));
   });
-  $$('[data-del]').forEach(b=>b.onclick=()=>{ 
-    if(confirm('항목을 삭제할까요?')){ 
+  $$('[data-del]').forEach(b => b.onclick = () => {
+    if (confirm('항목을 삭제할까요?')) {
       const delId = b.dataset.del;
-      const sec = p.planSections.find(x=>x.id===delId);
+      const sec = p.planSections.find(x => x.id === delId);
       if (sec && sec.type === 'beatsheet') {
-        if(confirm('이 비트시트로 각 회차에 배포되었던 내용도 모두 삭제할까요?\n(회차 기획에 배포된 비트시트만 안전하게 지워집니다)')) {
+        if (confirm('이 비트시트로 각 회차에 배포되었던 내용도 모두 삭제할까요?\n(회차 기획에 배포된 비트시트만 안전하게 지워집니다)')) {
           p.episodes.forEach(ep => {
             if (ep.plan) {
               ep.plan = removeBeatSheetFromPlan(ep.plan);
@@ -1455,20 +1455,20 @@ function renderProjectPlan() {
           });
         }
       }
-      p.planSections=p.planSections.filter(x=>x.id!==delId); 
-      touchProject(); queueSaveFS(); renderProjectPlan(); 
+      p.planSections = p.planSections.filter(x => x.id !== delId);
+      touchProject(); queueSaveFS(); renderProjectPlan();
     }
   });
-  $$('[data-distribute-beat]').forEach(b=>b.onclick=(e)=>{
+  $$('[data-distribute-beat]').forEach(b => b.onclick = (e) => {
     e.stopPropagation(); e.preventDefault();
     distributeBeatSheet(b.dataset.distributeBeat);
   });
-  $$('[data-open-pdf]').forEach(b=>b.onclick=()=>openAttachedPdf(b.dataset.openPdf));
+  $$('[data-open-pdf]').forEach(b => b.onclick = () => openAttachedPdf(b.dataset.openPdf));
 }
 
 function updateCommentBadge() {
   const p = currentProject();
-  if(!p) return;
+  if (!p) return;
   const count = p.episodes.reduce((acc, ep) => acc + (ep.comments?.length || 0), 0);
   const badge = $('#pcCommentBadge');
   if (count > 0) {
@@ -1490,16 +1490,16 @@ function renderPCCommentList() {
     if (wrapper) wrapper.appendChild(list);
   }
   if (!p) return;
-  
+
   let html = '';
   let total = 0;
   p.episodes.forEach((ep, i) => {
     const comments = ep.comments || [];
     if (comments.length === 0) return;
     total += comments.length;
-    
+
     html += `<div style="margin-bottom:16px;">
-      <h3 style="font-size:13px;color:var(--c-sub);margin:0 0 8px;">${ep.type==='prologue'?'프':ep.type==='epilogue'?'에':(i+1)+'화'} - ${escapeHtml(ep.title)}</h3>
+      <h3 style="font-size:13px;color:var(--c-sub);margin:0 0 8px;">${ep.type === 'prologue' ? '프' : ep.type === 'epilogue' ? '에' : (i + 1) + '화'} - ${escapeHtml(ep.title)}</h3>
       <div style="display:grid;gap:8px;">
         ${comments.map(c => `
           <div class="comment-item" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;" onclick="gotoComment('${ep.id}', '${escapeHtml(c.quote).replace(/'/g, "\\'")}')">
@@ -1511,7 +1511,7 @@ function renderPCCommentList() {
       </div>
     </div>`;
   });
-  
+
   if (total === 0) {
     list.innerHTML = `<div class="plan-empty">등록된 코멘트가 없어요.<br><br>📖 이북 뷰어에서 텍스트를 선택해<br>코멘트를 남겨보세요.</div>`;
   } else {
@@ -1528,7 +1528,7 @@ function gotoComment(epId, quote) {
     renderEpisodeList();
     renderEditor();
   }
-  
+
   // 본문 이동
   const editor = $('#bodyEditor');
   if (window.quill) {
@@ -1547,38 +1547,38 @@ function gotoComment(epId, quote) {
 
 // Copy Logic
 function buildEpisodeText(ep, mode) {
-  const t=cleanText(ep.title), p=cleanText(ep.plan), b=cleanText(ep.body);
-  if(mode==='body') return b; if(mode==='plan') return p; if(mode==='plan-body') return `[기획]\n${p}\n\n[본문]\n${t}\n\n${b}`.trim(); return `${t}\n\n${b}`.trim();
+  const t = cleanText(ep.title), p = cleanText(ep.plan), b = cleanText(ep.body);
+  if (mode === 'body') return b; if (mode === 'plan') return p; if (mode === 'plan-body') return `[기획]\n${p}\n\n[본문]\n${t}\n\n${b}`.trim(); return `${t}\n\n${b}`.trim();
 }
 async function copyText(text, msg) {
-  try { await navigator.clipboard.writeText(text); } catch(e) { const a=document.createElement('textarea'); a.value=text; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); }
+  try { await navigator.clipboard.writeText(text); } catch (e) { const a = document.createElement('textarea'); a.value = text; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); }
   showToast(msg);
 }
 
 // Bindings
-$('#newProjectBtn').onclick = () => { $('#newProjectColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${c===DEFAULT_COVER_COLOR?'active':''}" data-new-color="${c}" style="background:${c}"></button>`).join(''); $$('[data-new-color]').forEach(b=>b.onclick=()=>{$$('[data-new-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');}); openModal('newProjectModal'); setTimeout(()=>$('#newProjectTitle').focus(),30); };
+$('#newProjectBtn').onclick = () => { $('#newProjectColors').innerHTML = COVER_COLORS.map(c => `<button class="cover-color-swatch ${c === DEFAULT_COVER_COLOR ? 'active' : ''}" data-new-color="${c}" style="background:${c}"></button>`).join(''); $$('[data-new-color]').forEach(b => b.onclick = () => { $$('[data-new-color]').forEach(x => x.classList.remove('active')); b.classList.add('active'); }); openModal('newProjectModal'); setTimeout(() => $('#newProjectTitle').focus(), 30); };
 $('#createProjectBtn').onclick = async () => {
-  const p = { id:uid('project'), title:$('#newProjectTitle')?.value.trim()||'제목 없는 작품', status:$('#newProjectStatus')?.value||'serializing', cover:'', coverColor: $('.cover-color-swatch.active')?.dataset.newColor||DEFAULT_COVER_COLOR, updatedAt:Date.now(), selectedEpisodeId:null, viewMode:'split', planSections:[], episodes:[], _dirty: true };
+  const p = { id: uid('project'), title: $('#newProjectTitle')?.value.trim() || '제목 없는 작품', status: $('#newProjectStatus')?.value || 'serializing', cover: '', coverColor: $('.cover-color-swatch.active')?.dataset.newColor || DEFAULT_COVER_COLOR, updatedAt: Date.now(), selectedEpisodeId: null, viewMode: 'split', planSections: [], episodes: [], _dirty: true };
   const ep = defaultEpisode('prologue'); p.episodes.push(ep); p.selectedEpisodeId = ep.id;
   state.projects.unshift(p);
-  closeModal('newProjectModal'); if ($('#newProjectTitle')) $('#newProjectTitle').value='';
+  closeModal('newProjectModal'); if ($('#newProjectTitle')) $('#newProjectTitle').value = '';
   showToast('새 작품을 저장 중...');
   await forceSaveAllSupabase(); // 서재로 돌아갔을 때 즉시 표시되도록 저장 완료 보장
   openProject(p.id); showToast('새 작품을 만들었어요.');
 };
 $('#backLibraryBtn').onclick = showLibrary;
 libraryFilter = 'all'; // 서재 기본 필터를 '모든 작품'으로
-$$('.filter-btn').forEach(b=>b.onclick=()=>{ libraryFilter=b.dataset.filter; renderLibrary(); });
+$$('.filter-btn').forEach(b => b.onclick = () => { libraryFilter = b.dataset.filter; renderLibrary(); });
 
 // Editor bindings
-$('#projectTitle').oninput = () => { const p=currentProject(); p.title=$('#projectTitle').value||'제목 없는 작품'; $('#projectBreadcrumb').textContent=p.title; touchProject(); queueSaveFS(); };
-$('#projectStatus').onchange = () => { currentProject().status=$('#projectStatus').value; touchProject(); queueSaveFS(); };
+$('#projectTitle').oninput = () => { const p = currentProject(); p.title = $('#projectTitle').value || '제목 없는 작품'; $('#projectBreadcrumb').textContent = p.title; touchProject(); queueSaveFS(); };
+$('#projectStatus').onchange = () => { currentProject().status = $('#projectStatus').value; touchProject(); queueSaveFS(); };
 $('#addEpisodeBtn').onclick = addEpisode;
 $('#cleanEmptyEpsBtn').onclick = async () => {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
   const ghosts = p.episodes.filter(e => !e.body || e.body.replace(/<[^>]*>?/gm, '').trim() === '');
-  if(ghosts.length === 0) { showToast('정리할 빈 회차가 없습니다.'); return; }
-  if(!confirm(`본문 내용이 없는 빈 회차 ${ghosts.length}개를 모두 삭제하시겠습니까?\n(기획 및 메모가 적힌 회차도 본문이 없으면 삭제됩니다)`)) return;
+  if (ghosts.length === 0) { showToast('정리할 빈 회차가 없습니다.'); return; }
+  if (!confirm(`본문 내용이 없는 빈 회차 ${ghosts.length}개를 모두 삭제하시겠습니까?\n(기획 및 메모가 적힌 회차도 본문이 없으면 삭제됩니다)`)) return;
   $('#saveStatus').textContent = '빈 회차 정리 중...';
   let deleted = 0;
   for (const ep of ghosts) {
@@ -1596,12 +1596,12 @@ $('#cleanEmptyEpsBtn').onclick = async () => {
   touchProject(); queueSaveFS(); renderEpisodeList();
   showToast(`${deleted}개의 빈 회차가 깔끔하게 정리되었습니다! 🧹`);
 };
-$('#episodeTitle').oninput = () => { const ep=currentEpisode(); ep.title=$('#episodeTitle').value; $('#episodeBreadcrumb').textContent=$('#episodeTitle').value||'제목 없는 회차'; ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
-$('#episodeType').onchange = () => { const ep=currentEpisode(); ep.type=$('#episodeType').value; currentProject().episodes=orderedEpisodes(); ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
+$('#episodeTitle').oninput = () => { const ep = currentEpisode(); ep.title = $('#episodeTitle').value; $('#episodeBreadcrumb').textContent = $('#episodeTitle').value || '제목 없는 회차'; ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
+$('#episodeType').onchange = () => { const ep = currentEpisode(); ep.type = $('#episodeType').value; currentProject().episodes = orderedEpisodes(); ep._dirty = true; touchProject(); renderEpisodeList(); queueSaveFS(); };
 
 // planMdPreview 클릭 → planEditor 전환 (인라인 onclick 대신 안전한 JS 이벤트)
 $('#planMdPreview').onclick = () => {
-  const ep = currentEpisode(); if(!ep) return;
+  const ep = currentEpisode(); if (!ep) return;
   $('#planEditor').value = ep.plan || '';
   $('#planMdPreview').classList.add('hidden');
   $('#planEditor').classList.remove('hidden');
@@ -1610,10 +1610,10 @@ $('#planMdPreview').onclick = () => {
 
 $('#planEditor').oninput = () => {
   const ep = currentEpisode();
-  if(!ep) return;
+  if (!ep) return;
   ep.plan = $('#planEditor').value;
   ep._dirty = true;
-  touchProject(); 
+  touchProject();
   queueSaveFS();
 };
 $('#planEditor').onblur = () => {
@@ -1632,8 +1632,8 @@ $('#planEditor').onblur = () => {
     ? marked.parse($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.')
     : escapeHtml($('#planEditor').value || '이번 화 기획이나 메모를 자유롭게 적으세요.');
 };
-$('#bodyEditor').oninput = () => { const ep=currentEpisode(); ep.body=quill?quill.root.innerHTML:$('#bodyEditor').innerHTML; ep._dirty = true; touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
-$$('.view-tab').forEach(b=>b.onclick=()=>setViewMode(b.dataset.mode));
+$('#bodyEditor').oninput = () => { const ep = currentEpisode(); ep.body = quill ? quill.root.innerHTML : $('#bodyEditor').innerHTML; ep._dirty = true; touchProject(); updateBodyStats(); renderEpisodeList(); queueSaveFS(); };
+$$('.view-tab').forEach(b => b.onclick = () => setViewMode(b.dataset.mode));
 $('#toggleDrawerBtn').onclick = togglePlanDrawer;
 $('#openPCEbookBtn').onclick = () => openEbook(currentProject().id);
 if ($('#closePlanDrawerBtn')) $('#closePlanDrawerBtn').onclick = togglePlanDrawer;
@@ -1643,17 +1643,17 @@ $('#tabPlanBtn').onclick = () => {
   $('#tabPlanBtn').style.color = '';
   $('#tabCommentBtn').classList.remove('active');
   $('#tabCommentBtn').style.color = 'var(--c-muted)';
-  if($('#projectPlanList')) $('#projectPlanList').classList.remove('hidden');
+  if ($('#projectPlanList')) $('#projectPlanList').classList.remove('hidden');
   $('#planToolbar').classList.remove('hidden');
-  if($('#projectCommentList')) $('#projectCommentList').classList.add('hidden');
+  if ($('#projectCommentList')) $('#projectCommentList').classList.add('hidden');
 };
 $('#tabCommentBtn').onclick = () => {
   $('#tabCommentBtn').classList.add('active');
   $('#tabCommentBtn').style.color = '';
   $('#tabPlanBtn').classList.remove('active');
   $('#tabPlanBtn').style.color = 'var(--c-muted)';
-  if($('#projectCommentList')) $('#projectCommentList').classList.remove('hidden');
-  if($('#projectPlanList')) $('#projectPlanList').classList.add('hidden');
+  if ($('#projectCommentList')) $('#projectCommentList').classList.remove('hidden');
+  if ($('#projectPlanList')) $('#projectPlanList').classList.add('hidden');
   $('#planToolbar').classList.add('hidden');
   renderPCCommentList();
 };
@@ -1664,19 +1664,19 @@ $('#addBeatSheetBtn').onclick = () => {
   touchProject(); queueSaveFS(); renderProjectPlan();
   showToast('비트시트 항목이 추가됐어요. ## 헤더로 회차를 구분하여 작성하세요.');
 };
-$('#copyAllPlanBtn').onclick = () => { const txt = (currentProject().planSections||[]).map(x=>`${cleanText(x.title)}\n\n${cleanText(x.body)}`).join('\n\n\n'); copyText(txt, '전체 기획을 복사했어요.'); };
+$('#copyAllPlanBtn').onclick = () => { const txt = (currentProject().planSections || []).map(x => `${cleanText(x.title)}\n\n${cleanText(x.body)}`).join('\n\n\n'); copyText(txt, '전체 기획을 복사했어요.'); };
 
 
 function getMarkdownForEpisode(ep) {
   if (!ep.body || ep.body.trim() === '' || ep.body === '<p><br></p>') return '';
-  
+
   let html = ep.body;
   const norm = (s) => s.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
   if (ep.title) {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     const titleNorm = norm(ep.title);
-    
+
     // 헤딩 또는 첫 단락 중복 제목 제거
     const headings = tempDiv.querySelectorAll('h1, h2');
     let hasTitle = false;
@@ -1690,16 +1690,16 @@ function getMarkdownForEpisode(ep) {
     }
     html = tempDiv.innerHTML;
   }
-  
+
   let md = html;
-  
+
   // 인라인 스타일
   md = md.replace(/<strong>([\s\S]*?)<\/strong>/g, '**$1**');
   md = md.replace(/<em>([\s\S]*?)<\/em>/g, '*$1*');
   md = md.replace(/<s>([\s\S]*?)<\/s>/g, '~~$1~~');
   md = md.replace(/<u>([\s\S]*?)<\/u>/g, '$1'); // MD는 밑줄 비표준
   md = md.replace(/<span class="n-ui"[^>]*>([\s\S]*?)<\/span>/g, '`$1`');
-  
+
   // <br> 태그를 줄바꿈 문자로 변경
   md = md.replace(/<br\s*\/?>/gi, '\n');
 
@@ -1716,31 +1716,31 @@ function getMarkdownForEpisode(ep) {
   md = md.replace(/<p class="n-email-body"[^>]*>([\s\S]*?)<\/p>/g, '> [이메일 본문] $1\n\n');
   md = md.replace(/<p class="n-doc"[^>]*>([\s\S]*?)<\/p>/g, '> [서신] $1\n\n');
   md = md.replace(/<p class="n-field"[^>]*>([\s\S]*?)<\/p>/g, '> [입력칸] $1\n\n');
-  
+
   // 헤더
   md = md.replace(/<h1>([\s\S]*?)<\/h1>/g, '# $1\n\n');
   md = md.replace(/<h2>([\s\S]*?)<\/h2>/g, '## $1\n\n');
   md = md.replace(/<h3>([\s\S]*?)<\/h3>/g, '### $1\n\n');
-  
+
   // 일반 단락
   md = md.replace(/<p><\/p>/g, '\n\n');
   md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/g, '$1\n\n');
-  
+
   // 남은 태그 제거 및 엔티티 복원
   md = md.replace(/<[^>]+>/g, '');
   md = md.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-  
+
   // 연속된 개행 정리
   md = md.replace(/\n{3,}/g, '\n\n');
-  
+
   return `## ${ep.title}\n\n` + md.trim();
 }
 
 function buildEpisodeText(ep, mode) {
-  const t=cleanText(ep.title), p=cleanText(ep.plan), b=cleanText(ep.body);
-  if(mode==='plan') return p;
-  if(mode==='body') return b;
-  if(mode==='plan-body') return p?`${p}\n\n${b}`:b;
+  const t = cleanText(ep.title), p = cleanText(ep.plan), b = cleanText(ep.body);
+  if (mode === 'plan') return p;
+  if (mode === 'body') return b;
+  if (mode === 'plan-body') return p ? `${p}\n\n${b}` : b;
   return `${t}\n\n${b}`;
 }
 
@@ -1749,8 +1749,8 @@ $('#quickCopyBodyBtn').onclick = () => {
   copyText(md, '본문을 복사했어요. (마크다운)');
 };
 $('#copyDropdownToggle').onclick = (e) => { e.stopPropagation(); $('#copyDropdownMenu').classList.toggle('show'); };
-$$('[data-copy]').forEach(b=>b.onclick=(e)=>{ 
-  e.stopPropagation(); 
+$$('[data-copy]').forEach(b => b.onclick = (e) => {
+  e.stopPropagation();
   const mode = b.dataset.copy;
   const ep = currentEpisode();
   if (mode.includes('body')) {
@@ -1761,41 +1761,41 @@ $$('[data-copy]').forEach(b=>b.onclick=(e)=>{
   } else {
     copyText(buildEpisodeText(ep, mode), '복사했어요.');
   }
-  $('#copyDropdownMenu').classList.remove('show'); 
+  $('#copyDropdownMenu').classList.remove('show');
 });
-window.addEventListener('click', (e) => { if(!e.target.closest('.dropdown-container')) $('#copyDropdownMenu')?.classList.remove('show'); });
+window.addEventListener('click', (e) => { if (!e.target.closest('.dropdown-container')) $('#copyDropdownMenu')?.classList.remove('show'); });
 
 // Search
 $('#openSearchBtn').onclick = () => { openModal('searchModal'); $('#searchInput').focus(); };
 $('#searchInput').oninput = () => {
   const q = $('#searchInput').value.trim().toLowerCase();
-  if(!q) { $('#searchResults').innerHTML=''; return; }
+  if (!q) { $('#searchResults').innerHTML = ''; return; }
   const res = [], p = currentProject();
-  p.episodes.forEach(ep=>[{type:'본문',t:ep.body||''},{type:'기획',t:ep.plan||''}].forEach(src=>{
-    let pos=0; const lower = src.t.toLowerCase();
-    while((pos=lower.indexOf(q,pos))!==-1 && res.length<15) {
-      const snip = src.t.slice(Math.max(0,pos-30), Math.min(src.t.length, pos+q.length+30));
+  p.episodes.forEach(ep => [{ type: '본문', t: ep.body || '' }, { type: '기획', t: ep.plan || '' }].forEach(src => {
+    let pos = 0; const lower = src.t.toLowerCase();
+    while ((pos = lower.indexOf(q, pos)) !== -1 && res.length < 15) {
+      const snip = src.t.slice(Math.max(0, pos - 30), Math.min(src.t.length, pos + q.length + 30));
       const marked = escapeHtml(snip).replace(new RegExp(escapeHtml(q), 'gi'), '<mark>$&</mark>');
-      res.push({ kind:'ep', ep, type:src.type, html: marked }); pos+=q.length;
+      res.push({ kind: 'ep', ep, type: src.type, html: marked }); pos += q.length;
     }
   }));
-  (p.planSections||[]).forEach(sec=>{
-    const txt = `${sec.title} ${sec.body}`, lower = txt.toLowerCase(); let pos=0;
-    while((pos=lower.indexOf(q,pos))!==-1 && res.length<20) {
-      const snip = txt.slice(Math.max(0,pos-30), Math.min(txt.length, pos+q.length+30));
+  (p.planSections || []).forEach(sec => {
+    const txt = `${sec.title} ${sec.body}`, lower = txt.toLowerCase(); let pos = 0;
+    while ((pos = lower.indexOf(q, pos)) !== -1 && res.length < 20) {
+      const snip = txt.slice(Math.max(0, pos - 30), Math.min(txt.length, pos + q.length + 30));
       const marked = escapeHtml(snip).replace(new RegExp(escapeHtml(q), 'gi'), '<mark>$&</mark>');
-      res.push({ kind:'plan', sec, type:'작품 기획', html: marked }); pos+=q.length;
+      res.push({ kind: 'plan', sec, type: '작품 기획', html: marked }); pos += q.length;
     }
   });
-  $('#searchResults').innerHTML = res.map((r,i)=>`<button class="search-result" data-sr="${i}"><strong>${escapeHtml(r.kind==='ep'?r.ep.title:r.sec.title)} · ${r.type}</strong><span>${r.html}</span></button>`).join('');
-  $$('[data-sr]').forEach(b=>b.onclick=()=>{
-    const r=res[Number(b.dataset.sr)]; closeModal('searchModal');
-    if(r.kind==='plan') {
-      if(!isPlanDrawerOpen) togglePlanDrawer();
+  $('#searchResults').innerHTML = res.map((r, i) => `<button class="search-result" data-sr="${i}"><strong>${escapeHtml(r.kind === 'ep' ? r.ep.title : r.sec.title)} · ${r.type}</strong><span>${r.html}</span></button>`).join('');
+  $$('[data-sr]').forEach(b => b.onclick = () => {
+    const r = res[Number(b.dataset.sr)]; closeModal('searchModal');
+    if (r.kind === 'plan') {
+      if (!isPlanDrawerOpen) togglePlanDrawer();
       r.sec.open = true; renderProjectPlan();
-      setTimeout(()=>{$(`[data-plan-sec="${r.sec.id}"]`)?.scrollIntoView({behavior:'smooth'});}, 100);
+      setTimeout(() => { $(`[data-plan-sec="${r.sec.id}"]`)?.scrollIntoView({ behavior: 'smooth' }); }, 100);
     } else {
-      selectEpisode(r.ep.id); setViewMode(r.type==='본문'?'body':'plan');
+      selectEpisode(r.ep.id); setViewMode(r.type === '본문' ? 'body' : 'plan');
     }
   });
 };
@@ -1808,10 +1808,10 @@ function showEditor() { $('#manuscriptView').classList.remove('active'); $('#edi
 $('#openManuscriptBtn').onclick = () => {
   persistEditor(); queueSaveFS();
   $('#editorView').classList.add('hidden'); $('#manuscriptView').classList.add('active');
-  const eps = orderedEpisodes().filter(e=>cleanText(e.body));
+  const eps = orderedEpisodes().filter(e => cleanText(e.body));
   $('#manuscriptTitle').textContent = currentProject().title;
-  $('#manuscriptMeta').textContent = `총 ${eps.reduce((s,e)=>s+stats(e.body).withSpaces,0).toLocaleString()}자 · ${eps.length}회차`;
-  $('#manuscriptContent').innerHTML = eps.map(e=>`<article class="manuscript-ep"><div class="ql-editor">${e.body||''}</div></article>`).join('');
+  $('#manuscriptMeta').textContent = `총 ${eps.reduce((s, e) => s + stats(e.body).withSpaces, 0).toLocaleString()}자 · ${eps.length}회차`;
+  $('#manuscriptContent').innerHTML = eps.map(e => `<article class="manuscript-ep"><div class="ql-editor">${e.body || ''}</div></article>`).join('');
 };
 $('#backFromManuscript').onclick = showEditor;
 $('#copyManuscriptFull').onclick = () => {
@@ -1871,7 +1871,7 @@ const PAPER_SIZES = {
 
 // ── 스튜디오 열기 ─────────────────────────────────────────────
 async function showPodStudio() {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
   const set = getPublishSettings(p);
 
   // 브레드크럼
@@ -1929,9 +1929,9 @@ async function showPodStudio() {
   const loadImg = src => src ? new Promise(res => {
     const img = new Image(); img.onload = () => res(img); img.onerror = () => res(null); img.src = src;
   }) : Promise.resolve(null);
-  
+
   const coverOptions = set.coverOptions || {};
-  
+
   [currentFrontCoverObj, currentBackCoverObj] = await Promise.all([
     loadImg(coverOptions.frontOriginal),
     loadImg(coverOptions.backOriginal)
@@ -1969,25 +1969,25 @@ function podEstimatePages(p) {
   let total = 0;
   const set = p.publishSettings || {};
   const paperKey = set.paperSize || 'A5';
-  
+
   // 용지 크기에 따른 한 페이지당 대략적인 글자 수 (여백 포함 보수적 산정)
   let charsPerPage = 500;
   if (paperKey === 'B6') charsPerPage = 400;
   else if (paperKey === '46') charsPerPage = 450;
-  
+
   const eps = orderedEpisodes(p);
   for (const e of eps) {
     if (!e.body) continue;
     const text = e.body.replace(/<[^>]*>?/gm, '').trim();
     if (text.length === 0 && !e.title) continue; // 내용이 완전히 없는 회차 제외
-    
+
     let pages = Math.ceil(text.length / charsPerPage);
     if (pages === 0) pages = 1; // 최소 1페이지
-    
+
     // 장이 시작될 때 우측면(홀수) 시작이므로 평균 1.5쪽 소모, 여유분 1쪽 추가
     total += pages + 1;
   }
-  
+
   // 앞/뒷부속(속표지, 본표지, 판권지, 목차 등) 대략 8쪽 추가
   return total + 8;
 }
@@ -2015,7 +2015,7 @@ async function renderLivePodPreview(forceMode = null) {
       // 다운로드된 텍스트가 HTML 에러 페이지인지 검증 (< 기호로 시작하는지)
       if (text.trim().startsWith('<')) throw new Error('CDN 응답이 자바스크립트가 아닌 HTML입니다.');
       window.POD_PAGEDJS_CODE = text;
-    } catch(err) {
+    } catch (err) {
       console.error('PagedJS 대리 Fetch 실패:', err);
       // 에러 시 UI에 알림
       const iframe = document.getElementById('podLiveIframe');
@@ -2024,14 +2024,14 @@ async function renderLivePodPreview(forceMode = null) {
       }
       const st = document.getElementById('podLiveRenderStatus');
       if (st) st.textContent = '렌더링 에러: 엔진 로드 실패';
-      return; 
+      return;
     }
   }
 
   const p = currentProject();
   if (!p) return;
 
-  const activeTab  = document.querySelector('.pod-settings-tab.active');
+  const activeTab = document.querySelector('.pod-settings-tab.active');
   const activePane = activeTab ? activeTab.dataset.pane : 'inner';
   const isTreeMode = forceMode === 'tree' || activePane === 'tree';
 
@@ -2051,39 +2051,39 @@ async function renderLivePodPreview(forceMode = null) {
 
   const iframe = document.getElementById('podLiveIframe');
   if (!iframe) return;
-  const pubSet  = getPublishSettings(p);
-  const paper   = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+  const pubSet = getPublishSettings(p);
+  const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
   const canvasEl = $('#podPreviewInner');
-  const cW = canvasEl ? canvasEl.clientWidth  : window.innerWidth;
+  const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
   const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
-  const tw  = isTreeMode ? paper.w * 2 : paper.w;
-  const sc  = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+  const tw = isTreeMode ? paper.w * 2 : paper.w;
+  const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
 
-  iframe.style.width          = tw + 'mm';
-  iframe.style.height         = paper.h + 'mm';
-  iframe.style.transform      = `scale(${sc})`;
+  iframe.style.width = tw + 'mm';
+  iframe.style.height = paper.h + 'mm';
+  iframe.style.transform = `scale(${sc})`;
   iframe.style.transformOrigin = 'top center';
-  iframe.style.border         = 'none';
-  iframe.style.background     = 'transparent';
+  iframe.style.border = 'none';
+  iframe.style.background = 'transparent';
 
   const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
-  const bodyHTML   = generatePODBodyContent(p, pubSet, eps2Render);
+  const bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
   const pageCSS = `@page {
     size: ${pubSet.paperSize || 'A5'};
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
+    margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
     @bottom-center { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; }
   }
-  @page:left  { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm; }
-  @page:right { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm; }
+  @page:left  { margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.inner || 25}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.outer || 18}mm; }
+  @page:right { margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm; }
   @page:first { @bottom-center { content:none; } }
   @page cover { margin:0; @bottom-center { content:none; } }`;
 
   const bodyCSS = `body {
     font-family:'KoPub Batang','Noto Serif KR',serif;
-    font-size:${pubSet.fontSize||10}pt;
-    line-height:${pubSet.lineHeight||1.75};
+    font-size:${pubSet.fontSize || 10}pt;
+    line-height:${pubSet.lineHeight || 1.75};
     color:#111; text-align:justify; word-break:keep-all;
   }
   .ql-align-center { text-align:center !important; }
@@ -2210,11 +2210,11 @@ ${bodyCSS}
 // ── iframe 통신 메시지 수신 ─────────────
 window.addEventListener('message', (e) => {
   if (!e.data) return;
-  
+
   if (e.data.type === 'PAGEDJS_READY') {
     const st = $('#podLiveRenderStatus');
     if (st) st.textContent = window.podPendingRenderIsTreeMode ? '전체 조판 렌더링 중... (Paged.js)' : '미리보기 렌더링 중...';
-    
+
     const iframe = document.getElementById('podLiveIframe');
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage({
@@ -2229,35 +2229,35 @@ window.addEventListener('message', (e) => {
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
       window.podLastRenderedTotalPages = e.data.totalPages;
-      
+
       // 1. 좌측 트리 렌더링 로직 원상 복구 (가장 중요)
       window.podPageMap = e.data.pageMap;
       if (typeof renderPodPageTree === 'function') renderPodPageTree();
 
       const pubSet = getPublishSettings(currentProject());
-      const paper  = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      
+      const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+
       // 3. 트리 생성 "이후" 활성 탭 상태에 따른 SHOW_PAGES 자동 라우팅
       const activeTab = document.querySelector('.pod-settings-tab.active');
       const tabId = activeTab ? activeTab.dataset.pane : 'tree';
-      
+
       const mode = (tabId === 'inner') ? 'spread' : 'single';
       const pageNum = (tabId === 'inner') ? 2 : 1;
-      
-      const tw     = mode === 'spread' ? paper.w * 2 : paper.w;
+
+      const tw = mode === 'spread' ? paper.w * 2 : paper.w;
       const canvasEl = $('#podPreviewInner');
-      const cW = canvasEl ? canvasEl.clientWidth  : window.innerWidth;
+      const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
       const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
-      const sc = Math.max(0.2, Math.min(1, (cW-40)/(tw*(96/25.4)), (cH-40)/(paper.h*(96/25.4))));
-      iframe.style.width     = tw + 'mm';
+      const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+      iframe.style.width = tw + 'mm';
       iframe.style.transform = `scale(${sc})`;
 
-      iframe.contentWindow?.postMessage({ type:'SHOW_PAGES', pageNum: pageNum, mode: mode }, '*');
+      iframe.contentWindow?.postMessage({ type: 'SHOW_PAGES', pageNum: pageNum, mode: mode }, '*');
     }
     const st = $('#podLiveRenderStatus');
     if (st) st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
   }
-  
+
   if (e.data.type === 'pagedjs-error') {
     const st = $('#podLiveRenderStatus');
     if (st) st.textContent = `렌더링 에러: ${e.data.error}`;
@@ -2267,23 +2267,23 @@ function updateSpineThickness(totalPages) {
   const paperType = $('#podPaperType')?.value || 'standard';
   // 종이 종류별 1장(2쪽)당 두께 대략 추정 (단위: mm)
   // 미색 모조 80g: 약 0.1mm, 100g: 약 0.12mm 등
-  const mmPerPage = (paperType === 'premium') ? 0.06 : 0.05; 
+  const mmPerPage = (paperType === 'premium') ? 0.06 : 0.05;
   const spineMm = Math.max(1, Math.round(totalPages * mmPerPage * 10) / 10);
-  
+
   // 설정 패널 및 썸네일에 노출
   const label = $('#podSpineThicknessLabel');
-  if(label) label.textContent = `예상 책등 두께: 약 ${spineMm}mm`;
-  
+  if (label) label.textContent = `예상 책등 두께: 약 ${spineMm}mm`;
+
   // 기타 탭의 계산기 UI에도 노출
   const estPages = $('#podEstPages');
   const estSpine = $('#podEstSpine');
-  if(estPages) estPages.textContent = totalPages;
-  if(estSpine) estSpine.textContent = spineMm;
+  if (estPages) estPages.textContent = totalPages;
+  if (estSpine) estSpine.textContent = spineMm;
 }
 
 // ── 표지 미리보기 업데이트 ────────────────────────────────────
 async function podUpdateCoverPreview() {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
   const set = getPublishSettings(p);
 
   // 설정 패널의 최신 값 임시 반영
@@ -2321,22 +2321,22 @@ async function podUpdateCoverPreview() {
       imgEl.src = dataUrl;
       imgEl.style.display = 'inline-block';
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('Cover preview update failed', e);
   }
 }
 
 // ── 설정 저장 ─────────────────────────────────────────────────
 function podSaveSettings() {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
 
   const compress = (img) => {
-    if(!img) return null;
+    if (!img) return null;
     const cvs = document.createElement('canvas');
     let w = img.width, h = img.height;
     if (w > 1200 || h > 1200) {
-      if (w > h) { h *= 1200/w; w = 1200; }
-      else { w *= 1200/h; h = 1200; }
+      if (w > h) { h *= 1200 / w; w = 1200; }
+      else { w *= 1200 / h; h = 1200; }
     }
     cvs.width = w; cvs.height = h;
     cvs.getContext('2d').drawImage(img, 0, 0, w, h);
@@ -2354,19 +2354,19 @@ function podSaveSettings() {
     fontSize: parseFloat($('#podFontSize').value) || 10,
     lineHeight: $('#podLineHeight').value,
     margins: {
-      top:    parseFloat($('#podMarginTop').value)    || 20,
+      top: parseFloat($('#podMarginTop').value) || 20,
       bottom: parseFloat($('#podMarginBottom').value) || 20,
-      inner:  parseFloat($('#podMarginInner').value)  || 25,
-      outer:  parseFloat($('#podMarginOuter').value)  || 18,
-      bleed:  parseFloat($('#podBleed').value)        || 3
+      inner: parseFloat($('#podMarginInner').value) || 25,
+      outer: parseFloat($('#podMarginOuter').value) || 18,
+      bleed: parseFloat($('#podBleed').value) || 3
     },
     coverOptions: {
       frontOriginal: compress(currentFrontCoverObj) || p.publishSettings?.coverOptions?.frontOriginal || null,
-      backOriginal:  compress(currentBackCoverObj)  || p.publishSettings?.coverOptions?.backOriginal  || null,
-      bgColor:       $('#podCoverBgColor').value,
-      logo:          $('#podPublisherLogo').value,
-      spineFont:     $('#podSpineFont').value,
-      spineWidthMm:  parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
+      backOriginal: compress(currentBackCoverObj) || p.publishSettings?.coverOptions?.backOriginal || null,
+      bgColor: $('#podCoverBgColor').value,
+      logo: $('#podPublisherLogo').value,
+      spineFont: $('#podSpineFont').value,
+      spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
       logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 7,
       logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
       logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
@@ -2374,12 +2374,12 @@ function podSaveSettings() {
     },
     frontMatter: {
       showCopyright: window.fmBlocks ? !!window.fmBlocks.find(x => x.type === 'copyright' && x.active) : false,
-      author:        window.fmBlocks?.find(x => x.type === 'copyright')?.content?.author || '',
-      publishDate:   window.fmBlocks?.find(x => x.type === 'copyright')?.content?.date || '',
-      fmTitle:       window.fmBlocks?.find(x => x.type === 'half_title' || x.type === 'title_page')?.content?.title || '',
-      fmSubtitle:    window.fmBlocks?.find(x => x.type === 'title_page')?.content?.subtitle || '',
-      fmPublisher:   window.fmBlocks?.find(x => x.type === 'title_page' || x.type === 'copyright')?.content?.publisher || '',
-      fmBgColor:     '#ffffff'
+      author: window.fmBlocks?.find(x => x.type === 'copyright')?.content?.author || '',
+      publishDate: window.fmBlocks?.find(x => x.type === 'copyright')?.content?.date || '',
+      fmTitle: window.fmBlocks?.find(x => x.type === 'half_title' || x.type === 'title_page')?.content?.title || '',
+      fmSubtitle: window.fmBlocks?.find(x => x.type === 'title_page')?.content?.subtitle || '',
+      fmPublisher: window.fmBlocks?.find(x => x.type === 'title_page' || x.type === 'copyright')?.content?.publisher || '',
+      fmBgColor: '#ffffff'
     },
     fmBlocks: window.fmBlocks || []
   };
@@ -2389,10 +2389,10 @@ function podSaveSettings() {
 
   try {
     localStorage.setItem('novel_pubset_' + p.id, JSON.stringify(p.publishSettings));
-  } catch(e) { console.warn('pubset save failed', e); }
+  } catch (e) { console.warn('pubset save failed', e); }
 
   touchProject(); queueSaveFS();
-  
+
   const saveBtn = $('#podSaveSettingsBtn');
   if (saveBtn) {
     const orig = saveBtn.innerHTML;
@@ -2404,8 +2404,8 @@ function podSaveSettings() {
 
 // 구형 modal 입력에 값 동기화 (exportPODPdf가 pubPaperSize 등을 읽기 때문)
 function syncLegacyInputs(s) {
-  const trySet = (id, val) => { const el = $(id); if(el) el.value = val; };
-  const tryCheck = (id, val) => { const el = $(id); if(el) el.checked = val; };
+  const trySet = (id, val) => { const el = $(id); if (el) el.value = val; };
+  const tryCheck = (id, val) => { const el = $(id); if (el) el.checked = val; };
   trySet('#pubPaperSize', s.paperSize);
   tryCheck('#pubAutoTOC', s.autoTOC);
   tryCheck('#pubShowTitle', s.showTitle);
@@ -2454,7 +2454,7 @@ $$('.pod-settings-tab').forEach(btn => {
       if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
       if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
       if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
-      
+
       const iframe = document.getElementById('podLiveIframe');
       if (iframe && iframe.contentWindow) {
         if (tab === 'inner') {
@@ -2471,10 +2471,10 @@ $$('.pod-settings-tab').forEach(btn => {
 
 // ── 페이지 트리 렌더링 ────────────────────────────────────────
 function renderPodPageTree() {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
   const set = getPublishSettings(p);
   const treeEl = $('#podPageTree');
-  if(!treeEl) return;
+  if (!treeEl) return;
 
   treeEl.innerHTML = '';
   treeEl.style.cssText = 'display:block; padding:0; margin:0;';
@@ -2506,7 +2506,7 @@ function renderPodPageTree() {
     // 스켈레톤 라인
     const skLines = accentColor
       ? `<div style="width:70%;height:5px;background:${accentColor};opacity:.6;border-radius:2px;margin:14px auto 8px;"></div>`
-        + `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:0 auto 4px;"></div>`.repeat(5)
+      + `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:0 auto 4px;"></div>`.repeat(5)
       : `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:8px auto 4px;"></div>`.repeat(7);
     thumb.innerHTML = `<div style="padding:4px 3px;">${skLines}</div>`;
     if (pageNum) {
@@ -2571,22 +2571,22 @@ function renderPodPageTree() {
   grid.appendChild(spine);
 
   let maxPage = window.podPageMap[window.podPageMap.length - 1].pageNum;
-  
+
   for (let i = 1; i <= maxPage; i++) {
     const pageData = window.podPageMap.find(m => m.pageNum === i);
     const isOdd = i % 2 !== 0; // 홀수면 우측
     const cell = document.createElement('div');
-    
+
     // 홀수(우측)면 왼쪽(책등)으로 붙고, 짝수(좌측)면 오른쪽(책등)으로 붙게 flex 정렬
     cell.style.cssText = `display:flex; justify-content:${isOdd ? 'flex-start' : 'flex-end'}; align-items:flex-start;`;
     if (i === 1) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
-    
+
     let label = '';
     if (pageData) label = pageData.label || '';
-    
+
     const thumb = mkThumb(
       i,
-      label.substring(0,12),
+      label.substring(0, 12),
       '',
       pageData ? '#7c6bf6' : null,
       () => {
@@ -2632,17 +2632,17 @@ function renderPodPageTree() {
 
 
 function podUpdateFmPreview() {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
   const set = getPublishSettings(p);
   const iframe = $('#podFmIframe');
-  if(!iframe) return;
-  
+  if (!iframe) return;
+
   // 크기 동기화
   const paperKey = $('#podPaperSize').value || 'A5';
   const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
   iframe.style.width = paper.w + 'mm';
   iframe.style.height = paper.h + 'mm';
-  
+
   // 현재 에디팅 중인 블록 찾기 (또는 활성화된 첫 블록)
   const fmBlocks = window.fmBlocks || [];
   let block = fmBlocks[fmActiveBlockIdx];
@@ -2651,35 +2651,35 @@ function podUpdateFmPreview() {
     iframe.srcdoc = `<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;color:#999;">활성화된 전면부 페이지가 없습니다.</body></html>`;
     return;
   }
-  
+
   // 블록 HTML 생성 (exportPODPdf와 100% 동일한 로직 사용)
   const s = block.style || {};
   const c = block.content || {};
   const type = block.type;
 
-  const pTitle  = escapeHtml(c.title || p.title || '');
-  const pSub    = escapeHtml(c.subtitle || '');
-  const pAuth   = escapeHtml(c.author || set.frontMatter?.author || '저자');
-  const pDate   = escapeHtml(c.date || set.frontMatter?.publishDate || new Date().getFullYear() + '년');
+  const pTitle = escapeHtml(c.title || p.title || '');
+  const pSub = escapeHtml(c.subtitle || '');
+  const pAuth = escapeHtml(c.author || set.frontMatter?.author || '저자');
+  const pDate = escapeHtml(c.date || set.frontMatter?.publishDate || new Date().getFullYear() + '년');
   const presetObj = POD_PRESETS[set.preset] || {};
-  const pPub    = escapeHtml(c.publisher || set.frontMatter?.fmPublisher || presetObj.name || '');
+  const pPub = escapeHtml(c.publisher || set.frontMatter?.fmPublisher || presetObj.name || '');
   const pCustom = escapeHtml(c.customText || '').replace(/\\n/g, '<br>');
-  const pQuote  = escapeHtml(c.quoteAuthor || '');
+  const pQuote = escapeHtml(c.quoteAuthor || '');
 
   const bgColor = s.bgColor || '#ffffff';
   const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
-  
-  const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
-  const titleSz = `font-size:${s.fontSize||20}pt;`;
+
+  const fontCss = `font-family:${s.fontFamily || "'KoPub Batang',serif"};color:${s.fontColor || '#1C1813'};letter-spacing:${s.letterSpacing || '0em'};`;
+  const titleSz = `font-size:${s.fontSize || 20}pt;`;
   const jc = s.alignY || 'center';
   const ai = s.alignX || 'center';
-  
+
   const marginInner = parseFloat($('#podMarginInner').value || 25);
   const marginOuter = parseFloat($('#podMarginOuter').value || 18);
   const centerOffset = (marginInner - marginOuter) / 2;
   const offsetStyle = centerOffset ? `transform:translateX(-${centerOffset}mm);` : '';
 
-  const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;"></div>` : '';
+  const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity ?? 0.8};z-index:0;"></div>` : '';
   const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
   const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
@@ -2693,13 +2693,13 @@ function podUpdateFmPreview() {
   if (type === 'half_title') {
     htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
   } else if (type === 'title_page') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
   } else if (type === 'dedication') {
     htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
   } else if (type === 'epigraph') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
   } else if (type === 'copyright') {
-    htmlFm = `<div style="position:relative;height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt;font-family:'KoPub Batang',serif;line-height:1.6;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    htmlFm = `<div style="position:relative;height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt;font-family:'KoPub Batang',serif;line-height:1.6;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml ? `<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>` : ''}</div><div style="font-size:7.5pt;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
   } else if (type === 'toc') {
     htmlFm = `<div style="height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${zi}padding:40px 20px;"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;${fontCss}">목차</h2><div style="text-align:center;font-size:10pt;color:#888;">(목차는 본문 렌더링 시 자동으로 생성됩니다)</div></div></div>`;
   } else if (type === 'blank') {
@@ -2735,7 +2735,7 @@ if ($('#podPrevPageBtn')) {
       podCurrentPreviewPage--;
       const iframe = document.getElementById('podLiveIframe');
       if (iframe && iframe.contentWindow) {
-         iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: podCurrentPreviewPage, mode: 'single' }, '*');
+        iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: podCurrentPreviewPage, mode: 'single' }, '*');
       }
       if ($('#podPageInfo')) $('#podPageInfo').textContent = podCurrentPreviewPage + 'p';
     }
@@ -2748,7 +2748,7 @@ if ($('#podNextPageBtn')) {
       podCurrentPreviewPage++;
       const iframe = document.getElementById('podLiveIframe');
       if (iframe && iframe.contentWindow) {
-         iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: podCurrentPreviewPage, mode: 'single' }, '*');
+        iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: podCurrentPreviewPage, mode: 'single' }, '*');
       }
       if ($('#podPageInfo')) $('#podPageInfo').textContent = podCurrentPreviewPage + 'p';
     }
@@ -2756,9 +2756,9 @@ if ($('#podNextPageBtn')) {
 }
 
 // 여백 등 입력 실시간 반영
-['podPreviewMode','podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
+['podPreviewMode', 'podMarginTop', 'podMarginBottom', 'podMarginInner', 'podMarginOuter', 'podBleed', 'podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
   const el = $('#' + id);
-  if(el) el.addEventListener('input', () => { podScheduleLiveRender(); });
+  if (el) el.addEventListener('input', () => { podScheduleLiveRender(); });
 });
 
 // 출판사 로고 선택 시 옵션 패널 보이기/숨기기
@@ -2770,7 +2770,7 @@ $('#podPublisherLogo')?.addEventListener('change', (e) => {
 
 ['podCoverBgColorHex', 'podSpineWidth', 'podShowCopyright', 'podAuthor', 'podLogoFrontSize', 'podLogoFrontBottom', 'podLogoSpineRatio', 'podLogoSpineBottom'].forEach(id => {
   const el = $('#' + id);
-  if(el) el.addEventListener('input', () => { podUpdateCoverPreview(); });
+  if (el) el.addEventListener('input', () => { podUpdateCoverPreview(); });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2779,18 +2779,18 @@ $('#podPublisherLogo')?.addEventListener('change', (e) => {
 
 // 블록 타입 메타데이터
 const FM_BLOCK_META = {
-  half_title:  { name: '속표지',   icon: '📖', fields: ['title'] },
-  title_page:  { name: '본표지',   icon: '📗', fields: ['title','subtitle','publisher'] },
-  dedication:  { name: '헌사',     icon: '💌', fields: ['custom'] },
-  epigraph:    { name: '인용구',   icon: '✏️', fields: ['custom','quoteAuthor'] },
-  copyright:   { name: '판권지',   icon: '©️',  fields: ['title','author','date','publisher'] },
-  toc:         { name: '목차',     icon: '📋', fields: [] },
-  blank:       { name: '빈 면지', icon: '⬜', fields: [] }
+  half_title: { name: '속표지', icon: '📖', fields: ['title'] },
+  title_page: { name: '본표지', icon: '📗', fields: ['title', 'subtitle', 'publisher'] },
+  dedication: { name: '헌사', icon: '💌', fields: ['custom'] },
+  epigraph: { name: '인용구', icon: '✏️', fields: ['custom', 'quoteAuthor'] },
+  copyright: { name: '판권지', icon: '©️', fields: ['title', 'author', 'date', 'publisher'] },
+  toc: { name: '목차', icon: '📋', fields: [] },
+  blank: { name: '빈 면지', icon: '⬜', fields: [] }
 };
 
 // 기본 스타일 팩토리
 function defaultFmStyle(type) {
-  const dark = ['dedication','epigraph'].includes(type);
+  const dark = ['dedication', 'epigraph'].includes(type);
   return {
     bgColor: dark ? '#1C1813' : '#ffffff',
     bgImage: null,
@@ -2806,13 +2806,13 @@ function defaultFmStyle(type) {
 
 // 기본 콘텐츠 팩토리
 function defaultFmContent(type) {
-  return { title:'', subtitle:'', publisher:'', author:'', date:'', customText:'', quoteAuthor:'' };
+  return { title: '', subtitle: '', publisher: '', author: '', date: '', customText: '', quoteAuthor: '' };
 }
 
 // ── 마이그레이션: 구형 fmOrder → fmBlocks ─────────────────────
 function migrateFmOrder(oldOrder) {
   return (oldOrder || []).map(item => ({
-    id: 'fm_' + (item.id || Date.now()) + '_' + Math.random().toString(36).slice(2,6),
+    id: 'fm_' + (item.id || Date.now()) + '_' + Math.random().toString(36).slice(2, 6),
     type: item.id.startsWith('blank_') ? 'blank' : item.id,
     active: item.active !== false,
     style: defaultFmStyle(item.id.startsWith('blank_') ? 'blank' : item.id),
@@ -2829,10 +2829,10 @@ function initFmBlocks(p) {
     window.fmBlocks = migrateFmOrder(p.publishSettings.frontMatter.order);
   } else {
     window.fmBlocks = [
-      { id:'fm_half_title',  type:'half_title',  active:true, style:defaultFmStyle('half_title'),  content:defaultFmContent('half_title') },
-      { id:'fm_title_page',  type:'title_page',  active:true, style:defaultFmStyle('title_page'),  content:defaultFmContent('title_page') },
-      { id:'fm_copyright',   type:'copyright',   active:true, style:defaultFmStyle('copyright'),   content:defaultFmContent('copyright') },
-      { id:'fm_toc',         type:'toc',         active:true, style:defaultFmStyle('toc'),         content:defaultFmContent('toc') }
+      { id: 'fm_half_title', type: 'half_title', active: true, style: defaultFmStyle('half_title'), content: defaultFmContent('half_title') },
+      { id: 'fm_title_page', type: 'title_page', active: true, style: defaultFmStyle('title_page'), content: defaultFmContent('title_page') },
+      { id: 'fm_copyright', type: 'copyright', active: true, style: defaultFmStyle('copyright'), content: defaultFmContent('copyright') },
+      { id: 'fm_toc', type: 'toc', active: true, style: defaultFmStyle('toc'), content: defaultFmContent('toc') }
     ];
   }
 }
@@ -2842,15 +2842,15 @@ let fmActiveBlockIdx = null;
 
 // 9-Grid 정렬 옵션
 const FM_ALIGN_GRID = [
-  {ax:'flex-start', ay:'flex-start', label:'↖'},
-  {ax:'center',     ay:'flex-start', label:'↑'},
-  {ax:'flex-end',   ay:'flex-start', label:'↗'},
-  {ax:'flex-start', ay:'center',     label:'←'},
-  {ax:'center',     ay:'center',     label:'✦'},
-  {ax:'flex-end',   ay:'center',     label:'→'},
-  {ax:'flex-start', ay:'flex-end',   label:'↙'},
-  {ax:'center',     ay:'flex-end',   label:'↓'},
-  {ax:'flex-end',   ay:'flex-end',   label:'↘'},
+  { ax: 'flex-start', ay: 'flex-start', label: '↖' },
+  { ax: 'center', ay: 'flex-start', label: '↑' },
+  { ax: 'flex-end', ay: 'flex-start', label: '↗' },
+  { ax: 'flex-start', ay: 'center', label: '←' },
+  { ax: 'center', ay: 'center', label: '✦' },
+  { ax: 'flex-end', ay: 'center', label: '→' },
+  { ax: 'flex-start', ay: 'flex-end', label: '↙' },
+  { ax: 'center', ay: 'flex-end', label: '↓' },
+  { ax: 'flex-end', ay: 'flex-end', label: '↘' },
 ];
 
 // ── 9-Grid 렌더링 ──────────────────────────────────────────────
@@ -2885,7 +2885,7 @@ function renderFmBlockList() {
   let dragFromIndex = null;
 
   window.fmBlocks.forEach((block, index) => {
-    const meta = FM_BLOCK_META[block.type] || { name: block.type, icon:'📄' };
+    const meta = FM_BLOCK_META[block.type] || { name: block.type, icon: '📄' };
     const isSelected = fmActiveBlockIdx === index;
     const el = document.createElement('div');
     el.draggable = true;
@@ -2908,7 +2908,7 @@ function renderFmBlockList() {
     const labelSpan = document.createElement('span');
     labelSpan.style.flex = '1';
     labelSpan.innerHTML = `<span style="margin-right:6px;">${meta.icon}</span>${meta.name}`;
-    
+
     // 배경색 미리보기 점
     const colorDot = document.createElement('span');
     colorDot.style.cssText = `width:10px; height:10px; border-radius:50%; flex-shrink:0;
@@ -2964,7 +2964,7 @@ function openFmBlockEditor(index) {
 
   // [전면부 디자인] 목록 클릭 시 pageMap 연동
   if (window.podPageMap) {
-    const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
+    const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
     const label = FM_LABELS[block.type] || block.type;
     const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
     if (pm) {
@@ -2982,11 +2982,11 @@ function openFmBlockEditor(index) {
 
   // 배경색
   $('#fmBgColorPicker').value = s.bgColor || '#ffffff';
-  $('#fmBgColorHex').value    = s.bgColor || '#ffffff';
+  $('#fmBgColorHex').value = s.bgColor || '#ffffff';
 
   // 배경이미지
   const prevBox = $('#fmBgImagePreview');
-  const thumb   = $('#fmBgImageThumb');
+  const thumb = $('#fmBgImageThumb');
   if (s.bgImage) {
     prevBox.style.display = 'block';
     thumb.src = s.bgImage;
@@ -3002,37 +3002,37 @@ function openFmBlockEditor(index) {
   renderAlignGrid(s.alignX || 'center', s.alignY || 'center');
 
   // 여백 (Padding)
-  $('#fmPaddingTop').value    = s.paddingTop ?? 20;
+  $('#fmPaddingTop').value = s.paddingTop ?? 20;
   $('#fmPaddingBottom').value = s.paddingBottom ?? 20;
-  $('#fmPaddingLeft').value   = s.paddingLeft ?? 20;
-  $('#fmPaddingRight').value  = s.paddingRight ?? 20;
+  $('#fmPaddingLeft').value = s.paddingLeft ?? 20;
+  $('#fmPaddingRight').value = s.paddingRight ?? 20;
 
   // 글자 숨기기
-  if($('#fmHideText')) $('#fmHideText').checked = s.hideText || false;
+  if ($('#fmHideText')) $('#fmHideText').checked = s.hideText || false;
 
   // 폰트
-  $('#fmFontFamily').value     = s.fontFamily || "'KoPub Batang', serif";
-  $('#fmFontSize').value       = s.fontSize   || 20;
+  $('#fmFontFamily').value = s.fontFamily || "'KoPub Batang', serif";
+  $('#fmFontSize').value = s.fontSize || 20;
   $('#fmFontColorPicker').value = s.fontColor || '#1C1813';
-  $('#fmFontColorHex').value    = s.fontColor || '#1C1813';
-  $('#fmLetterSpacing').value   = s.letterSpacing || '0em';
+  $('#fmFontColorHex').value = s.fontColor || '#1C1813';
+  $('#fmLetterSpacing').value = s.letterSpacing || '0em';
 
   // 필드 표시/숨김
   const fields = meta.fields || [];
-  const allFields = ['title','subtitle','publisher','author','date','custom','quoteAuthor'];
+  const allFields = ['title', 'subtitle', 'publisher', 'author', 'date', 'custom', 'quoteAuthor'];
   allFields.forEach(f => {
-    const el = $(`#fmField${f.charAt(0).toUpperCase()+f.slice(1)}`);
-    if(el) el.style.display = fields.includes(f) ? 'block' : 'none';
+    const el = $(`#fmField${f.charAt(0).toUpperCase() + f.slice(1)}`);
+    if (el) el.style.display = fields.includes(f) ? 'block' : 'none';
   });
   $('#fmContentSection').style.display = fields.length ? 'block' : 'none';
 
   // 콘텐츠 값
-  $('#fmContentTitle').value       = c.title || '';
-  $('#fmContentSubtitle').value    = c.subtitle || '';
-  $('#fmContentPublisher').value   = c.publisher || '';
-  $('#fmContentAuthor').value      = c.author || '';
-  $('#fmContentDate').value        = c.date || '';
-  $('#fmContentCustom').value      = c.customText || '';
+  $('#fmContentTitle').value = c.title || '';
+  $('#fmContentSubtitle').value = c.subtitle || '';
+  $('#fmContentPublisher').value = c.publisher || '';
+  $('#fmContentAuthor').value = c.author || '';
+  $('#fmContentDate').value = c.date || '';
+  $('#fmContentCustom').value = c.customText || '';
   $('#fmContentQuoteAuthor').value = c.quoteAuthor || '';
 
   // 블록 목록 재렌더 (selected 강조)
@@ -3042,7 +3042,7 @@ function openFmBlockEditor(index) {
   podUpdateFmPreview();
 
   // 패널 스크롤
-  ed.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  ed.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 
@@ -3052,24 +3052,24 @@ function syncFmBlockLive() {
   if (fmActiveBlockIdx === null) return;
   const block = window.fmBlocks[fmActiveBlockIdx];
 
-  block.style.hideText       = $('#fmHideText')?.checked || false;
-  block.style.bgColor        = $('#fmBgColorHex').value || '#ffffff';
-  block.style.fontFamily     = $('#fmFontFamily').value;
-  block.style.fontSize       = parseFloat($('#fmFontSize').value) || 20;
-  block.style.fontColor      = $('#fmFontColorHex').value || '#1C1813';
-  block.style.letterSpacing  = $('#fmLetterSpacing').value;
+  block.style.hideText = $('#fmHideText')?.checked || false;
+  block.style.bgColor = $('#fmBgColorHex').value || '#ffffff';
+  block.style.fontFamily = $('#fmFontFamily').value;
+  block.style.fontSize = parseFloat($('#fmFontSize').value) || 20;
+  block.style.fontColor = $('#fmFontColorHex').value || '#1C1813';
+  block.style.letterSpacing = $('#fmLetterSpacing').value;
   block.style.bgImageOpacity = parseFloat($('#fmBgOpacity').value) || 0.8;
-  block.style.paddingTop     = parseFloat($('#fmPaddingTop').value) || 0;
-  block.style.paddingBottom  = parseFloat($('#fmPaddingBottom').value) || 0;
-  block.style.paddingLeft    = parseFloat($('#fmPaddingLeft').value) || 0;
-  block.style.paddingRight   = parseFloat($('#fmPaddingRight').value) || 0;
+  block.style.paddingTop = parseFloat($('#fmPaddingTop').value) || 0;
+  block.style.paddingBottom = parseFloat($('#fmPaddingBottom').value) || 0;
+  block.style.paddingLeft = parseFloat($('#fmPaddingLeft').value) || 0;
+  block.style.paddingRight = parseFloat($('#fmPaddingRight').value) || 0;
 
-  block.content.title       = $('#fmContentTitle').value;
-  block.content.subtitle    = $('#fmContentSubtitle').value;
-  block.content.publisher   = $('#fmContentPublisher').value;
-  block.content.author      = $('#fmContentAuthor').value;
-  block.content.date        = $('#fmContentDate').value;
-  block.content.customText  = $('#fmContentCustom').value;
+  block.content.title = $('#fmContentTitle').value;
+  block.content.subtitle = $('#fmContentSubtitle').value;
+  block.content.publisher = $('#fmContentPublisher').value;
+  block.content.author = $('#fmContentAuthor').value;
+  block.content.date = $('#fmContentDate').value;
+  block.content.customText = $('#fmContentCustom').value;
   block.content.quoteAuthor = $('#fmContentQuoteAuthor').value;
 
   podUpdateFmPreview();
@@ -3182,13 +3182,13 @@ function saveFmBlocks() {
   const p = currentProject(); if (!p) return;
   if (!p.publishSettings) p.publishSettings = {};
   p.publishSettings.fmBlocks = window.fmBlocks;
-  try { localStorage.setItem('novel_pubset_' + p.id, JSON.stringify(p.publishSettings)); } catch(e) {}
+  try { localStorage.setItem('novel_pubset_' + p.id, JSON.stringify(p.publishSettings)); } catch (e) { }
   touchProject(); queueSaveFS();
 }
 
 // 하위 호환: fmOrder 참조를 위한 getter
 Object.defineProperty(window, 'fmOrder', {
-  get: () => window.fmBlocks?.map(b => ({ id: b.type === 'blank' ? 'blank_'+b.id : b.type, name: (FM_BLOCK_META[b.type]?.name || b.type), active: b.active })) || [],
+  get: () => window.fmBlocks?.map(b => ({ id: b.type === 'blank' ? 'blank_' + b.id : b.type, name: (FM_BLOCK_META[b.type]?.name || b.type), active: b.active })) || [],
   configurable: true
 });
 
@@ -3207,15 +3207,15 @@ window.addEventListener('message', e => {
   if (e.data?.type === 'PAGES_READY') {
     const count = e.data.count;
     const isSilent = e.data.isSilent;
-    
+
     const p = currentProject();
     if (p) {
       p.podExactPages = count;
     }
-    
+
     $('#podEstPages').innerHTML = `${count} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
     $('#podEstSpine').textContent = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10).toFixed(1);
-    
+
     if (isSilent) {
       const btn = $('#podCalcExactBtn');
       if (btn) {
@@ -3238,11 +3238,11 @@ $$('.pod-preset-btn').forEach(btn => {
     const preset = POD_PRESETS[btn.dataset.preset];
     if (!preset) return; // 직접 입력 = 아무것도 안 함
     $('#podPaperSize').value = preset.paperSize;
-    $('#podMarginTop').value    = preset.margins.top;
+    $('#podMarginTop').value = preset.margins.top;
     $('#podMarginBottom').value = preset.margins.bottom;
-    $('#podMarginInner').value  = preset.margins.inner;
-    $('#podMarginOuter').value  = preset.margins.outer;
-    $('#podBleed').value        = preset.margins.bleed;
+    $('#podMarginInner').value = preset.margins.inner;
+    $('#podMarginOuter').value = preset.margins.outer;
+    $('#podBleed').value = preset.margins.bleed;
     podScheduleLiveRender();
     showToast(`${preset.name} 여백 프리셋이 적용되었습니다.`);
   });
@@ -3265,7 +3265,7 @@ $('#podSpineWidth').addEventListener('input', podUpdateCoverPreview);
 
 // 표지 이미지 업로드 (스튜디오)
 $('#podFrontCoverInput').onchange = (e) => {
-  const file = e.target.files[0]; if(!file) return;
+  const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
     const img = new Image();
@@ -3275,7 +3275,7 @@ $('#podFrontCoverInput').onchange = (e) => {
   reader.readAsDataURL(file);
 };
 $('#podBackCoverInput').onchange = (e) => {
-  const file = e.target.files[0]; if(!file) return;
+  const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
     const img = new Image();
@@ -3298,13 +3298,13 @@ if ($('#exportPODCoverBtn')) $('#exportPODCoverBtn').onclick = exportPODCover;
 
 function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
-  
+
   // <br> 태그를 문단 분리(</p><p>)로 정규화하여 빈 줄 감지를 정확하게 함
   let normalizedHtml = html;
   if (isForPublishing) {
     normalizedHtml = html.replace(/<br\s*\/?>/gi, '</p><p>');
   }
-  
+
   const div = document.createElement('div');
   div.innerHTML = normalizedHtml;
 
@@ -3324,10 +3324,10 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
     for (let cls of nClasses) {
       const isCls = cur.classList.contains(cls) || cur.querySelector('.' + cls);
       if (isCls) {
-        const prev = els[i-1], next = els[i+1];
+        const prev = els[i - 1], next = els[i + 1];
         const pIsCls = prev && (prev.classList.contains(cls) || prev.querySelector('.' + cls));
         const nIsCls = next && (next.classList.contains(cls) || next.querySelector('.' + cls));
-        
+
         let target = cur.classList.contains(cls) ? cur : cur.querySelector('.' + cls);
         if (pIsCls && nIsCls) target.classList.add('pdf-group-middle');
         else if (pIsCls && !nIsCls) target.classList.add('pdf-group-last');
@@ -3343,7 +3343,7 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (epTitle) {
     const norm = (s) => s.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
     const titleNorm = norm(epTitle);
-    
+
     // 1. 헤딩 태그 검사
     const headings = div.querySelectorAll('h1, h2');
     if (headings.length > 0) {
@@ -3352,7 +3352,7 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
       for (const cur of els) {
         if (cur === firstH) break;
         if (cur.textContent.trim() !== '') {
-           isFirstMeaningful = false; break;
+          isFirstMeaningful = false; break;
         }
       }
       if (isFirstMeaningful && norm(firstH.textContent) === titleNorm) {
@@ -3360,7 +3360,7 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
         firstH.remove(); // 제목을 본문에서 아예 제거! (중복 방지)
       }
     }
-    
+
     // 2. 만약 헤딩이 아니더라도 첫 번째 단락(p)이 제목과 똑같다면 제거
     if (!hasTitle && els.length > 0) {
       for (const cur of els) {
@@ -3403,27 +3403,27 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
 async function generatePODCoverCanvas(p, set, opts) {
   const MM_TO_PX = 300 / 25.4;
   const BLEED_MM = 3; // 사방 도련 3mm
-  
+
   let paperW = 148;
   let paperH = 210;
-  if(set.paperSize === 'B6') {
+  if (set.paperSize === 'B6') {
     paperW = 128;
     paperH = 182;
   }
-  
+
   const spineW = opts.spineWidthMm || calculateSpineWidth(p);
   const canvasW_mm = (BLEED_MM * 2) + (paperW * 2) + spineW;
   const canvasH_mm = paperH + (BLEED_MM * 2);
-  
+
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(canvasW_mm * MM_TO_PX);
   canvas.height = Math.round(canvasH_mm * MM_TO_PX);
   const ctx = canvas.getContext('2d');
-  
+
   // 배경색 칠하기
   ctx.fillStyle = opts.bgColor || '#2c2c2c';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
+
   // 요소별 위치 (px)
   const leftX = 0;
   const backCoverW = Math.round((BLEED_MM + paperW) * MM_TO_PX);
@@ -3431,10 +3431,10 @@ async function generatePODCoverCanvas(p, set, opts) {
   const spineW_px = Math.round(spineW * MM_TO_PX);
   const frontX = spineX + spineW_px;
   const frontCoverW = Math.round((paperW + BLEED_MM) * MM_TO_PX);
-  
+
   // 이미지 로드 유틸
   const loadImg = (src) => new Promise((resolve) => {
-    if(!src) return resolve(null);
+    if (!src) return resolve(null);
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
@@ -3452,7 +3452,7 @@ async function generatePODCoverCanvas(p, set, opts) {
     const dh = frontImg.height * scale;
     const dx = frontX + (frontCoverW - dw) / 2;
     const dy = (canvas.height - dh) / 2;
-    
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(frontX, 0, frontCoverW, canvas.height);
@@ -3468,7 +3468,7 @@ async function generatePODCoverCanvas(p, set, opts) {
     const dh = backImg.height * scale;
     const dx = leftX + (backCoverW - dw) / 2;
     const dy = (canvas.height - dh) / 2;
-    
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(leftX, 0, backCoverW, canvas.height);
@@ -3481,32 +3481,32 @@ async function generatePODCoverCanvas(p, set, opts) {
   const title = p.title || '제목 없음';
   const author = set.frontMatter?.author || '저자';
   const spineFont = $('#pubSpineFont').value || "'KoPub Batang', serif";
-  
+
   ctx.save();
   ctx.fillStyle = (opts.bgColor || '#2c2c2c').toLowerCase() === '#ffffff' ? '#000' : '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  
+
   const titleFontSize = Math.min(Math.round(4 * MM_TO_PX), spineW_px * 0.8);
   ctx.font = `bold ${titleFontSize}px ${spineFont}`;
-  
+
   let startY = Math.round((BLEED_MM + 20) * MM_TO_PX);
   for (let i = 0; i < title.length; i++) {
     if (title[i] === ' ') { startY += titleFontSize * 0.5; continue; }
     ctx.fillText(title[i], spineX + spineW_px / 2, startY);
     startY += titleFontSize * 1.1;
   }
-  
+
   const authorFontSize = Math.min(Math.round(3 * MM_TO_PX), spineW_px * 0.6);
   ctx.font = `normal ${authorFontSize}px ${spineFont}`;
-  
+
   startY += Math.round(10 * MM_TO_PX);
   for (let i = 0; i < author.length; i++) {
     if (author[i] === ' ') { startY += authorFontSize * 0.5; continue; }
     ctx.fillText(author[i], spineX + spineW_px / 2, startY);
     startY += authorFontSize * 1.1;
   }
-  
+
   ctx.restore();
 
   // 로고 그리기
@@ -3518,16 +3518,16 @@ async function generatePODCoverCanvas(p, set, opts) {
     const sLx = spineX + (spineW_px - spineLogoW) / 2;
     const sLy = canvas.height - Math.round((BLEED_MM + spineBottomMm) * MM_TO_PX) - spineLogoH;
     ctx.drawImage(logoImg, sLx, sLy, spineLogoW, spineLogoH);
-    
+
     const frontLogoW_mm = opts.logoFrontSize ?? 7;
     const frontBottomMm = opts.logoFrontBottom ?? 15;
     const frontLogoW = Math.round(frontLogoW_mm * MM_TO_PX);
     const frontLogoH = logoImg.height * (frontLogoW / logoImg.width);
-    const fLx = frontX + (frontCoverW - frontLogoW) / 2; 
-    const fLy = canvas.height - Math.round((BLEED_MM + frontBottomMm) * MM_TO_PX) - frontLogoH; 
+    const fLx = frontX + (frontCoverW - frontLogoW) / 2;
+    const fLy = canvas.height - Math.round((BLEED_MM + frontBottomMm) * MM_TO_PX) - frontLogoH;
     ctx.drawImage(logoImg, fLx, fLy, frontLogoW, frontLogoH);
   }
-  
+
   return canvas;
 }
 
@@ -3539,11 +3539,11 @@ async function generateCoverPreview(p, set) {
 }
 
 async function exportPODCover() {
-  const p = currentProject(); if(!p) return;
+  const p = currentProject(); if (!p) return;
   const set = getPublishSettings(p);
   const opts = set.coverOptions || {};
   const canvas = await generatePODCoverCanvas(p, set, opts);
-  
+
 
 
   // 다운로드
@@ -3555,11 +3555,11 @@ async function exportPODCover() {
 
 
 function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
-  const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
-let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
+  let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
 
   if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
-  
+
   const beforeTocEps = loadedEps.slice(0, firstMainIdx);
   const afterTocEps = loadedEps.slice(firstMainIdx);
 
@@ -3578,26 +3578,26 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
     const c = block.content || {};
     const type = block.type;
 
-    const pTitle  = escapeHtml(c.title || p.title || '');
-    const pSub    = escapeHtml(c.subtitle || '');
-    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
-    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
+    const pTitle = escapeHtml(c.title || p.title || '');
+    const pSub = escapeHtml(c.subtitle || '');
+    const pAuth = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
+    const pDate = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
     const presetObj = POD_PRESETS[pubSet.preset] || {};
-    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || presetObj.name || '');
+    const pPub = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || presetObj.name || '');
     const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
-    const pQuote  = escapeHtml(c.quoteAuthor || '');
+    const pQuote = escapeHtml(c.quoteAuthor || '');
 
     const bgColor = s.bgColor || '#ffffff';
     const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
-    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
+    const bgPrintCss = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
 
-    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
-    const titleSz = `font-size:${s.fontSize||20}pt;`;
+    const fontCss = `font-family:${s.fontFamily || "'KoPub Batang',serif"};color:${s.fontColor || '#1C1813'};letter-spacing:${s.letterSpacing || '0em'};`;
+    const titleSz = `font-size:${s.fontSize || 20}pt;`;
     const jc = s.alignY || 'center';
     const ai = s.alignX || 'center';
     const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
 
-    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
+    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity ?? 0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
     const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
     const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
@@ -3610,13 +3610,13 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
     if (type === 'half_title') {
       htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
     } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
     } else if (type === 'dedication') {
       htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
     } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
     } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml ? `<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>` : ''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
@@ -3654,7 +3654,7 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
     const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
     const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
     const displayTitle = getEpisodeDisplayTitle(ep, p);
-    
+
     bodyHtml += `
   <div class="chapter ${isMatter ? 'matter-page' : ''}">
     ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
@@ -3665,7 +3665,7 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
   // ── [DOM 정제 (Sanitization) - 크래시 방지] ──
   const parser = new DOMParser();
   const doc = parser.parseFromString(bodyHtml, 'text/html');
-  
+
   doc.querySelectorAll('.chapter-content, .matter-page > div').forEach(container => {
     // 1. Naked Text 노드를 <p>로 감싸기
     Array.from(container.childNodes).forEach(node => {
@@ -3680,7 +3680,7 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
         }
       }
     });
-    
+
     // 2. 비어있는 <p> 태그 및 무의미한 줄바꿈 제거
     container.querySelectorAll('p').forEach(pTag => {
       const html = pTag.innerHTML.trim();
@@ -3697,14 +3697,14 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
 
 async function exportPODPdf(isSilent = false) {
   const p = currentProject();
-  if(!p) return;
-  
+  if (!p) return;
+
   const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
   if (eps.length === 0) {
     if (!isSilent) showToast('출판할 본문이 없습니다.');
     return;
   }
-  
+
   let win;
   if (isSilent) {
     let iframe = document.getElementById('pod-calc-iframe');
@@ -3733,13 +3733,13 @@ async function exportPODPdf(isSilent = false) {
     if (!isSilent) showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
     await ensureProjectBodiesLoaded(p);
   }
-  
+
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const pubSet = getPublishSettings(p);
-  
+
   if (!isSilent) showToast('PDF 변환을 준비 중입니다...');
-  
+
   let html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -3763,7 +3763,7 @@ ${mainStyles}
   }
   @page {
     size: ${pubSet.paperSize};
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
+    margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
     @bottom-center {
       content: counter(page);
       font-size: 9pt;
@@ -3771,10 +3771,10 @@ ${mainStyles}
     }
   }
   @page:left {
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm;
+    margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.inner || 25}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.outer || 18}mm;
   }
   @page:right {
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
+    margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
   }
   @page:first {
     @bottom-center { content: none; }
@@ -3785,8 +3785,8 @@ ${mainStyles}
   }
   body {
     font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: ${pubSet.fontSize||10}pt;
-    line-height: ${pubSet.lineHeight||1.75};
+    font-size: ${pubSet.fontSize || 10}pt;
+    line-height: ${pubSet.lineHeight || 1.75};
     color: #111;
     background: transparent !important;
     text-align: justify;
@@ -3978,7 +3978,7 @@ ${mainStyles}
     } catch (err) { console.warn('Cover rendering skipped:', err); }
   }
 
-    html += generatePODBodyContent(p, pubSet, loadedEps);
+  html += generatePODBodyContent(p, pubSet, loadedEps);
   html += `
   <script>
     class PrintHandler extends window.Paged.Handler {
@@ -4006,9 +4006,9 @@ ${mainStyles}
 
 // Export/Import
 $('#exportBackupBtn').onclick = exportBackup;
-$('#importBackupBtn').onclick = () => { $('#importInput').value=''; $('#importInput').click(); };
+$('#importBackupBtn').onclick = () => { $('#importInput').value = ''; $('#importInput').click(); };
 $('#importInput').onchange = async () => {
-  const file = $('#importInput').files?.[0]; if(!file) return;
+  const file = $('#importInput').files?.[0]; if (!file) return;
   try {
     let jsonString = '';
     // 압축된 파일(.gz)인 경우 해제
@@ -4020,12 +4020,12 @@ $('#importInput').onchange = async () => {
       jsonString = await file.text();
     }
     const data = JSON.parse(jsonString);
-    if(Array.isArray(data.projects)) { 
-      importTempData = data; 
-      $('#importProjectCount').textContent = data.projects.length; 
-      openModal('importModal'); 
+    if (Array.isArray(data.projects)) {
+      importTempData = data;
+      $('#importProjectCount').textContent = data.projects.length;
+      openModal('importModal');
     } else throw new Error();
-  } catch(e) {
+  } catch (e) {
     console.error(e);
     showToast('잘못된 백업 파일입니다.');
   }
@@ -4038,12 +4038,12 @@ $('#importAddBtn').onclick = () => handleImport('add');
 
 $('#attachPdfRawBtn').onclick = () => $('#attachPdfRawInput').click();
 $('#attachPdfRawInput').onchange = async () => {
-  const file = $('#attachPdfRawInput').files?.[0]; if(!file) return;
-  if(file.type !== 'application/pdf') return showToast('PDF 파일만 원본으로 첨부할 수 있습니다.');
-  if(!currentUser) return showToast('로그인 후 사용할 수 있습니다.');
+  const file = $('#attachPdfRawInput').files?.[0]; if (!file) return;
+  if (file.type !== 'application/pdf') return showToast('PDF 파일만 원본으로 첨부할 수 있습니다.');
+  if (!currentUser) return showToast('로그인 후 사용할 수 있습니다.');
 
   const p = currentProject();
-  if(!p) return;
+  if (!p) return;
 
   $('#attachPdfRawBtn').textContent = '업로드 중...';
   try {
@@ -4076,7 +4076,7 @@ $('#attachPdfRawInput').onchange = async () => {
     renderProjectPlan();
     closeModal('planImportModal');
     showToast('PDF가 쳊부되었습니다!');
-  } catch(e) {
+  } catch (e) {
     console.error(e);
     // Storage 버킷이 없으면 안내
     if (e.message && (e.message.includes('bucket') || e.message.includes('not found') || e.message.includes('Bucket'))) {
@@ -4090,21 +4090,21 @@ $('#attachPdfRawInput').onchange = async () => {
   }
 };
 
-$('#importPlanBtn').onclick = () => { $('#planImportText').value=''; $('#planImportFileName').textContent='선택된 파일 없음'; $('#planImportFileInput').value=''; openModal('planImportModal'); };
+$('#importPlanBtn').onclick = () => { $('#planImportText').value = ''; $('#planImportFileName').textContent = '선택된 파일 없음'; $('#planImportFileInput').value = ''; openModal('planImportModal'); };
 $('#uploadPlanPdfBtn').onclick = () => $('#planImportFileInput').click();
 $('#planImportFileInput').onchange = async () => {
-  const file = $('#planImportFileInput').files?.[0]; if(!file) return;
+  const file = $('#planImportFileInput').files?.[0]; if (!file) return;
   $('#planImportFileName').textContent = file.name;
-  
-  if(file.type==='application/pdf') {
+
+  if (file.type === 'application/pdf') {
     $('#planImportText').value = 'PDF를 분석하는 중...';
     try {
-      if(!window.pdfjsLib) throw new Error('PDF 라이브러리를 불러올 수 없습니다.');
+      if (!window.pdfjsLib) throw new Error('PDF 라이브러리를 불러올 수 없습니다.');
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let fullText = '';
-      for(let i=1; i<=pdf.numPages; i++) {
+      for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         let lastY, text = '';
@@ -4116,16 +4116,16 @@ $('#planImportFileInput').onchange = async () => {
         fullText += text + '\n\n';
       }
       $('#planImportText').value = fullText;
-    } catch(e) {
+    } catch (e) {
       console.error(e); $('#planImportText').value = 'PDF 분석 실패: ' + e.message;
     }
-  } else if(file.name.endsWith('.docx')) {
+  } else if (file.name.endsWith('.docx')) {
     $('#planImportText').value = 'Word 문서를 분석하는 중...';
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
       $('#planImportText').value = result.value;
-    } catch(e) {
+    } catch (e) {
       console.error(e); $('#planImportText').value = 'Word 분석 실패: ' + e.message;
     }
   } else {
@@ -4136,30 +4136,30 @@ $('#planImportFileInput').onchange = async () => {
 };
 $('#executePlanImportBtn').onclick = () => {
   const text = $('#planImportText').value;
-  if(!text.trim()) return showToast('가져올 텍스트가 없습니다.');
-  
+  if (!text.trim()) return showToast('가져올 텍스트가 없습니다.');
+
   const lines = text.split('\n');
   const sections = [];
   let currentTitle = '기본 정보';
   let currentBody = [];
-  
+
   const isHeader = (line) => {
     const trimmed = line.trim();
-    if(trimmed.length === 0 || trimmed.length > 50) return false;
-    if(/^#+\s+(.*)/.test(trimmed)) return trimmed.replace(/^#+\s+/, '');
-    if(/^\[(.*)\]$/.test(trimmed)) return trimmed.replace(/^\[|\]$/g, '');
+    if (trimmed.length === 0 || trimmed.length > 50) return false;
+    if (/^#+\s+(.*)/.test(trimmed)) return trimmed.replace(/^#+\s+/, '');
+    if (/^\[(.*)\]$/.test(trimmed)) return trimmed.replace(/^\[|\]$/g, '');
     const numMatch = trimmed.match(/^(?:제\s*\d+\s*[장부]\s*)?(?:\d+[\.\)]|[IVX]+[\.\)])\s+(.+)$/);
-    if(numMatch) return numMatch[1];
+    if (numMatch) return numMatch[1];
     const keywords = ['등장인물', '시놉시스', '줄거리', '세계관', '플롯', '로그라인', '주제', '기획의도', '배경', '캐릭터'];
-    if(keywords.some(k => trimmed === k || trimmed === k+':')) return trimmed.replace(/:$/, '');
+    if (keywords.some(k => trimmed === k || trimmed === k + ':')) return trimmed.replace(/:$/, '');
     return false;
   };
-  
-  for(const line of lines) {
+
+  for (const line of lines) {
     const headerTitle = isHeader(line);
-    if(headerTitle) {
+    if (headerTitle) {
       const bodyText = currentBody.join('\n').trim();
-      if(bodyText.length > 0 || currentTitle !== '기본 정보') {
+      if (bodyText.length > 0 || currentTitle !== '기본 정보') {
         sections.push(defaultPlanSection(currentTitle, bodyText));
       }
       currentTitle = headerTitle;
@@ -4168,31 +4168,31 @@ $('#executePlanImportBtn').onclick = () => {
       currentBody.push(line);
     }
   }
-  
+
   const lastBodyText = currentBody.join('\n').trim();
-  if(lastBodyText.length > 0 || currentTitle !== '기본 정보') {
+  if (lastBodyText.length > 0 || currentTitle !== '기본 정보') {
     sections.push(defaultPlanSection(currentTitle, lastBodyText));
   }
-  
+
   const validSections = sections.filter(s => s.body.trim() !== '');
-  if(validSections.length === 0) return showToast('변환할 항목을 찾지 못했습니다.');
-  
+  if (validSections.length === 0) return showToast('변환할 항목을 찾지 못했습니다.');
+
   const p = currentProject();
-  p.planSections = [...(p.planSections||[]), ...validSections];
+  p.planSections = [...(p.planSections || []), ...validSections];
   touchProject(); queueSaveFS(); renderProjectPlan();
   closeModal('planImportModal');
   showToast(`${validSections.length}개의 항목을 가져왔어요.`);
 };
 
 // Global Keys & Modals
-$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
-$$('.modal-overlay').forEach(m=>m.onclick=e=>{if(e.target===m)m.classList.add('hidden')});
-window.addEventListener('keydown', e=>{
-  if((e.metaKey||e.ctrlKey) && e.key==='.') { e.preventDefault(); toggleFocusMode(); }
-  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k' && !$('#workspaceView').classList.contains('hidden')) { e.preventDefault(); $('#openSearchBtn').click(); }
-  if(e.key==='Escape') { if(isFocusMode) toggleFocusMode(); else $$('.modal-overlay').forEach(m=>m.classList.add('hidden')); }
+$$('[data-close]').forEach(b => b.onclick = () => closeModal(b.dataset.close));
+$$('.modal-overlay').forEach(m => m.onclick = e => { if (e.target === m) m.classList.add('hidden') });
+window.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === '.') { e.preventDefault(); toggleFocusMode(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !$('#workspaceView').classList.contains('hidden')) { e.preventDefault(); $('#openSearchBtn').click(); }
+  if (e.key === 'Escape') { if (isFocusMode) toggleFocusMode(); else $$('.modal-overlay').forEach(m => m.classList.add('hidden')); }
 });
-window.addEventListener('beforeunload', ()=> { persistEditor(); queueSaveFS(); });
+window.addEventListener('beforeunload', () => { persistEditor(); queueSaveFS(); });
 
 
 const manualSaveBtn = $('#manualSaveBtn');
@@ -4229,12 +4229,12 @@ async function openEbook(projectId) {
   ebookProjectId = projectId;
   state.currentProjectId = projectId;
   const p = currentProject();
-  
+
   if (p.episodes.some(e => e.body === undefined)) {
     showToast('프로젝트 본문을 불러오는 중입니다...');
     await ensureProjectBodiesLoaded(p);
   }
-  
+
   const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
   if (!eps.length) { showToast('작성된 회차가 없습니다.'); return; }
 
@@ -4264,14 +4264,14 @@ function renderEbookPage(eps, idx) {
 
   const processed = processEpisodeBody(ep.body, ep.title);
   $('#ebookEpNum').textContent = epLabel;
-  
+
   if (processed.hasTitle) {
     $('#ebookEpTitle').style.display = 'none';
   } else {
     $('#ebookEpTitle').style.display = 'block';
     $('#ebookEpTitle').textContent = ep.title;
   }
-  
+
   $('#ebookContent').innerHTML = `<div class="ql-editor">${processed.body}</div>`;
 
   // 코멘트 오버레이 렌더
@@ -4371,7 +4371,7 @@ function attachEbookSelectionHandler(ep) {
     const tip = document.createElement('div');
     tip.id = 'ebook-comment-tooltip';
     tip.innerHTML = `<span style="font-size:18px;">💬</span> 선택한 문장에 코멘트 달기`;
-    
+
     // 모바일 기본 메뉴와 겹치지 않도록 하단 중앙 고정 플로팅 버튼으로 배치
     tip.style.cssText = `
       position: fixed;
@@ -4447,7 +4447,7 @@ function openEbookCommentInput(ep, selectedText) {
     <div style="background:#FAF7F0; border-radius:24px 24px 0 0; padding:20px 20px 36px;">
       <div style="width:36px;height:4px;background:rgba(0,0,0,.15);border-radius:2px;margin:0 auto 16px;"></div>
       <p style="font-size:11px;font-weight:700;color:#6B5CE7;margin:0 0 6px;">선택한 문장</p>
-      <p style="font-size:14px;color:#2E2A25;background:#EFECE4;border-radius:10px;padding:10px 12px;margin:0 0 16px;line-height:1.6;">&ldquo;${escapeHtml(selectedText.slice(0,100))}${selectedText.length > 100 ? '…' : ''}&rdquo;</p>
+      <p style="font-size:14px;color:#2E2A25;background:#EFECE4;border-radius:10px;padding:10px 12px;margin:0 0 16px;line-height:1.6;">&ldquo;${escapeHtml(selectedText.slice(0, 100))}${selectedText.length > 100 ? '…' : ''}&rdquo;</p>
       <p style="font-size:11px;font-weight:700;color:#858793;margin:0 0 6px;">코멘트</p>
       <textarea id="ebookCommentInput" placeholder="아이디어, 수정 메모, 느낀 점 등을 자유롭게 남겨보세요!" style="width:100%;box-sizing:border-box;height:100px;border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px;font-size:15px;font-family:inherit;resize:none;background:#fff;color:#1C1813;outline:none;line-height:1.6;"></textarea>
       <div style="display:flex;gap:10px;margin-top:12px;">
