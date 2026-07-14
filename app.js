@@ -3637,9 +3637,24 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
   beforeTocEps.forEach(ep => {
     if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = processed.body;
+    Array.from(tempDiv.childNodes).forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+        const p = document.createElement('p');
+        p.textContent = node.textContent;
+        tempDiv.replaceChild(p, node);
+      }
+    });
+    tempDiv.querySelectorAll('p').forEach(pTag => {
+      if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+    });
+    const safeBody = tempDiv.innerHTML;
+
     htmlFm += `
   <div class="chapter matter-page" style="break-before: right;">
-    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
+    <div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div>
   </div>`;
   });
 
@@ -3655,44 +3670,28 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
     const displayTitle = getEpisodeDisplayTitle(ep, p);
 
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = processed.body;
+    Array.from(tempDiv.childNodes).forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+        const p = document.createElement('p');
+        p.textContent = node.textContent;
+        tempDiv.replaceChild(p, node);
+      }
+    });
+    tempDiv.querySelectorAll('p').forEach(pTag => {
+      if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+    });
+    const safeBody = tempDiv.innerHTML;
+
     bodyHtml += `
   <div class="chapter ${isMatter ? 'matter-page' : ''}">
     ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
-    <div class="chapter-content ql-editor">${processed.body}</div>
+    <div class="chapter-content ql-editor">${safeBody}</div>
   </div>`;
   });
 
-  // ── [DOM 정제 (Sanitization) - 크래시 방지] ──
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(bodyHtml, 'text/html');
-
-  doc.querySelectorAll('.chapter-content, .matter-page > div').forEach(container => {
-    // 1. Naked Text 노드를 <p>로 감싸기
-    Array.from(container.childNodes).forEach(node => {
-      if (node.nodeType === 3) { // Node.TEXT_NODE
-        const text = node.textContent.trim();
-        if (text.length > 0) {
-          const p = doc.createElement('p');
-          p.textContent = text;
-          container.replaceChild(p, node);
-        } else {
-          node.remove();
-        }
-      }
-    });
-
-    // 2. 비어있는 <p> 태그 및 무의미한 줄바꿈 제거
-    container.querySelectorAll('p').forEach(pTag => {
-      const html = pTag.innerHTML.trim();
-      if (html === '' || html === '<br>' || html === '&nbsp;' || html === '<br/>') {
-        pTag.remove();
-      }
-    });
-  });
-
-  // 4. Sanitizer 원본 텍스트 증발 방어 코드
-  const resultHtml = doc.body ? doc.body.innerHTML : '';
-  return resultHtml.trim() ? resultHtml : bodyHtml;
+  return bodyHtml;
 }
 
 async function exportPODPdf(isSilent = false) {
