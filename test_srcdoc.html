@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+<iframe id="f" style="width:100%;height:300px;"></iframe>
+<script>
+const src = `
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    window.parent.postMessage('DOMContentLoaded fired', '*');
+});
+window.addEventListener('load', () => {
+    window.parent.postMessage('load fired', '*');
+});
+<\/script>
+</head>
+<body>Hello</body>
+</html>`;
+document.getElementById('f').srcdoc = src;
+window.addEventListener('message', e => console.log(e.data));
+</script>
+</body>
+</html>

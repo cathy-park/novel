@@ -2065,10 +2065,33 @@ async function renderLivePodPreview(forceMode = null) {
   const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
   let bodyHTML = generatePODBodyContent(p, pubSet, eps2Render);
 
-  // 2. [크래시 방지] 정규식을 통한 빠르고 안전한 빈 태그 청소 및 방어막 추가
-  bodyHTML = bodyHTML.replace(/<(p|div|span)[^>]*>(\s*|<br\s*\/?>)<\/\1>/gi, ''); // 빈 태그 삭제
-  bodyHTML = bodyHTML.replace(/(<br\s*\/?>\s*)+$/gi, ''); // 끝부분 쓸데없는 줄바꿈 삭제
-  bodyHTML += '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>'; // 방어막(Terminator)
+  // --- 강력한 DOM 정제 (PagedJS 크래시 원천 차단) ---
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(bodyHTML, 'text/html');
+  
+  // A. 이미지 크래시 방지
+  doc.querySelectorAll('img').forEach(img => {
+    img.style.display = 'block';
+    img.style.maxWidth = '100%';
+    img.style.breakInside = 'avoid';
+  });
+  
+  // B. 엔진을 뻗게 만드는 빈 인라인 태그 청소
+  doc.querySelectorAll('span, b, i, u, em, strong').forEach(el => {
+    if (!el.textContent.trim() && !el.querySelector('img')) el.remove();
+  });
+  
+  // C. 래핑되지 않은 고아 텍스트 노드를 <p>로 감싸기
+  Array.from(doc.body.childNodes).forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+      const pTag = document.createElement('p');
+      pTag.textContent = node.textContent;
+      node.replaceWith(pTag);
+    }
+  });
+  
+  bodyHTML = doc.body.innerHTML + '<div style="break-before:avoid; height:1px; visibility:hidden;">&nbsp;</div>';
+  // --------------------------------------------------------
 
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
@@ -2108,11 +2131,28 @@ async function renderLivePodPreview(forceMode = null) {
 <script>window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*');<\/script>
 <style>
   html,body { margin:0; padding:0; background:transparent !important; }
-  /* 3. [레이아웃 버그 해결] flex-wrap: nowrap 강제 적용으로 양면 구겨짐 완벽 차단 */
-  .pagedjs_pages { position:relative; display:flex; flex-wrap:nowrap !important; justify-content:center; }
-  .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; }
+  .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
+  .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; position: relative; }
   .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  
+  /* 재단선 및 안전영역 가이드라인 CSS */
+  body.show-guides .pagedjs_page::before {
+    content: "";
+    position: absolute;
+    top: 3mm; bottom: 3mm; left: 3mm; right: 3mm; /* Bleed (재단선) */
+    border: 1px dashed #FF6B6B;
+    pointer-events: none;
+    z-index: 99;
+  }
+  body.show-guides .pagedjs_page > .pagedjs_sheet::after {
+    content: "";
+    position: absolute;
+    top: 15mm; bottom: 15mm; left: 15mm; right: 15mm; /* Safe Area (안전영역) - 임의 여백 */
+    border: 1px dashed #3B82F6;
+    pointer-events: none;
+    z-index: 99;
+  }
 <\/style>
 <script>
 var _pagedHandlerRegistered = false;
@@ -2194,6 +2234,14 @@ window.addEventListener('message', function(ev) {
         var n = parseInt(el.getAttribute('data-page-number'), 10);
         if (n === lp || n === rp) el.style.display = 'block';
       });
+    }
+  }
+
+  if (ev.data.type === 'TOGGLE_GUIDES') {
+    if (ev.data.show) {
+      document.body.classList.add('show-guides');
+    } else {
+      document.body.classList.remove('show-guides');
     }
   }
 });
@@ -2480,6 +2528,15 @@ $$('.pod-settings-tab').forEach(btn => {
     }
   });
 });
+
+if ($('#podShowGuides')) {
+  $('#podShowGuides').addEventListener('change', (e) => {
+    const iframe = document.getElementById('podLiveIframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: e.target.checked }, '*');
+    }
+  });
+}
 
 // ── 페이지 트리 렌더링 ────────────────────────────────────────
 function renderPodPageTree() {
