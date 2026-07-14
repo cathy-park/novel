@@ -4872,11 +4872,13 @@ function runHiddenPagedJsForTree(p) {
 
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
-  const pagedjsCode = window.POD_PAGEDJS_CODE || '';
   const iframeHtml = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
 <style>
   html, body { background: transparent !important; }
   ${mainStyles}
@@ -4887,8 +4889,6 @@ function runHiddenPagedJsForTree(p) {
 <body>
   ${htmlContent}
   <script>
-    ${pagedjsCode}
-    
     class HiddenPrintHandler extends window.Paged.Handler {
       afterRendered(pages) {
         try {
@@ -4916,16 +4916,15 @@ function runHiddenPagedJsForTree(p) {
       }
     }
     window.Paged.registerHandlers(HiddenPrintHandler);
-    
-    window.PagedPolyfill.preview(document.body, [], document.body).catch(function(err) {
-      window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
-    });
   </script>
 </body>
 </html>`;
 
   hiddenIframe.removeAttribute('srcdoc');
-  hiddenIframe.srcdoc = iframeHtml;
+  const win = hiddenIframe.contentWindow;
+  win.document.open();
+  win.document.write(iframeHtml);
+  win.document.close();
 }
 
 function podGoToPage(pageNum, isSpread) {
