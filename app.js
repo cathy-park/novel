@@ -2154,7 +2154,7 @@ async function renderLivePodPreview(forceMode = null) {
 
     // 현재 선택된 active 블록 찾기
     const fmBlocksForRender = window.fmBlocks || pubSet.fmBlocks || [];
-    let blockIdx = window.fmActiveBlockIdx !== undefined ? window.fmActiveBlockIdx : null;
+    let blockIdx = typeof fmActiveBlockIdx !== 'undefined' ? fmActiveBlockIdx : null;
     let block = fmBlocksForRender[blockIdx];
     if (!block) {
       block = fmBlocksForRender.find(b => b.active);
@@ -2165,8 +2165,10 @@ async function renderLivePodPreview(forceMode = null) {
     if (block) {
       // 기존 generatePODBodyContent 로직을 이용하여 이 블록 1개의 HTML 생성
       const tempPubSet = JSON.parse(JSON.stringify(pubSet));
-      tempPubSet.fmBlocks = [block]; 
-      blockHtml = generatePODBodyContent(p, tempPubSet, [], 'fm'); 
+      tempPubSet.fmBlocks = [block];
+      // 목차를 위해 loadedEps는 전체로 넘김
+      const loadedEpsForToc = orderedEpisodes(p).filter(e => cleanText(e.body));
+      blockHtml = generatePODBodyContent(p, tempPubSet, loadedEpsForToc, 'fm'); 
     } else {
       blockHtml = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:#999;">활성화된 전면부 템플릿이 없습니다.</div>';
     }
