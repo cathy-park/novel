@@ -4335,29 +4335,34 @@ function runPaged() {
   }
   class LiveHandler extends Paged.Handler {
     afterRendered(pages) {
-      if (window.podProgressTimer) clearInterval(window.podProgressTimer);
-      var map = [];
-      pages.forEach(function(p, idx) {
-        var el = p.element || p.pageNode || p.wrapper;
-        if (!el) return;
-        
-        // 렌더링 직후 1페이지만 남기기 (우측 페이지)
-        var pgNum = parseInt(el.dataset.pageNumber || el.getAttribute('data-page-number') || '0', 10);
-        if (pgNum !== 1) {
-          el.style.display = 'none';
-        } else {
-          el.style.position = 'absolute';
-          el.style.top = '0';
-          el.style.right = '0';
-        }
+      try {
+        if (window.podProgressTimer) clearInterval(window.podProgressTimer);
+        var map = [];
+        pages.forEach(function(p, idx) {
+          var el = p.element || p.pageNode || p.wrapper;
+          if (!el) return;
+          
+          var pgNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10) || 0;
+          if (el.style) {
+            if (pgNum !== 1) {
+              el.style.display = 'none';
+            } else {
+              el.style.position = 'absolute';
+              el.style.top = '0';
+              el.style.right = '0';
+            }
+          }
 
-        var fmBlock = el.querySelector('.matter-page');
-        var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
-        var chTitle = el.querySelector('.chapter-title');
-        var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
-        map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
-      });
-      try { window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*'); } catch(err) {}
+          var fmBlock = el.querySelector('.matter-page');
+          var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
+          var chTitle = el.querySelector('.chapter-title, .chapter-content h1');
+          var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
+          map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
+        });
+        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*');
+      } catch (err) {
+        window.parent.postMessage({ type: 'pagedjs-error', error: 'afterRendered Error: ' + err.message }, '*');
+      }
     }
   }
   Paged.registerHandlers(LiveHandler);
@@ -4506,7 +4511,7 @@ window.addEventListener('message', (e) => {
     // ★ 렌더링 완료 후 iframe 너비를 양면(스프레드) 크기로 확장
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
-      const pubSet = getPublishSettings(window.novelProject);
+      const pubSet = getPublishSettings(currentProject());
       const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
       iframe.style.width = (paper.w * 2) + 'mm';
       
