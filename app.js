@@ -1511,10 +1511,10 @@ async function copyText(text, msg) {
 // Bindings
 $('#newProjectBtn').onclick = () => { $('#newProjectColors').innerHTML = COVER_COLORS.map(c=>`<button class="cover-color-swatch ${c===DEFAULT_COVER_COLOR?'active':''}" data-new-color="${c}" style="background:${c}"></button>`).join(''); $$('[data-new-color]').forEach(b=>b.onclick=()=>{$$('[data-new-color]').forEach(x=>x.classList.remove('active')); b.classList.add('active');}); openModal('newProjectModal'); setTimeout(()=>$('#newProjectTitle').focus(),30); };
 $('#createProjectBtn').onclick = async () => {
-  const p = { id:uid('project'), title:$('#newProjectTitle').value.trim()||'제목 없는 작품', status:$('#newProjectStatus').value||'serializing', cover:'', coverColor: $('.cover-color-swatch.active')?.dataset.newColor||DEFAULT_COVER_COLOR, updatedAt:Date.now(), selectedEpisodeId:null, viewMode:'split', planSections:[], episodes:[], _dirty: true };
+  const p = { id:uid('project'), title:$('#newProjectTitle')?.value.trim()||'제목 없는 작품', status:$('#newProjectStatus')?.value||'serializing', cover:'', coverColor: $('.cover-color-swatch.active')?.dataset.newColor||DEFAULT_COVER_COLOR, updatedAt:Date.now(), selectedEpisodeId:null, viewMode:'split', planSections:[], episodes:[], _dirty: true };
   const ep = defaultEpisode('prologue'); p.episodes.push(ep); p.selectedEpisodeId = ep.id;
   state.projects.unshift(p);
-  closeModal('newProjectModal'); $('#newProjectTitle').value='';
+  closeModal('newProjectModal'); if ($('#newProjectTitle')) $('#newProjectTitle').value='';
   showToast('새 작품을 저장 중...');
   await forceSaveAllSupabase(); // 서재로 돌아갔을 때 즉시 표시되도록 저장 완료 보장
   openProject(p.id); showToast('새 작품을 만들었어요.');
@@ -2040,6 +2040,7 @@ async function renderLivePodPreview(forceMode = null) {
   var TREE = ` + treeModeStr + `;
   var waitN = 0;
   function boot() {
+    if (!document.body) return setTimeout(boot, 50);
     if (typeof Paged === 'undefined') {
       if (++waitN > 300) {
         window.parent.postMessage({ type:'pagedjs-error', error:'PagedJS 로드 실패' }, '*');
@@ -2075,7 +2076,11 @@ async function renderLivePodPreview(forceMode = null) {
       window.parent.postMessage({ type:'pagedjs-error', error:'preview:'+err.message }, '*');
     });
   }
-  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
   window.addEventListener('message', function(ev) {
     if (!ev.data || ev.data.type !== 'SHOW_PAGES') return;
     var tgt  = parseInt(ev.data.pageNum, 10);
