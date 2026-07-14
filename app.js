@@ -2135,6 +2135,101 @@ async function renderLivePodPreview(forceMode = null) {
     return;
   }
 
+  // [새로운 요구사항 반영] 전면부 디자인 탭일 경우 현재 선택된 템플릿 1장만 단면(Single)으로 하드코딩 렌더링
+  if (activePane === 'fm') {
+    const iframe = document.getElementById('podLiveIframe');
+    if (!iframe) return;
+    
+    const pubSet = getPublishSettings(p);
+    const paper = PAPER_SIZES[$('#podPaperSize') ? $('#podPaperSize').value : (pubSet.paperSize || 'A5')] || PAPER_SIZES.A5;
+    
+    // 실시간 여백
+    const m = {
+      top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
+      bottom: parseFloat($('#podMarginBottom')?.value) || pubSet.margins?.bottom || 20,
+      inner: parseFloat($('#podMarginInner')?.value) || pubSet.margins?.inner || 25,
+      outer: parseFloat($('#podMarginOuter')?.value) || pubSet.margins?.outer || 18,
+      bleed: parseFloat($('#podBleed')?.value) || pubSet.margins?.bleed || 3
+    };
+
+    // 현재 선택된 active 블록 찾기
+    const fmBlocksForRender = window.fmBlocks || pubSet.fmBlocks || [];
+    let blockIdx = window.fmActiveBlockIdx !== undefined ? window.fmActiveBlockIdx : null;
+    let block = fmBlocksForRender[blockIdx];
+    if (!block) {
+      block = fmBlocksForRender.find(b => b.active);
+      blockIdx = fmBlocksForRender.indexOf(block);
+    }
+    
+    let blockHtml = '';
+    if (block) {
+      // 기존 generatePODBodyContent 로직을 이용하여 이 블록 1개의 HTML 생성
+      const tempPubSet = JSON.parse(JSON.stringify(pubSet));
+      tempPubSet.fmBlocks = [block]; 
+      blockHtml = generatePODBodyContent(p, tempPubSet, [], 'fm'); 
+    } else {
+      blockHtml = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:#999;">활성화된 전면부 템플릿이 없습니다.</div>';
+    }
+    
+    // 단면 보기이므로 폭은 paper.w 1장 크기
+    const canvasEl = $('#podPreviewInner');
+    const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
+    const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
+    const sc = Math.max(0.2, Math.min(1, (cW - 40) / (paper.w * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+
+    iframe.style.width = paper.w + 'mm';
+    iframe.style.height = paper.h + 'mm';
+    iframe.style.transform = `scale(${sc})`;
+    iframe.style.transformOrigin = 'top center';
+    iframe.style.border = 'none';
+    iframe.style.background = 'transparent';
+
+    const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; height: 100%; display: flex; justify-content:center; align-items:center; }
+  .page {
+    width: ${paper.w}mm;
+    height: ${paper.h}mm;
+    background: #fff;
+    box-sizing: border-box;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    /* 단면일 땐 우측 페이지(홀수쪽) 기준으로 여백 설정: top, outer(right), bottom, inner(left) */
+    padding: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm;
+    overflow: hidden;
+  }
+  .page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  
+  /* 생성된 HTML 기본 스타일 대응 */
+  .chapter { height: 100%; width: 100%; position: relative; }
+  ul.toc-list { list-style:none; padding:0; margin:0; }
+  ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; line-height:1.5; }
+  .toc-title { background:#fff; padding-right:8px; z-index:1; }
+  .toc-dots { flex:1; border-bottom:1px dotted #ccc; margin:0 4px; position:relative; top:-6px; }
+  .toc-page-ref { background:#fff; padding-left:8px; z-index:1; }
+  .toc-page-ref::after { content:""; }
+</style>
+</head>
+<body>
+  <div class="page">
+    ${blockHtml}
+  </div>
+</body>
+</html>`;
+
+    iframe.removeAttribute('srcdoc');
+    iframe.srcdoc = html;
+    
+    if (st) {
+      st.style.display = 'block';
+      st.textContent = `렌더링 완료 ✓ (전면부 단면 미리보기)`;
+    }
+    return;
+  }
+
   if (p.episodes.some(e => e.body === undefined)) {
     if (st) st.textContent = '내용 데이터를 불러오는 중...';
     await ensureProjectBodiesLoaded(p);
@@ -3130,21 +3225,14 @@ function openFmBlockEditor(index) {
   const s = block.style;
   const c = block.content;
 
-  // [전면부 디자인] 목록 클릭 시 pageMap 연동
-  if (window.podPageMap) {
-    const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
-    const label = FM_LABELS[block.type] || block.type;
-    const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
-    if (pm) {
-      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
-      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
-      
-      const iframe = document.getElementById('podLiveIframe');
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', mode: 'single', pageNum: pm.pageNum }, '*');
-      }
-    }
+  // [요구사항 반영] 전면부 템플릿 클릭 시 PagedJS 의존성을 제거하고 즉각적인 CSS 단면 렌더링 호출
+  if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+  if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+  if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none'; // 이전/다음 버튼 숨김(안전장치)
+  
+  // 리스트 클릭 즉시 해당 템플릿 단면 보기 렌더링
+  if (typeof renderLivePodPreview === 'function') {
+    renderLivePodPreview();
   }
 
   // 에디터 패널 표시
