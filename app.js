@@ -2344,7 +2344,7 @@ async function renderLivePodPreview(forceMode = null) {
   .chapter-content span { background-color:transparent !important; }
   .chapter-content p { text-indent:10pt !important; margin:0 !important; }
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width: 100% !important; width: 100% !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; }`;
+  img { max-width: 100% !important; max-height: 85vh !important; width: auto !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; break-inside: avoid; }`;
 
   const currentRenderSessionId = ++podRenderSessionId;
   window.podPendingRenderHTML = bodyHTML;
@@ -4869,7 +4869,7 @@ function runHiddenPagedJsForTree(p) {
   .chapter-content span { background-color:transparent !important; }
   .chapter-content p { text-indent:10pt !important; margin:0 !important; }
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width: 100% !important; width: 100% !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; }`;
+  img { max-width: 100% !important; max-height: 85vh !important; width: auto !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; break-inside: avoid; }`;
 
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
@@ -4923,10 +4923,13 @@ function runHiddenPagedJsForTree(p) {
       }
       window.Paged.registerHandlers(HiddenPrintHandler);
       
-      // 이미지 및 폰트 대기 후 수동 렌더링 시작
-      Promise.all([
-        document.fonts ? document.fonts.ready : Promise.resolve(),
-        ...Array.from(document.images).filter(img => !img.complete).map(img => new Promise(res => { img.onload = img.onerror = res; }))
+      // 이미지 및 폰트 대기 (최대 2초 타임아웃)
+      var fontWait = document.fonts ? document.fonts.ready : Promise.resolve();
+      var imgWaits = Array.from(document.images).filter(function(img) { return !img.complete; }).map(function(img) { return new Promise(function(res) { img.onload = img.onerror = res; }); });
+      
+      Promise.race([
+        Promise.all([fontWait].concat(imgWaits)),
+        new Promise(function(res) { setTimeout(res, 2000); })
       ]).then(function() {
         window.PagedPolyfill.preview(document.body, [], document.body).catch(function(err) {
           window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
