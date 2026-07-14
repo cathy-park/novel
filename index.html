@@ -324,8 +324,11 @@ window.addEventListener('unhandledrejection', function(e) {
           <!-- 디자인 테마 선택 (삭제됨) -->
 
           <!-- 블록 추가 버튼 -->
-          <div style="position:sticky; top:0; z-index:5; background:var(--c-bg); padding:12px 0 8px; border-bottom:1px solid var(--c-line); margin-bottom:12px;">
-            <div style="font-size:11px; color:var(--c-muted); margin-bottom:8px;">드래그하여 순서 변경. 각 블록 클릭 시 개별 스타일 편집.</div>
+          <div style="position:sticky; top:43px; z-index:9; background:var(--c-bg); padding:12px 0 8px; border-bottom:1px solid var(--c-line); margin-bottom:12px;">
+            <div style="font-size:11px; color:var(--c-muted); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+              <span>드래그하여 순서 변경. 각 블록 클릭 시 개별 스타일 편집.</span>
+              <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-weight:700;"><input type="checkbox" id="fmShowGuides" checked style="margin:0;"> 여백/재단선 표시</label>
+            </div>
             <div class="pod-preset-row" style="flex-wrap:wrap; gap:4px;" id="fmAddBtns">
               <button class="pod-preset-btn" data-fm-add="half_title">+ 속표지</button>
               <button class="pod-preset-btn" data-fm-add="title_page">+ 본표지</button>

@@ -1068,7 +1068,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   position: sticky;
   top: 0;
   background: var(--c-surface);
-  z-index: 2;
+  z-index: 10;
 }
 .pod-settings-tab {
   flex: 1;

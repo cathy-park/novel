@@ -2186,6 +2186,19 @@ async function renderLivePodPreview(forceMode = null) {
     iframe.style.border = 'none';
     iframe.style.background = 'transparent';
 
+    const showGuides = $('#fmShowGuides') ? $('#fmShowGuides').checked : false;
+    let gH = '';
+    if (showGuides) {
+      gH = `
+      <!-- 가이드라인 (전면부 단면, 우측 페이지 기준) -->
+      <div style="position:absolute; inset:0; pointer-events:none; z-index:9999;">
+        <!-- 재단선 (빨간 점선) -->
+        <div style="position:absolute; left:${m.bleed}mm; right:${m.bleed}mm; top:${m.bleed}mm; bottom:${m.bleed}mm; border:1px dashed rgba(255,0,0,0.4);"></div>
+        <!-- 안전영역 (파란 실선, 우측 페이지이므로 왼쪽이 inner, 오른쪽이 outer) -->
+        <div style="position:absolute; left:${m.bleed+m.inner}mm; right:${m.bleed+m.outer}mm; top:${m.bleed+m.top}mm; bottom:${m.bleed+m.bottom}mm; border:1px solid rgba(0,0,255,0.3);"></div>
+      </div>`;
+    }
+
     const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2217,6 +2230,7 @@ async function renderLivePodPreview(forceMode = null) {
 </head>
 <body>
   <div class="page">
+    ${gH}
     ${blockHtml}
   </div>
 </body>
@@ -2729,6 +2743,15 @@ if ($('#podShowGuides')) {
     const iframe = document.getElementById('podLiveIframe');
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage({ type: 'TOGGLE_GUIDES', show: e.target.checked }, '*');
+    }
+  });
+}
+
+if ($('#fmShowGuides')) {
+  $('#fmShowGuides').addEventListener('change', () => {
+    const activeTab = document.querySelector('.pod-settings-tab.active');
+    if (activeTab && activeTab.dataset.pane === 'fm') {
+      renderLivePodPreview();
     }
   });
 }
@@ -3782,16 +3805,18 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
 
     const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100%;${bgPrintCss}${rel}`;
 
+    const padCss = `padding:${s.paddingTop ?? 20}mm ${s.paddingRight ?? 20}mm ${s.paddingBottom ?? 20}mm ${s.paddingLeft ?? 20}mm;`;
+
     if (type === 'half_title') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
     } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
     } else if (type === 'dedication') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
     } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
     } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
