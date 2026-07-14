@@ -2034,6 +2034,98 @@ async function renderLivePodPreview(forceMode = null) {
 
   const st = $('#podLiveRenderStatus');
 
+  // [요구사항 반영] 내지 설정 탭일 경우 PagedJS를 완전히 배제하고 순수 CSS 2장(Spread) 뷰어를 하드코딩으로 보여줌
+  if (activePane === 'inner') {
+    const iframe = document.getElementById('podLiveIframe');
+    if (!iframe) return;
+    
+    const pubSet = getPublishSettings(p);
+    const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+    const m = pubSet.margins || { top:20, bottom:20, inner:25, outer:18, bleed:3 };
+    const b = m.bleed || 3;
+    
+    const canvasEl = $('#podPreviewInner');
+    const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
+    const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
+    
+    const tw = (paper.w * 2); 
+    const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+
+    iframe.style.width = tw + 'mm';
+    iframe.style.height = paper.h + 'mm';
+    iframe.style.transform = `scale(${sc})`;
+    iframe.style.transformOrigin = 'top center';
+    iframe.style.border = 'none';
+    iframe.style.background = 'transparent';
+
+    const showGuides = $('#podShowGuides') && $('#podShowGuides').checked;
+
+    const dummyText = `
+      <p style="text-indent:10pt; margin-bottom:12px;">이 화면은 출판될 책의 실제 여백과 재단선을 확인하기 위한 <strong>순수 CSS 미리보기 화면</strong>입니다.</p>
+      <p style="text-indent:10pt; margin-bottom:12px;">좌측과 우측 페이지가 실제 책을 펼쳤을 때와 동일하게 일렬로 배치되어 있습니다. 빨간 점선은 인쇄소에서 잘려나가는 <strong>재단선(Bleed)</strong>을 의미하며, 파란 실선은 텍스트가 안전하게 배치되어야 하는 <strong>안전영역(여백)</strong>을 의미합니다.</p>
+      <p style="text-indent:10pt; margin-bottom:12px;">좌측 메뉴에서 상단, 하단, 내측, 외측 여백을 조절하면 실시간으로 가이드라인이 움직입니다. 완벽한 레이아웃을 위해 여백을 세밀하게 조정해 보세요.</p>
+    `;
+
+    const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; height: 100%; display: flex; font-family:'KoPub Batang','Noto Serif KR',serif; font-size:${pubSet.fontSize||10}pt; line-height:${pubSet.lineHeight||1.75}; color:#111; word-break:keep-all; }
+  .page {
+    width: ${paper.w}mm;
+    height: ${paper.h}mm;
+    background: #fff;
+    box-sizing: border-box;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  }
+  .page-left { padding: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
+  .page-right { padding: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
+  
+  .page-left::after { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  .page-right::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  
+  /* 가이드라인 (ShowGuides가 켜져있을 때만) */
+  ${showGuides ? `
+  /* 재단선(Bleed): 종이 끝에서 bleed 만큼 들어간 위치 */
+  .page-left .bleed-guide { position:absolute; top:${b}mm; bottom:${b}mm; left:${b}mm; right:0; border:1px dashed red; pointer-events:none; z-index:99; }
+  .page-right .bleed-guide { position:absolute; top:${b}mm; bottom:${b}mm; left:0; right:${b}mm; border:1px dashed red; pointer-events:none; z-index:99; }
+  
+  /* 안전영역(Margin) */
+  .page-left .safe-guide { position:absolute; top:${m.top}mm; bottom:${m.bottom}mm; left:${m.outer}mm; right:${m.inner}mm; border:1px solid rgba(0,0,255,0.3); pointer-events:none; z-index:99; }
+  .page-right .safe-guide { position:absolute; top:${m.top}mm; bottom:${m.bottom}mm; left:${m.inner}mm; right:${m.outer}mm; border:1px solid rgba(0,0,255,0.3); pointer-events:none; z-index:99; }
+  ` : ''}
+</style>
+</head>
+<body>
+  <div class="page page-left">
+    ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
+    <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
+      <h2 style="text-align:center; margin-top:20%; margin-bottom:30px;">왼쪽 페이지 (짝수 쪽)</h2>
+      <div style="opacity:0.8;">${dummyText}</div>
+    </div>
+  </div>
+  <div class="page page-right">
+    ${showGuides ? '<div class="bleed-guide"></div><div class="safe-guide"></div>' : ''}
+    <div style="position:relative; z-index:1; height:100%; overflow:hidden;">
+      <h2 style="text-align:center; margin-top:20%; margin-bottom:30px;">오른쪽 페이지 (홀수 쪽)</h2>
+      <div style="opacity:0.8;">${dummyText}</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    iframe.removeAttribute('srcdoc');
+    iframe.srcdoc = html;
+    
+    if (st) {
+      st.style.display = 'block';
+      st.textContent = `렌더링 완료 ✓ (내지 여백 확인 모드)`;
+    }
+    return;
+  }
+
   if (p.episodes.some(e => e.body === undefined)) {
     if (st) st.textContent = '내용 데이터를 불러오는 중...';
     await ensureProjectBodiesLoaded(p);
