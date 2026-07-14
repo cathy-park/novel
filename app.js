@@ -2009,7 +2009,7 @@ async function renderLivePodPreview(forceMode = null) {
   // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
   if (!window.POD_PAGEDJS_CODE) {
     try {
-      const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/js/paged.polyfill.js');
+      const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/paged.polyfill.js');
       if (!res.ok) throw new Error('CDN 응답 실패');
       const text = await res.text();
       if (text.includes('<html') || text.trim() === '') throw new Error('잘못된 응답 (HTML 반환됨)');
