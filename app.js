@@ -2305,9 +2305,7 @@ function syncLegacyInputs(s) {
 // ── 이벤트 바인딩 ─────────────────────────────────────────────
 
 // 스튜디오 열기/닫기
-$('#openPublishSettingsBtn').onclick = showPodStudio;
 if ($('#openPublishSettingsFromEditorBtn')) $('#openPublishSettingsFromEditorBtn').onclick = () => { persistEditor(); queueSaveFS(); showPodStudio(); };
-if ($('#openPublishSettingsTopBtn')) $('#openPublishSettingsTopBtn').onclick = () => { persistEditor(); queueSaveFS(); showPodStudio(); };
 $('#backFromPodStudio').onclick = hidePodStudio;
 
 // 스튜디오 내 내보내기 버튼
