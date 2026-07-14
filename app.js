@@ -1855,18 +1855,20 @@ async function showPodStudio() {
   $('#editorView').classList.add('hidden');
   $('#podStudioView').classList.add('active');
 
-  // 내지 탭을 명시적으로 활성화 (display 상태 확실히 초기화)
-  $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-  const innerTab = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-  if (innerTab) innerTab.classList.add('active');
-  $('#podPreviewInner').style.display = 'flex';
-  $('#podPreviewFm').style.display = 'none';
-  $('#podPreviewCover').classList.remove('active');
-  $('#podPageToggleWrap').style.display = 'flex';
+  // ── 초기 탭: 표지 설정이 기본 활성 ──
+  $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
+  $$('.pod-settings-pane').forEach(p => p.classList.remove('active'));
+  const coverTab = document.querySelector('.pod-settings-tab[data-pane="cover"]');
+  if (coverTab) coverTab.classList.add('active');
+  if ($('#podPane-cover')) $('#podPane-cover').classList.add('active');
 
-  // 초기 미리보기 렌더링 (300ms 딜레이로 DOM이 완전히 보인 후 실행)
-  setTimeout(() => { renderLivePodPreview(); }, 300);
-  podUpdateCoverPreview();
+  // Single Viewer 초기 상태: 표지 미리보기 노출
+  if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
+  if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'flex';
+  if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
+
+  // 표지 미리보기 갱신
+  setTimeout(() => { podUpdateCoverPreview(); }, 300);
 }
 
 function hidePodStudio() {
@@ -1915,281 +1917,198 @@ function podScheduleLiveRender() {
   }, 800); // 디바운스 800ms
 }
 
-
-
-const activePane = activeTab ? activeTab.dataset.pane : 'inner';
-  const isTreeMode = forceMode === 'tree' || activePane === 'tree';
-  const isCoverMode = forceMode === 'cover' || activePane === 'cover';
-  const isFmMode = forceMode === 'fm' || activePane === 'fm';
-  
-  if (isCoverMode) {
-    if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'block';
-    if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
-    if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
-    return; // Cover handles its own preview
-  } else {
-    if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-    if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
-    if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = isTreeMode ? 'none' : 'flex';
-  }async function renderLivePodPreview(forceMode = null) {
+async function renderLivePodPreview(forceMode = null) {
   const p = currentProject();
-  if(!p) return;
-  
+  if (!p) return;
+
+  const activeTab  = document.querySelector('.pod-settings-tab.active');
+  const activePane = activeTab ? activeTab.dataset.pane : 'inner';
+  const isTreeMode = forceMode === 'tree' || activePane === 'tree';
+
+  const st = $('#podLiveRenderStatus');
+
   if (p.episodes.some(e => e.body === undefined)) {
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = '내용 데이터를 불러오는 중...';
+    if (st) st.textContent = '내용 데이터를 불러오는 중...';
     await ensureProjectBodiesLoaded(p);
   }
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if(loadedEps.length === 0) {
-    $('#podLiveRenderStatus').textContent = '출판할 본문 내용이 없습니다.';
+  if (loadedEps.length === 0) {
+    if (st) st.textContent = '출판할 본문 내용이 없습니다.';
     return;
   }
 
-  const activeTab = document.querySelector('.pod-settings-tab.active');
-  const isTreeMode = forceMode === 'tree' || (activeTab && activeTab.dataset.pane === 'tree');
+  if (st) st.textContent = isTreeMode ? '전체 조판 렌더링 중...' : '미리보기 렌더링 중...';
 
-  $('#podLiveRenderStatus').textContent = isTreeMode ? '전체 조판 렌더링 중... (Paged.js)' : '미리보기 렌더링 중...';
   const iframe = document.getElementById('podLiveIframe');
-  if(!iframe) return;
-  const pubSet = getPublishSettings(p);
-  
+  if (!iframe) return;
+  const pubSet  = getPublishSettings(p);
+  const paper   = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+  const canvasEl = $('#podPreviewInner');
+  const cW = canvasEl ? canvasEl.clientWidth  : window.innerWidth;
+  const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
+  const tw  = isTreeMode ? paper.w * 2 : paper.w;
+  const sc  = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+
+  iframe.style.width          = tw + 'mm';
+  iframe.style.height         = paper.h + 'mm';
+  iframe.style.transform      = `scale(${sc})`;
+  iframe.style.transformOrigin = 'top center';
+  iframe.style.border         = 'none';
+  iframe.style.background     = 'transparent';
+
+  const eps2Render = isTreeMode ? loadedEps : [loadedEps[0]];
+  const bodyHTML   = generatePODBodyContent(p, pubSet, eps2Render);
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
 
-  const paperKey = pubSet.paperSize || 'A5';
-  const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
-  
-  // Set iframe size based on mode
-  if (isTreeMode) {
-    iframe.style.width = (paper.w * 2) + 'mm';
-  } else {
-    iframe.style.width = paper.w + 'mm';
+  const pageCSS = `@page {
+    size: ${pubSet.paperSize || 'A5'};
+    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
+    @bottom-center { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; }
   }
-  iframe.style.height = paper.h + 'mm';
-  
-  const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
-  const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-  const targetW_px = (isTreeMode ? paper.w * 2 : paper.w) * (96 / 25.4);
-  const paperH_px = paper.h * (96 / 25.4);
-  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / targetW_px, (canvasH - 40) / paperH_px));
-  iframe.style.transform = `scale(${scale})`;
+  @page:left  { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm; }
+  @page:right { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm; }
+  @page:first { @bottom-center { content:none; } }
+  @page cover { margin:0; @bottom-center { content:none; } }`;
 
-  // For preview mode, only render the first chapter to save time
-  const epsToRender = isTreeMode ? loadedEps : [loadedEps[0]];
-  const bodyContentHTML = generatePODBodyContent(p, pubSet, epsToRender);
+  const bodyCSS = `body {
+    font-family:'KoPub Batang','Noto Serif KR',serif;
+    font-size:${pubSet.fontSize||10}pt;
+    line-height:${pubSet.lineHeight||1.75};
+    color:#111; text-align:justify; word-break:keep-all;
+  }
+  .ql-align-center { text-align:center !important; }
+  .ql-align-right  { text-align:right  !important; }
+  .chapter { break-before:page; margin-top:40px; }
+  .chapter.matter-page { break-before:right; }
+  .chapter-title { font-size:14pt; font-weight:700; margin-bottom:30px; text-align:center; }
+  .chapter-content span { background-color:transparent !important; }
+  .chapter-content p { text-indent:10pt !important; margin:0 !important; }
+  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }`;
 
-  const srcdocScripts = `
-<script>window.PagedConfig = { auto: false };</script>
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></script>
+  // isTreeMode をJS文字列として埋め込む
+  const treeModeStr = isTreeMode ? 'true' : 'false';
+
+  const headScripts = `<script>window.PagedConfig = { auto: false };<\/script>
+<script src="https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js"><\/script>
 <style>
-  .pagedjs_page { margin: 0 !important; border: none !important; box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; background: #fff !important; flex: 0 0 auto; }
-  .pagedjs_left_page::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 20px; background: linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%); pointer-events: none; z-index: 10; }
-  .pagedjs_right_page::after { content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 20px; background: linear-gradient(to right, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%); pointer-events: none; z-index: 10; }
-</style>
+  html,body { margin:0; padding:0; background:transparent !important; }
+  .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
+  .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; }
+  .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+<\/style>
 <script>
-let currentPolisher = null;
-function runPaged() {
-  if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
-    if (!window.pagedWaitCount) window.pagedWaitCount = 0;
-    window.pagedWaitCount++;
-    if (window.pagedWaitCount > 200) {
-      window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 로드되지 않았습니다.' }, '*');
-      return;
-    }
-    setTimeout(runPaged, 50);
-    return;
-  }
-  
-  class LiveHandler extends Paged.Handler {
-    afterRendered(pages) {
-      try {
-        var map = [];
-        pages.forEach(function(p, idx) {
-          var el = p.element || p.pageNode || p.wrapper;
-          if (!el) return;
-          var pgNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10) || 0;
-          var fmBlock = el.querySelector('.matter-page');
-          var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
-          var chTitle = el.querySelector('.chapter-title, .chapter-content h1');
-          var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
-          map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
-        });
-        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map, isTreeMode: ${isTreeMode} }, '*');
-      } catch (err) {
-        window.parent.postMessage({ type: 'pagedjs-error', error: 'afterRendered Error: ' + err.message }, '*');
+(function(){
+  var TREE = ` + treeModeStr + `;
+  var waitN = 0;
+  function boot() {
+    if (typeof Paged === 'undefined') {
+      if (++waitN > 300) {
+        window.parent.postMessage({ type:'pagedjs-error', error:'PagedJS 로드 실패' }, '*');
+        return;
       }
+      return setTimeout(boot, 50);
     }
-  }
-  Paged.registerHandlers(LiveHandler);
-  window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 1 }, '*');
-  
-  var originalHtml = document.body.innerHTML;
-  document.body.innerHTML = '';
-  var container = document.createElement('div');
-  container.innerHTML = originalHtml;
-  
-  PagedPolyfill.preview(container, [], document.body).then(function() {
-    document.body.style.overflow = 'hidden';
-  }).catch(function(err) {
-    window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*');
-  });
-
-  window.addEventListener('message', async function(ev) {
-    if (!ev.data) return;
-    
-    if (ev.data.type === 'SHOW_PAGES') {
-      var targetPage = parseInt(ev.data.pageNum, 10);
-      var mode = ev.data.mode || (${isTreeMode} ? 'spread' : 'single');
-      var allPages = Array.from(document.querySelectorAll('.pagedjs_page'));
-      allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
-      
-      if (mode === 'single') {
-        allPages.forEach(function(el) {
-          var pNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10);
-          if (pNum === targetPage) {
-            el.style.display = 'block';
-            el.style.position = 'absolute';
-            el.style.top = '0';
-            el.style.left = '0';
-          }
-        });
-      } else {
-        var leftPageNum = (targetPage % 2 === 0) ? targetPage : targetPage - 1;
-        var rightPageNum = leftPageNum + 1;
-        
-        allPages.forEach(function(el) {
-          var pNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10);
-          if (pNum === leftPageNum || pNum === rightPageNum) {
-            el.style.display = 'block';
-            el.style.position = 'absolute';
-            el.style.top = '0';
-            if (pNum % 2 === 0) el.style.left = '0';
-            else el.style.right = '0';
-          }
-        });
+    Paged.registerHandlers(class extends Paged.Handler {
+      afterRendered(pages) {
+        try {
+          var map = pages.map(function(pg) {
+            var el  = pg.element || pg.pageNode || pg.wrapper;
+            var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
+            var fm  = el && el.querySelector('[data-fm-label]');
+            var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
+            return {
+              pageNum: num,
+              label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,14) : num+'쪽'),
+              epTitle: ch ? ch.textContent.trim() : ''
+            };
+          });
+          window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:TREE }, '*');
+        } catch(err) {
+          window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+        }
       }
-      window.scrollTo(0, 0);
+    });
+    var snap = document.body.innerHTML;
+    document.body.innerHTML = '';
+    var wrap = document.createElement('div');
+    wrap.innerHTML = snap;
+    PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
+      window.parent.postMessage({ type:'pagedjs-error', error:'preview:'+err.message }, '*');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', boot);
+  window.addEventListener('message', function(ev) {
+    if (!ev.data || ev.data.type !== 'SHOW_PAGES') return;
+    var tgt  = parseInt(ev.data.pageNum, 10);
+    var mode = ev.data.mode || (TREE ? 'spread' : 'single');
+    var all  = Array.from(document.querySelectorAll('.pagedjs_page'));
+    all.forEach(function(el) { el.style.display = 'none'; });
+    if (mode === 'single') {
+      all.forEach(function(el) {
+        var n = parseInt(el.getAttribute('data-page-number'), 10);
+        if (n === tgt) el.style.display = 'block';
+      });
+    } else {
+      var lp = tgt%2===0 ? tgt : tgt-1, rp = lp+1;
+      all.forEach(function(el) {
+        var n = parseInt(el.getAttribute('data-page-number'), 10);
+        if (n === lp || n === rp) el.style.display = 'block';
+      });
     }
   });
-}
-runPaged();
-</script>`;
+})();
+<\/script>`;
 
-  let html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+${headScripts}
 <style>
 ${mainStyles}
 </style>
 <style>
-  html, body { background: transparent !important; height: auto !important; overflow: visible !important; margin: 0; padding: 0; }
-  .pagedjs_pages { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; position: relative; width: 100%; height: 100%; }
-  @page front-matter { @bottom-center { content: none; } }
-  .bg-colored { page: front-matter; }
-  @page {
-    size: ${pubSet.paperSize || 'A5'};
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
-    @bottom-center { content: counter(page); font-size: 9pt; font-family: 'KoPub Batang', 'Noto Serif KR', serif; }
-  }
-  @page:left { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm; }
-  @page:right { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm; }
-  @page:first { @bottom-center { content: none; } }
-  @page cover { margin: 0; @bottom-center { content: none; } }
-  body {
-    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: ${pubSet.fontSize||10}pt;
-    line-height: ${pubSet.lineHeight||1.75};
-    color: #111; background: transparent !important; text-align: justify; word-break: keep-all;
-  }
-  .ql-align-center { text-align: center !important; }
-  .ql-align-right { text-align: right !important; }
-  .ql-align-justify { text-align: justify !important; }
-  .cover-page { page: cover; break-after: right; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; background-color: ${p.coverColor || '#2c2c2c'}; color: #fff; }
-  .title-page { break-before: right; break-after: page; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; }
-  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
-  .toc-page { break-before: right; break-after: page; padding-top: 40px; }
-  .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
-  .toc-list { list-style: none; padding: 0; margin: 0 20px; overflow-x: hidden; }
-  .toc-list li { margin-bottom: 12px; font-size: 10pt; display: flex; align-items: baseline; }
-  .toc-list li .toc-title { flex: 0 0 auto; }
-  .toc-list li .toc-page-ref { color: inherit; text-decoration: none; flex: 0 0 auto; }
-  .toc-list li .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
-  .toc-list li .toc-page-ref::after { content: target-counter(attr(href), page); }
-  .chapter { break-before: page; margin-top: 40px; }
-  .chapter.matter-page { break-before: right; }
-  .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
-  .chapter-content span { background-color: transparent !important; }
-  .chapter-content p { text-indent: 10pt !important; margin: 0 !important; word-break: keep-all; }
-  .chapter-content h1, .chapter-content h3 { margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
-  .chapter-content h2 { margin-top: 1.5em !important; margin-bottom: 2.75em !important; line-height: 1.4; }
-  .chapter-content .ql-size-huge, .chapter-content .ql-size-large { display: block; margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
-  .chapter-content p.pdf-group-isolated, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-isolated, .chapter-content .pdf-group-last { margin-bottom: 24px !important; border-bottom-left-radius: 6px !important; border-bottom-right-radius: 6px !important; padding-bottom: 14px !important; }
-  .chapter-content p.n-msg.pdf-group-isolated, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-isolated, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-isolated, .chapter-content p.n-noti.pdf-group-last { margin-bottom: 12px !important; padding-bottom: 10px !important; border-radius: 18px 18px 18px 2px !important; }
-  .chapter-content p.pdf-group-first, .chapter-content p.pdf-group-middle, .chapter-content .pdf-group-first, .chapter-content .pdf-group-middle { margin-bottom: 0 !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; padding-bottom: 4px !important; }
-  .chapter-content p.n-msg.pdf-group-first, .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-first, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-noti.pdf-group-first, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-email.pdf-group-first, .chapter-content p.n-email.pdf-group-middle { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; padding-bottom: 10px !important; }
-  .chapter-content p.pdf-group-middle, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-middle, .chapter-content .pdf-group-last { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; padding-top: 4px !important; }
-  .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last, .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last { border-top-left-radius: 6px !important; padding-top: 10px !important; }
-  .chapter-content p.n-email-body.pdf-group-middle, .chapter-content p.n-email-body.pdf-group-last, .chapter-content p.n-doc.pdf-group-middle, .chapter-content p.n-doc.pdf-group-last { padding-left: 38px !important; }
-  .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
+${pageCSS}
+${bodyCSS}
 </style>
 </head>
-<head>
-<meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-${srcdocScripts}
-<style>
-${mainStyles}
-</style>
-... // We'll just manually replace this part since it's cleaner to rewrite the template
+<body>
+${bodyHTML}
+</body>
 </html>`;
 
-  // Always re-inject srcdoc to trigger reload with new content/mode
   iframe.removeAttribute('srcdoc');
-  setTimeout(() => { iframe.srcdoc = html; }, 10);
-  iframe.setAttribute('data-sandbox-initialized', 'true');
+  await new Promise(r => setTimeout(r, 10));
+  iframe.srcdoc = html;
 }
 
-// ── pagedjs-rendered 메시지 수신 ──────────────────
+// ── pagedjs-rendered / pagedjs-error 메시지 수신 ─────────────
 window.addEventListener('message', (e) => {
   if (!e.data) return;
-  
-  if (e.data.type === 'pagedjs-progress') {
-    const st = $('#podLiveRenderStatus');
-    if (st) st.textContent = `조판 렌더링 진행 중...`;
-    return;
-  }
-  
   if (e.data.type === 'pagedjs-rendered') {
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
       const pubSet = getPublishSettings(currentProject());
-      const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      const isTreeMode = e.data.isTreeMode;
-      iframe.style.width = (isTreeMode ? paper.w * 2 : paper.w) + 'mm';
-      
-      const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
-      const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-      const targetW_px = (isTreeMode ? paper.w * 2 : paper.w) * (96 / 25.4);
-      const paperH_px = paper.h * (96 / 25.4);
-      const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / targetW_px, (canvasH - 40) / paperH_px));
-      iframe.style.transform = `scale(${newScale})`;
-      
-      if (isTreeMode) {
-        window.podPageMap = e.data.pageMap;
-        renderPodPageTree();
-      }
-      
-      // 처음 렌더링 시 첫 번째 페이지 보이기
-      iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: 1, mode: isTreeMode ? 'spread' : 'single' }, '*');
+      const paper  = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+      const isTM   = e.data.isTreeMode;
+      const tw     = isTM ? paper.w * 2 : paper.w;
+      const canvasEl = $('#podPreviewInner');
+      const cW = canvasEl ? canvasEl.clientWidth  : window.innerWidth;
+      const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
+      const sc = Math.max(0.2, Math.min(1, (cW-40)/(tw*(96/25.4)), (cH-40)/(paper.h*(96/25.4))));
+      iframe.style.width     = tw + 'mm';
+      iframe.style.transform = `scale(${sc})`;
+      if (isTM) { window.podPageMap = e.data.pageMap; renderPodPageTree(); }
+      iframe.contentWindow?.postMessage({ type:'SHOW_PAGES', pageNum:1, mode: isTM ? 'spread' : 'single' }, '*');
     }
-
     const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 완료 ✓`;
-  } else if (e.data.type === 'pagedjs-error') {
+    if (st) st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
+  }
+  if (e.data.type === 'pagedjs-error') {
     const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 에러: ${e.data.error}`;
+    if (st) st.textContent = `렌더링 에러: ${e.data.error}`;
   }
 });
 
@@ -2359,7 +2278,7 @@ $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); }
 // 저장 버튼
 $('#podSaveSettingsBtn').onclick = podSaveSettings;
 
-// 설정 탭 전환
+// 설정 탭 전환 (Single Live Viewer 라우팅)
 $$('.pod-settings-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
@@ -2367,11 +2286,27 @@ $$('.pod-settings-tab').forEach(btn => {
     btn.classList.add('active');
     const pane = $('#podPane-' + btn.dataset.pane);
     if (pane) pane.classList.add('active');
-    
-    if (btn.dataset.pane === 'tree') {
+
+    const tab = btn.dataset.pane;
+
+    if (tab === 'cover') {
+      // 표지: 표지 Canvas 노출, Iframe 숨김
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'flex';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
+      podUpdateCoverPreview();
+    } else if (tab === 'tree') {
+      // 페이지 구조: Iframe 2장 스프레드 렌더링
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
       renderLivePodPreview('tree');
-    } else if (btn.dataset.pane !== 'cover') {
-      renderLivePodPreview();
+    } else {
+      // 내지·전면부 설정: Iframe 1장 단면 렌더링
+      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
+      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
+      renderLivePodPreview('single');
     }
   });
 });
