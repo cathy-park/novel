@@ -2988,51 +2988,63 @@ function renderPodPageTree() {
           const leftTitle = iframe.contentDocument.querySelector('.page-left h2');
           const leftBody = iframe.contentDocument.querySelector('.page-left > div > div:nth-child(2)');
           
-          if (rightTitle) {
-             rightTitle.textContent = pageData.label;
-             rightTitle.style.display = pageData.type === 'fm' ? 'none' : 'block';
-          }
-          if (rightBody) {
-             if (pageData.type === 'ep') {
-                const ep = pageData.data;
-                const processed = processEpisodeBody(ep.body, ep.title, true);
-                const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-                const renderTitle = false; // 원고의 제목들은 비노출시켜줘 요구사항 반영
-                const displayTitle = getEpisodeDisplayTitle(ep, p);
+          const renderSinglePage = (pData, titleEl, bodyEl) => {
+            if (!pData) {
+              if (titleEl) titleEl.textContent = '';
+              if (bodyEl) bodyEl.innerHTML = '';
+              return;
+            }
+            if (titleEl) {
+               titleEl.textContent = pData.label;
+               titleEl.style.display = pData.type === 'fm' ? 'none' : 'block';
+            }
+            if (bodyEl) {
+               if (pData.type === 'ep') {
+                  const ep = pData.data;
+                  const processed = processEpisodeBody(ep.body, ep.title, true);
+                  const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+                  const renderTitle = false; // 원고의 제목들은 비노출시켜줘 요구사항 반영
+                  const displayTitle = getEpisodeDisplayTitle(ep, p);
 
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = processed.body;
-                Array.from(tempDiv.childNodes).forEach(node => {
-                  if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
-                    const pEl = document.createElement('p');
-                    pEl.textContent = node.textContent;
-                    tempDiv.replaceChild(pEl, node);
-                  }
-                });
-                tempDiv.querySelectorAll('p').forEach(pTag => {
-                  if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
-                });
-                
-                rightBody.innerHTML = `<div class="chapter ${isMatter ? 'matter-page' : ''}" style="padding-top:10px; padding-bottom:20px;">` +
-                  (renderTitle ? `<div class="chapter-title" style="font-size:16pt; font-weight:700; margin-bottom:40px; text-align:center;">${escapeHtml(displayTitle)}</div>` : '') +
-                  `<div class="chapter-content ql-editor" style="padding:0; margin:0;">${tempDiv.innerHTML}</div></div>`;
-             } else {
-                rightBody.innerHTML = getSingleFmBlockHtml(pageData.data, p, set, eps, 0);
-             }
-             
-             // 전면부 디자인일 경우 내부의 폰트 사이즈가 내지 설정과 충돌하지 않도록
-             if (pageData.type === 'fm') {
-                rightBody.style.display = 'flex';
-                rightBody.style.flexDirection = 'column';
-                rightBody.style.height = '100%';
-             } else {
-                rightBody.style.display = 'block';
-                rightBody.style.height = 'auto';
-             }
-          }
-          
-          if (leftTitle) leftTitle.textContent = '';
-          if (leftBody) leftBody.innerHTML = '';
+                  const tempDiv = document.createElement('div');
+                  tempDiv.innerHTML = processed.body;
+                  Array.from(tempDiv.childNodes).forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+                      const pEl = document.createElement('p');
+                      pEl.textContent = node.textContent;
+                      tempDiv.replaceChild(pEl, node);
+                    }
+                  });
+                  tempDiv.querySelectorAll('p').forEach(pTag => {
+                    if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+                  });
+                  
+                  bodyEl.innerHTML = `<div class="chapter ${isMatter ? 'matter-page' : ''}" style="padding-top:10px; padding-bottom:20px;">` +
+                    (renderTitle ? `<div class="chapter-title" style="font-size:16pt; font-weight:700; margin-bottom:40px; text-align:center;">${escapeHtml(displayTitle)}</div>` : '') +
+                    `<div class="chapter-content ql-editor" style="padding:0; margin:0;">${tempDiv.innerHTML}</div></div>`;
+               } else {
+                  bodyEl.innerHTML = getSingleFmBlockHtml(pData.data, p, set, eps, 0);
+               }
+               
+               if (pData.type === 'fm') {
+                  bodyEl.style.display = 'flex';
+                  bodyEl.style.flexDirection = 'column';
+                  bodyEl.style.height = '100%';
+               } else {
+                  bodyEl.style.display = 'block';
+                  bodyEl.style.height = 'auto';
+               }
+            }
+          };
+
+          const isOddPage = pageData.pageNum % 2 !== 0;
+          const leftPageNum = isOddPage ? pageData.pageNum - 1 : pageData.pageNum;
+          const rightPageNum = isOddPage ? pageData.pageNum : pageData.pageNum + 1;
+          const leftPageData = mapData.find(d => d.pageNum === leftPageNum);
+          const rightPageData = mapData.find(d => d.pageNum === rightPageNum);
+
+          renderSinglePage(leftPageData, leftTitle, leftBody);
+          renderSinglePage(rightPageData, rightTitle, rightBody);
         }
         
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
