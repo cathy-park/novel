@@ -4891,7 +4891,7 @@ function runHiddenPagedJsForTree(p) {
 </style>
 </head>
 <body>
-  ${htmlContent}
+  <div id="sourceContent">${htmlContent}</div>
   <script>
     if (!window.Paged || !window.Paged.Handler) {
       window.parent.postMessage({ type:'pagedjs-error', error:'PagedJS 로드 실패' }, '*');
@@ -4932,9 +4932,25 @@ function runHiddenPagedJsForTree(p) {
         Promise.all([fontWait].concat(imgWaits)),
         new Promise(function(res) { setTimeout(res, 2000); })
       ]).then(function() {
-        window.PagedPolyfill.preview(document.body, [], document.body).catch(function(err) {
-          window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
-        });
+        try {
+          if (!window.PagedPolyfill || !window.PagedPolyfill.preview) {
+            throw new Error("PagedPolyfill 객체를 찾을 수 없습니다.");
+          }
+          var wrap = document.createElement('div');
+          var contentEl = document.getElementById('sourceContent');
+          if (contentEl) {
+             wrap.innerHTML = contentEl.innerHTML;
+             contentEl.style.display = 'none'; // 원본 숨김
+          }
+          document.body.appendChild(wrap); // DOM에 반드시 붙여야 무한 루프 안 빠짐
+          window.PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
+            window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
+          });
+        } catch(e) {
+          window.parent.postMessage({ type:'pagedjs-error', error:e.message }, '*');
+        }
+      }).catch(function(err) {
+        window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
       });
     }
   </script>
