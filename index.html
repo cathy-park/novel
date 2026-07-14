@@ -1613,6 +1613,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
     <div id="episodeList" class="episode-list"></div>
     <div class="sidebar-foot">
+      <button id="openPublishSettingsFromEditorBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
       <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
       <button id="openSearchBtn" class="ghost border" type="button">⌘ K · 전체 검색</button>
       <div style="display:flex;gap:6px;">
@@ -1628,6 +1629,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <div class="top-actions">
         <span id="saveStatus" class="save-status">저장됨</span>
         <button id="openPCEbookBtn" class="ghost" type="button">📖 이북 뷰어</button>
+        <button id="openPublishSettingsTopBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
         <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
       </div>
     </header>
@@ -4385,6 +4387,17 @@ function runPaged() {
     try {
       window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 1 }, '*');
       currentPolisher = await PagedPolyfill.preview(container, [], document.body);
+      var allPages = Array.from(document.querySelectorAll('.pagedjs_page'));
+      allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
+      allPages.slice(0, 2).forEach(function(el, idx) {
+        var actualPage = startPage + idx;
+        el.style.display = 'block';
+        el.style.position = 'absolute';
+        el.style.top = '0';
+        if (actualPage % 2 === 0) el.style.left = '0';
+        else el.style.right = '0';
+      });
+      window.scrollTo(0, 0);
     } catch (err) {
       window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*');
     }
@@ -4657,6 +4670,8 @@ function syncLegacyInputs(s) {
 
 // 스튜디오 열기/닫기
 $('#openPublishSettingsBtn').onclick = showPodStudio;
+if ($('#openPublishSettingsFromEditorBtn')) $('#openPublishSettingsFromEditorBtn').onclick = () => { persistEditor(); queueSaveFS(); showPodStudio(); };
+if ($('#openPublishSettingsTopBtn')) $('#openPublishSettingsTopBtn').onclick = () => { persistEditor(); queueSaveFS(); showPodStudio(); };
 $('#backFromPodStudio').onclick = hidePodStudio;
 
 // 스튜디오 내 내보내기 버튼
