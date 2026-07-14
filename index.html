@@ -5913,7 +5913,7 @@ async function exportPODCover() {
 }
 
 
-function generatePODBodyContent(p, pubSet, loadedEps) {
+function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
   const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
 let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
 
