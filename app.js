@@ -2983,7 +2983,32 @@ function renderPodPageTree() {
              rightTitle.style.display = pageData.type === 'fm' ? 'none' : 'block';
           }
           if (rightBody) {
-             rightBody.innerHTML = pageData.type === 'ep' ? pageData.data.body : getSingleFmBlockHtml(pageData.data, p, pubSet, eps, 0);
+             if (pageData.type === 'ep') {
+                const ep = pageData.data;
+                const processed = processEpisodeBody(ep.body, ep.title, true);
+                const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+                const renderTitle = !isMatter && set.showTitle && !processed.hasTitle;
+                const displayTitle = getEpisodeDisplayTitle(ep, p);
+
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = processed.body;
+                Array.from(tempDiv.childNodes).forEach(node => {
+                  if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+                    const pEl = document.createElement('p');
+                    pEl.textContent = node.textContent;
+                    tempDiv.replaceChild(pEl, node);
+                  }
+                });
+                tempDiv.querySelectorAll('p').forEach(pTag => {
+                  if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+                });
+                
+                rightBody.innerHTML = `<div class="chapter ${isMatter ? 'matter-page' : ''}" style="padding-top:20px; padding-bottom:20px; text-align:justify; word-break:keep-all;">` +
+                  (renderTitle ? `<div class="chapter-title" style="font-size:16pt; font-weight:700; margin-bottom:40px; text-align:center;">${escapeHtml(displayTitle)}</div>` : '') +
+                  `<div class="chapter-content ql-editor" style="padding:0;">${tempDiv.innerHTML}</div></div>`;
+             } else {
+                rightBody.innerHTML = getSingleFmBlockHtml(pageData.data, p, set, eps, 0);
+             }
              
              // 전면부 디자인일 경우 내부의 폰트 사이즈가 내지 설정과 충돌하지 않도록
              if (pageData.type === 'fm') {
@@ -3002,7 +3027,8 @@ function renderPodPageTree() {
         
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
         cell.classList.add('tree-thumb-active');
-      }
+      },
+      pageData.type === 'fm' && pageData.data.type === 'blank'
     );
     cell.appendChild(thumb);
     grid.appendChild(cell);
