@@ -2143,6 +2143,11 @@ window.addEventListener('message', function(ev) {
                 epTitle: ch ? ch.textContent.trim() : ''
               };
             });
+            
+            // 2. Iframe 내부 기본 노출 (Fallback 안전장치)
+            if (pages[0] && pages[0].wrapper) pages[0].wrapper.style.display = 'block';
+            if (pages[1] && pages[1].wrapper) pages[1].wrapper.style.display = 'block';
+
             window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:TREE, renderId:rid }, '*');
           } catch(err) {
             window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
@@ -2223,18 +2228,31 @@ window.addEventListener('message', (e) => {
   if (e.data.type === 'pagedjs-rendered') {
     const iframe = document.getElementById('podLiveIframe');
     if (iframe) {
+      window.podLastRenderedTotalPages = e.data.totalPages;
+      
+      // 1. 좌측 트리 렌더링 로직 원상 복구 (가장 중요)
+      window.podPageMap = e.data.pageMap;
+      if (typeof renderPodPageTree === 'function') renderPodPageTree();
+
       const pubSet = getPublishSettings(currentProject());
       const paper  = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      const isTM   = e.data.isTreeMode;
-      const tw     = isTM ? paper.w * 2 : paper.w;
+      
+      // 3. 트리 생성 "이후" 활성 탭 상태에 따른 SHOW_PAGES 자동 라우팅
+      const activeTab = document.querySelector('.pod-settings-tab.active');
+      const tabId = activeTab ? activeTab.dataset.pane : 'tree';
+      
+      const mode = (tabId === 'inner') ? 'spread' : 'single';
+      const pageNum = (tabId === 'inner') ? 2 : 1;
+      
+      const tw     = mode === 'spread' ? paper.w * 2 : paper.w;
       const canvasEl = $('#podPreviewInner');
       const cW = canvasEl ? canvasEl.clientWidth  : window.innerWidth;
       const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
       const sc = Math.max(0.2, Math.min(1, (cW-40)/(tw*(96/25.4)), (cH-40)/(paper.h*(96/25.4))));
       iframe.style.width     = tw + 'mm';
       iframe.style.transform = `scale(${sc})`;
-      if (isTM) { window.podPageMap = e.data.pageMap; renderPodPageTree(); }
-      iframe.contentWindow?.postMessage({ type:'SHOW_PAGES', pageNum:1, mode: isTM ? 'spread' : 'single' }, '*');
+
+      iframe.contentWindow?.postMessage({ type:'SHOW_PAGES', pageNum: pageNum, mode: mode }, '*');
     }
     const st = $('#podLiveRenderStatus');
     if (st) st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
@@ -3672,7 +3690,9 @@ let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === '
     });
   });
 
-  return doc.body.innerHTML;
+  // 4. Sanitizer 원본 텍스트 증발 방어 코드
+  const resultHtml = doc.body ? doc.body.innerHTML : '';
+  return resultHtml.trim() ? resultHtml : bodyHtml;
 }
 
 async function exportPODPdf(isSilent = false) {
