@@ -2266,6 +2266,15 @@ async function renderLivePodPreview(forceMode = null) {
   const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
   const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
 
+  const m = {
+    top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
+    bottom: parseFloat($('#podMarginBottom')?.value) || pubSet.margins?.bottom || 20,
+    inner: parseFloat($('#podMarginInner')?.value) || pubSet.margins?.inner || 25,
+    outer: parseFloat($('#podMarginOuter')?.value) || pubSet.margins?.outer || 18,
+    bleed: parseFloat($('#podBleed')?.value) || pubSet.margins?.bleed || 3
+  };
+  const b = m.bleed;
+
   // 1. [레이아웃 버그 해결] 가로 폭(tw)에 5mm 안전 버퍼를 주어 구겨짐 방지
   const isSpreadMode = (activePane === 'inner' || activePane === 'tree');
   const tw = (isSpreadMode ? paper.w * 2 : paper.w) + 5;
@@ -2300,18 +2309,18 @@ async function renderLivePodPreview(forceMode = null) {
 
   const pageCSS = `@page {
     size: ${pubSet.paperSize || 'A5'};
-    margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
+    margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm;
     @bottom-center { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; }
   }
-  @page:left  { margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.inner || 25}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.outer || 18}mm; }
-  @page:right { margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm; }
+  @page:left  { margin: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
+  @page:right { margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
   @page:first { @bottom-center { content:none; } }
   @page cover { margin:0; @bottom-center { content:none; } }`;
 
   const bodyCSS = `body {
     font-family:'KoPub Batang','Noto Serif KR',serif;
-    font-size:${pubSet.fontSize || 10}pt;
-    line-height:${pubSet.lineHeight || 1.75};
+    font-size:${parseFloat($('#podFontSize')?.value) || pubSet.fontSize || 10}pt;
+    line-height:${$('#podLineHeight')?.value || pubSet.lineHeight || 1.75};
     color:#111; text-align:justify; word-break:keep-all;
   }
   .ql-align-center { text-align:center !important; }
@@ -2339,15 +2348,20 @@ async function renderLivePodPreview(forceMode = null) {
   .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   
-  /* 재단선 및 안전영역 가이드라인 CSS */
-  body.show-guides .pagedjs_page .pagedjs_sheet {
-    outline: 1px dashed red; /* 재단선 */
-    outline-offset: -3mm;
+  /* 재단선(Bleed) 가이드라인 - sheet에 after 적용 */
+  body.show-guides .pagedjs_left_page .pagedjs_sheet::after {
+    content:""; position:absolute; top:${b}mm; bottom:${b}mm; left:${b}mm; right:0; border:1px dashed red; pointer-events:none; z-index:99;
   }
-  body.show-guides .pagedjs_page::after {
-    content: ""; position: absolute; top: 15mm; bottom: 15mm; left: 15mm; right: 15mm;
-    border: 1px solid rgba(0, 0, 255, 0.3); pointer-events: none; /* 안전영역 */
-    z-index: 99;
+  body.show-guides .pagedjs_right_page .pagedjs_sheet::after {
+    content:""; position:absolute; top:${b}mm; bottom:${b}mm; left:0; right:${b}mm; border:1px dashed red; pointer-events:none; z-index:99;
+  }
+
+  /* 안전영역(Margin) 가이드라인 - page에 before 적용 (after는 섀도우가 사용중) */
+  body.show-guides .pagedjs_left_page::before {
+    content:""; position:absolute; top:${m.top}mm; bottom:${m.bottom}mm; left:${m.outer}mm; right:${m.inner}mm; border:1px solid rgba(0,0,255,0.3); pointer-events:none; z-index:99;
+  }
+  body.show-guides .pagedjs_right_page::before {
+    content:""; position:absolute; top:${m.top}mm; bottom:${m.bottom}mm; left:${m.inner}mm; right:${m.outer}mm; border:1px solid rgba(0,0,255,0.3); pointer-events:none; z-index:99;
   }
 <\/style>
 <script>
@@ -2511,7 +2525,7 @@ window.addEventListener('message', (e) => {
 
       iframe.contentWindow?.postMessage({ type: 'SHOW_PAGES', pageNum: pageNum, mode: mode }, '*');
       
-      const showGuides = tabId === 'inner' && $('#podShowGuides') && $('#podShowGuides').checked;
+      const showGuides = (tabId === 'inner' || tabId === 'tree') && $('#podShowGuides') && $('#podShowGuides').checked;
       iframe.contentWindow?.postMessage({ type: 'TOGGLE_GUIDES', show: showGuides }, '*');
     }
     const st = $('#podLiveRenderStatus');
