@@ -1730,7 +1730,7 @@ window.addEventListener('unhandledrejection', function(e) {
           <button class="pod-settings-tab" data-pane="fm">✦ 전면부 디자인</button>
           <button class="pod-settings-tab" data-pane="tree">📑 페이지 구조</button>
           <button class="pod-settings-tab" data-pane="cover">🎨 표지 설정</button>
-          <button class="pod-settings-tab" data-pane="extra">⚙️ 기타</button>
+
         </div>
 
         <!-- ── 내지 설정 탭 ── -->
@@ -2110,22 +2110,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
         </div>
 
-        <!-- ── 기타 탭 ── -->
-        <div class="pod-settings-pane" id="podPane-extra">
-          <div class="pod-section">
-            <div class="pod-section-title">책 두께 계산기</div>
-            <div style="font-size:12px;color:var(--c-body);line-height:1.7;">
-              <div>총 예상 페이지수: <strong id="podEstPages">—</strong> 페이지</div>
-              <div>책등 두께 (자동): <strong id="podEstSpine">—</strong> mm</div>
-              <div style="margin-top:8px;font-size:11px;color:var(--c-muted);">※ 설정된 용지 및 여백을 기반으로 한 추정값입니다. (정확도 향상)</div>
-              <button id="podCalcExactBtn" class="btn btn-outline" style="margin-top:10px; width:100%; font-size:11px;" type="button">✨ Paged.js 기반 실제 쪽수 정밀 계산</button>
-            </div>
-          </div>
-          <div class="pod-section">
-            <div class="pod-section-title">설정 초기화</div>
-            <button id="podResetSettingsBtn" class="danger" style="width:100%;" type="button">⚠️ 출판 설정 초기화</button>
-          </div>
-        </div>
+
 
         <!-- 하단 저장 버튼 -->
         <div style="padding:16px 18px; border-top:1px solid var(--c-line); background:var(--c-surface); position:sticky; bottom:0; z-index:2;">
@@ -4384,40 +4369,41 @@ function runPaged() {
   }
   Paged.registerHandlers(LiveHandler);
 
+  window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 1 }, '*');
+  
+  var originalHtml = document.body.innerHTML;
+  document.body.innerHTML = '';
+  var container = document.createElement('div');
+  container.innerHTML = originalHtml;
+  
+  PagedPolyfill.preview(container, [], document.body).then(function() {
+    document.body.style.overflow = 'hidden';
+  }).catch(function(err) {
+    window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*');
+  });
+
   window.addEventListener('message', async function(ev) {
-    if (!ev.data || ev.data.type !== 'RENDER_CHUNK') return;
+    if (!ev.data) return;
     
-    // 이전 콘텐츠 및 페이지 비우기
-    document.body.innerHTML = '';
-    var oldStyle = document.getElementById('dynamic-counter');
-    if (oldStyle) oldStyle.remove();
-    
-    // 새로운 시작 쪽수 주입
-    var startPage = Math.max(1, parseInt(ev.data.startPage, 10) || 1);
-    var style = document.createElement('style');
-    style.id = 'dynamic-counter';
-    style.innerHTML = 'body { counter-reset: page ' + (startPage - 1) + ' !important; }';
-    document.head.appendChild(style);
-    
-    var container = document.createElement('div');
-    container.innerHTML = ev.data.html;
-    
-    try {
-      window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 1 }, '*');
-      currentPolisher = await PagedPolyfill.preview(container, [], document.body);
+    if (ev.data.type === 'SHOW_PAGES') {
+      var targetPage = parseInt(ev.data.pageNum, 10);
       var allPages = Array.from(document.querySelectorAll('.pagedjs_page'));
       allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
-      allPages.slice(0, 2).forEach(function(el, idx) {
-        var actualPage = startPage + idx;
-        el.style.display = 'block';
-        el.style.position = 'absolute';
-        el.style.top = '0';
-        if (actualPage % 2 === 0) el.style.left = '0';
-        else el.style.right = '0';
+      
+      var leftPageNum = (targetPage % 2 === 0) ? targetPage : targetPage - 1;
+      var rightPageNum = leftPageNum + 1;
+      
+      allPages.forEach(function(el) {
+        var pNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10);
+        if (pNum === leftPageNum || pNum === rightPageNum) {
+          el.style.display = 'block';
+          el.style.position = 'absolute';
+          el.style.top = '0';
+          if (pNum % 2 === 0) el.style.left = '0';
+          else el.style.right = '0';
+        }
       });
       window.scrollTo(0, 0);
-    } catch (err) {
-      window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*');
     }
   });
 }
@@ -4523,6 +4509,11 @@ window.addEventListener('message', (e) => {
       const paperH_px = paper.h * (96 / 25.4);
       const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / spreadW_px, (canvasH - 40) / paperH_px));
       iframe.style.transform = `scale(${newScale})`;
+      window.podPageMap = e.data.pageMap;
+      renderPodPageTree(currentProject(), pubSet, orderedEpisodes(currentProject()));
+      
+      // 처음 렌더링 시 첫 번째 페이지 스프레드 보이기
+      iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: 1 }, '*');
     }
 
     const st = $('#podLiveRenderStatus');
@@ -4800,68 +4791,46 @@ function renderPodPageTree() {
   // ── [3] 내지 섭마노 ──
   const innerSec = document.createElement('div');
   innerSec.style.cssText = 'padding:0 8px;';
-  innerSec.appendChild(mkSectionHead('─ 내지 (속표지 ~ 본문) ─'));
+  innerSec.appendChild(mkSectionHead('─ 내지 (전체 페이지) ─'));
 
-  // 페이지 데이터 구성 (추정 기반으로 즉시 생성)
-  const pagesData = [];
-  let pageNum = 1;
-
-  // Front matter (앞부속)
-  pagesData.push({ pageNum: 1, label: '속표지', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 1 });
-  pagesData.push({ pageNum: 3, label: '표제지', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 3 });
-  if (set.frontMatter?.showCopyright) {
-    pagesData.push({ pageNum: 5, label: '판권지', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 5 });
+  if (!window.podPageMap || window.podPageMap.length === 0) {
+    const loading = document.createElement('div');
+    loading.style.cssText = 'text-align:center; padding:20px; font-size:12px; color:var(--c-muted);';
+    loading.textContent = '조판 렌더링 중입니다... (완료 시 전체 페이지 트리가 표시됩니다)';
+    innerSec.appendChild(loading);
+    treeEl.appendChild(innerSec);
+    return;
   }
-  pagesData.push({ pageNum: 7, label: '목차', sublabel: '', type: 'fm', accent: '#7c6bf6', htmlType: 'fm', startPage: 7 });
 
-  pageNum = 9; // 본문 시작 쪽수 임의 배정
-
-  const charsPerPage = (set.paperSize === 'B6') ? 400 : 500;
-  
-  eps.forEach((ep) => {
-    // 장 시작은 항상 우측 홀수면
-    if (pageNum % 2 === 0) pageNum++;
-    
-    pagesData.push({ 
-      pageNum: pageNum, 
-      label: ep.title.substring(0,12), 
-      sublabel: '', 
-      type: 'inner', 
-      accent: null,
-      htmlType: 'ep',
-      epId: ep.id,
-      startPage: pageNum
-    });
-    
-    const len = stats(ep.body||'').withSpaces;
-    let epPages = Math.max(1, Math.ceil(len / charsPerPage));
-    pageNum += epPages;
-  });
-
-  // 총 예상 페이지 수 계산
-  const totalPages = pageNum + 2;
-  podLastRenderedTotalPages = totalPages;
-
-  // InDesign 스프레드 레이아웃: 2열 그리드 (좌=짝수, 우=홀수)
+  // 2열 그리드 (스프레드)
+  // 좌우 간격을 딱 붙이기 위해 gap: 16px 0;
   const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:16px 8px; padding:0 4px 24px; position:relative;';
+  grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:16px 0; padding:0 4px 24px; position:relative;';
 
   // 책등 중앙선
   const spine = document.createElement('div');
-  spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;';
+  spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;z-index:1;';
   grid.appendChild(spine);
 
-  pagesData.forEach((data, i) => {
-    const isOdd = data.pageNum % 2 !== 0;
+  let maxPage = window.podPageMap[window.podPageMap.length - 1].pageNum;
+  
+  for (let i = 1; i <= maxPage; i++) {
+    const pageData = window.podPageMap.find(m => m.pageNum === i);
+    const isOdd = i % 2 !== 0; // 홀수면 우측
     const cell = document.createElement('div');
+    
+    // 홀수(우측)면 왼쪽(책등)으로 붙고, 짝수(좌측)면 오른쪽(책등)으로 붙게 flex 정렬
     cell.style.cssText = `display:flex; justify-content:${isOdd ? 'flex-start' : 'flex-end'}; align-items:flex-start;`;
-    if (i === 0 && isOdd) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
-
+    if (i === 1) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
+    
+    let label = '';
+    if (pageData) label = pageData.label || '';
+    
     const thumb = mkThumb(
-      data.pageNum,
-      data.label,
-      data.sublabel,
-      data.accent,
+      i,
+      label.substring(0,12),
+      '',
+      pageData ? '#7c6bf6' : null,
       () => {
         // 프리뷰 탭 갱신
         $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
@@ -4872,16 +4841,9 @@ function renderPodPageTree() {
         $('#podPreviewCover').classList.remove('active');
         $('#podPageToggleWrap').style.display = 'none';
         
-        let chunkHtml = '';
-        if (data.htmlType === 'fm') {
-          chunkHtml = generatePODBodyContent(p, set, eps, 'fm');
-        } else {
-          chunkHtml = generatePODBodyContent(p, set, eps, data.epId);
-        }
-        
         const iframe = document.getElementById('podLiveIframe');
         if (iframe && iframe.contentWindow) {
-           iframe.contentWindow.postMessage({ type: 'RENDER_CHUNK', html: chunkHtml, startPage: data.startPage }, '*');
+           iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: i }, '*');
         }
         
         // 활성 표시
@@ -4891,7 +4853,7 @@ function renderPodPageTree() {
     );
     cell.appendChild(thumb);
     grid.appendChild(cell);
-  });
+  }
 
   innerSec.appendChild(grid);
   treeEl.appendChild(innerSec);
