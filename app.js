@@ -1916,7 +1916,8 @@ function podScheduleLiveRender() {
 }
 
 
-async function renderLivePodPreview() {
+
+async function renderLivePodPreview(forceMode = null) {
   const p = currentProject();
   if(!p) return;
   
@@ -1931,7 +1932,10 @@ async function renderLivePodPreview() {
     return;
   }
 
-  $('#podLiveRenderStatus').textContent = '조판 렌더링 진행 중... (Paged.js)';
+  const activeTab = document.querySelector('.pod-settings-tab.active');
+  const isTreeMode = forceMode === 'tree' || (activeTab && activeTab.dataset.pane === 'tree');
+
+  $('#podLiveRenderStatus').textContent = isTreeMode ? '전체 조판 렌더링 중... (Paged.js)' : '미리보기 렌더링 중...';
   const iframe = document.getElementById('podLiveIframe');
   if(!iframe) return;
   const pubSet = getPublishSettings(p);
@@ -1940,21 +1944,29 @@ async function renderLivePodPreview() {
 
   const paperKey = pubSet.paperSize || 'A5';
   const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
-  // ★ Paged.js 렌더링 버그 방지: 렌더링 중에는 단면(1장) 크기로 강제
-  iframe.style.width = paper.w + 'mm';
+  
+  // Set iframe size based on mode
+  if (isTreeMode) {
+    iframe.style.width = (paper.w * 2) + 'mm';
+  } else {
+    iframe.style.width = paper.w + 'mm';
+  }
   iframe.style.height = paper.h + 'mm';
   
   const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
   const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-  const singleW_px = paper.w * (96 / 25.4);
+  const targetW_px = (isTreeMode ? paper.w * 2 : paper.w) * (96 / 25.4);
   const paperH_px = paper.h * (96 / 25.4);
-  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / singleW_px, (canvasH - 40) / paperH_px));
+  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / targetW_px, (canvasH - 40) / paperH_px));
   iframe.style.transform = `scale(${scale})`;
 
-  // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
+  // For preview mode, only render the first chapter to save time
+  const epsToRender = isTreeMode ? loadedEps : [loadedEps[0]];
+  const bodyContentHTML = generatePODBodyContent(p, pubSet, epsToRender);
+
   const srcdocScripts = `
-<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://cdn.jsdelivr.net/npm/pagedjs/dist/js/paged.polyfill.js"><\/script>
+<script>window.PagedConfig = { auto: false };</script>
+<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></script>
 <style>
   .pagedjs_page { margin: 0 !important; border: none !important; box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; background: #fff !important; flex: 0 0 auto; }
   .pagedjs_left_page::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 20px; background: linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%); pointer-events: none; z-index: 10; }
@@ -1966,8 +1978,8 @@ function runPaged() {
   if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
     if (!window.pagedWaitCount) window.pagedWaitCount = 0;
     window.pagedWaitCount++;
-    if (window.pagedWaitCount > 100) {
-      window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 5초 이상 로드되지 않았습니다.' }, '*');
+    if (window.pagedWaitCount > 200) {
+      window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 로드되지 않았습니다.' }, '*');
       return;
     }
     setTimeout(runPaged, 50);
@@ -1988,14 +2000,13 @@ function runPaged() {
           var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
           map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
         });
-        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*');
+        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map, isTreeMode: ${isTreeMode} }, '*');
       } catch (err) {
         window.parent.postMessage({ type: 'pagedjs-error', error: 'afterRendered Error: ' + err.message }, '*');
       }
     }
   }
   Paged.registerHandlers(LiveHandler);
-
   window.parent.postMessage({ type: 'pagedjs-progress', pageNum: 1 }, '*');
   
   var originalHtml = document.body.innerHTML;
@@ -2014,28 +2025,41 @@ function runPaged() {
     
     if (ev.data.type === 'SHOW_PAGES') {
       var targetPage = parseInt(ev.data.pageNum, 10);
+      var mode = ev.data.mode || (${isTreeMode} ? 'spread' : 'single');
       var allPages = Array.from(document.querySelectorAll('.pagedjs_page'));
       allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
       
-      var leftPageNum = (targetPage % 2 === 0) ? targetPage : targetPage - 1;
-      var rightPageNum = leftPageNum + 1;
-      
-      allPages.forEach(function(el) {
-        var pNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10);
-        if (pNum === leftPageNum || pNum === rightPageNum) {
-          el.style.display = 'block';
-          el.style.position = 'absolute';
-          el.style.top = '0';
-          if (pNum % 2 === 0) el.style.left = '0';
-          else el.style.right = '0';
-        }
-      });
+      if (mode === 'single') {
+        allPages.forEach(function(el) {
+          var pNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10);
+          if (pNum === targetPage) {
+            el.style.display = 'block';
+            el.style.position = 'absolute';
+            el.style.top = '0';
+            el.style.left = '0';
+          }
+        });
+      } else {
+        var leftPageNum = (targetPage % 2 === 0) ? targetPage : targetPage - 1;
+        var rightPageNum = leftPageNum + 1;
+        
+        allPages.forEach(function(el) {
+          var pNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10);
+          if (pNum === leftPageNum || pNum === rightPageNum) {
+            el.style.display = 'block';
+            el.style.position = 'absolute';
+            el.style.top = '0';
+            if (pNum % 2 === 0) el.style.left = '0';
+            else el.style.right = '0';
+          }
+        });
+      }
       window.scrollTo(0, 0);
     }
   });
 }
 runPaged();
-<\/script>`;
+</script>`;
 
   let html = `<!DOCTYPE html>
 <html lang="ko">
@@ -2098,20 +2122,16 @@ ${mainStyles}
 </style>
 </head>
 <body>
+${bodyContentHTML}
 ${srcdocScripts}
 </body>
 </html>`;
 
-  if (!iframe.getAttribute('data-sandbox-initialized')) {
-    iframe.removeAttribute('srcdoc');
-    setTimeout(() => { iframe.srcdoc = html; }, 10);
-    iframe.setAttribute('data-sandbox-initialized', 'true');
-  }
-  
-  // 항상 트리는 즉시 렌더링
-  renderPodPageTree();
+  // Always re-inject srcdoc to trigger reload with new content/mode
+  iframe.removeAttribute('srcdoc');
+  setTimeout(() => { iframe.srcdoc = html; }, 10);
+  iframe.setAttribute('data-sandbox-initialized', 'true');
 }
-
 
 // ── pagedjs-rendered 메시지 수신 ──────────────────
 window.addEventListener('message', (e) => {
@@ -2119,7 +2139,7 @@ window.addEventListener('message', (e) => {
   
   if (e.data.type === 'pagedjs-progress') {
     const st = $('#podLiveRenderStatus');
-    if (st) st.textContent = `단건 조판 렌더링 진행 중...`;
+    if (st) st.textContent = `조판 렌더링 진행 중...`;
     return;
   }
   
@@ -2128,28 +2148,33 @@ window.addEventListener('message', (e) => {
     if (iframe) {
       const pubSet = getPublishSettings(currentProject());
       const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      iframe.style.width = (paper.w * 2) + 'mm';
+      const isTreeMode = e.data.isTreeMode;
+      iframe.style.width = (isTreeMode ? paper.w * 2 : paper.w) + 'mm';
       
       const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
       const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-      const spreadW_px = (paper.w * 2) * (96 / 25.4);
+      const targetW_px = (isTreeMode ? paper.w * 2 : paper.w) * (96 / 25.4);
       const paperH_px = paper.h * (96 / 25.4);
-      const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / spreadW_px, (canvasH - 40) / paperH_px));
+      const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / targetW_px, (canvasH - 40) / paperH_px));
       iframe.style.transform = `scale(${newScale})`;
-      window.podPageMap = e.data.pageMap;
-      renderPodPageTree(currentProject(), pubSet, orderedEpisodes(currentProject()));
       
-      // 처음 렌더링 시 첫 번째 페이지 스프레드 보이기
-      iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: 1 }, '*');
+      if (isTreeMode) {
+        window.podPageMap = e.data.pageMap;
+        renderPodPageTree();
+      }
+      
+      // 처음 렌더링 시 첫 번째 페이지 보이기
+      iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: 1, mode: isTreeMode ? 'spread' : 'single' }, '*');
     }
 
     const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `단건 렌더링 완료 ✓`;
+    if(st) st.textContent = `렌더링 완료 ✓`;
   } else if (e.data.type === 'pagedjs-error') {
     const st = $('#podLiveRenderStatus');
     if(st) st.textContent = `렌더링 에러: ${e.data.error}`;
   }
 });
+
 
 function updateSpineThickness(totalPages) {
   const paperType = $('#podPaperType')?.value || 'standard';
@@ -2326,7 +2351,9 @@ $$('.pod-settings-tab').forEach(btn => {
     if (pane) pane.classList.add('active');
     
     if (btn.dataset.pane === 'tree') {
-      renderPodPageTree();
+      renderLivePodPreview('tree');
+    } else if (btn.dataset.pane !== 'cover') {
+      renderLivePodPreview();
     }
   });
 });
