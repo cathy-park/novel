@@ -2520,7 +2520,7 @@ window.addEventListener('message', (e) => {
         // 전면부 디자인: 저장/렌더링 직후 현재 편집 중인 페이지만 단면(single) 노출
         const block = window.fmBlocks && fmActiveBlockIdx !== null ? window.fmBlocks[fmActiveBlockIdx] : null;
         if (block && window.podPageMap) {
-          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
+          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
           const label = FM_LABELS[block.type] || block.type;
           const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
           if (pm) pageNum = pm.pageNum;
@@ -2788,7 +2788,7 @@ if ($('#fmShowGuides')) {
 }
 
 function getSingleFmBlockHtml(block, p, pubSet, afterTocEps, centerOffsetFm) {
-  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
+  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
   const s = block.style || {};
   const c = block.content || {};
   const type = block.type;
@@ -3031,16 +3031,15 @@ $('#podPublisherLogo')?.addEventListener('change', (e) => {
 const FM_BLOCK_META = {
   half_title: { name: '속표지', icon: '📖', fields: ['title'] },
   title_page: { name: '본표지', icon: '📗', fields: ['title', 'subtitle', 'publisher'] },
-  dedication: { name: '헌사', icon: '💌', fields: ['custom'] },
-  epigraph: { name: '인용구', icon: '✏️', fields: ['custom', 'quoteAuthor'] },
   copyright: { name: '판권지', icon: '©️', fields: ['title', 'author', 'date', 'publisher'] },
-  toc: { name: '목차', icon: '📋', fields: [] },
+  toc: { name: '목차', icon: '📋', fields: ['tocManual'] },
+  main_body: { name: '본문', icon: '📝', fields: [] },
   blank: { name: '빈 면지', icon: '⬜', fields: [] }
 };
 
 // 기본 스타일 팩토리
 function defaultFmStyle(type) {
-  const dark = ['dedication', 'epigraph'].includes(type);
+  const dark = [].includes(type);
   return {
     bgColor: dark ? '#1C1813' : '#ffffff',
     bgImage: null,
@@ -3056,7 +3055,7 @@ function defaultFmStyle(type) {
 
 // 기본 콘텐츠 팩토리
 function defaultFmContent(type) {
-  return { title: '', subtitle: '', publisher: '', author: '', date: '', customText: '', quoteAuthor: '' };
+  return { title: '', subtitle: '', publisher: '', author: '', date: '', customText: '', quoteAuthor: '', tocManual: '' };
 }
 
 // ── 마이그레이션: 구형 fmOrder → fmBlocks ─────────────────────
@@ -3266,7 +3265,7 @@ function openFmBlockEditor(index) {
 
   // 필드 표시/숨김
   const fields = meta.fields || [];
-  const allFields = ['title', 'subtitle', 'publisher', 'author', 'date', 'custom', 'quoteAuthor'];
+  const allFields = ['title', 'subtitle', 'publisher', 'author', 'date', 'custom', 'quoteAuthor', 'tocManual'];
   allFields.forEach(f => {
     const el = $(`#fmField${f.charAt(0).toUpperCase() + f.slice(1)}`);
     if (el) el.style.display = fields.includes(f) ? 'block' : 'none';
@@ -3281,6 +3280,7 @@ function openFmBlockEditor(index) {
   $('#fmContentDate').value = c.date || '';
   $('#fmContentCustom').value = c.customText || '';
   $('#fmContentQuoteAuthor').value = c.quoteAuthor || '';
+  if ($('#fmContentTocManual')) $('#fmContentTocManual').value = c.tocManual || '';
 
   // 블록 목록 재렌더 (selected 강조)
   renderFmBlockList();
@@ -3318,6 +3318,7 @@ function syncFmBlockLive() {
   block.content.date = $('#fmContentDate').value;
   block.content.customText = $('#fmContentCustom').value;
   block.content.quoteAuthor = $('#fmContentQuoteAuthor').value;
+  if ($('#fmContentTocManual')) block.content.tocManual = $('#fmContentTocManual').value;
 
   podUpdateFmPreview();
 }
@@ -3325,7 +3326,7 @@ function syncFmBlockLive() {
 [
   '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity', '#fmHideText',
   '#fmPaddingTop', '#fmPaddingBottom', '#fmPaddingLeft', '#fmPaddingRight',
-  '#fmContentTitle', '#fmContentSubtitle', '#fmContentPublisher', '#fmContentAuthor', '#fmContentDate', '#fmContentCustom', '#fmContentQuoteAuthor'
+  '#fmContentTitle', '#fmContentSubtitle', '#fmContentPublisher', '#fmContentAuthor', '#fmContentDate', '#fmContentCustom', '#fmContentQuoteAuthor', '#fmContentTocManual'
 ].forEach(sel => {
   const el = $(sel);
   if (el) el.addEventListener('input', syncFmBlockLive);
@@ -3806,7 +3807,7 @@ async function exportPODCover() {
 
 
 function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
-  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', dedication: '헌정', epigraph: '제사', blank: '여백' };
+  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
   let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
 
   if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
@@ -3874,18 +3875,24 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
-        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
-        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
+        const manualNumbers = (c.tocManual || '').split(/[\n,]+/).map(s => s.trim());
+        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:inherit;">목차</h2><ul class="toc-list" style="font-family:inherit;">`;
+        tocEps.forEach((ep, i) => { 
+          let manualNum = manualNumbers[i] !== undefined && manualNumbers[i] !== '' ? manualNumbers[i] : '';
+          let pageRefHTML = manualNum ? `<span class="toc-manual-page" style="float:right;">${escapeHtml(manualNum)}</span>` : `<a href="#ep-${ep.id}" class="toc-page-ref"></a>`;
+          tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span>${pageRefHTML}</li>`; 
+        });
         tocHtml += `</ul></div></div>`;
         htmlFm += tocHtml;
       }
+    } else if (type === 'main_body') {
+      htmlFm += `<!--MAIN_BODY_PLACEHOLDER-->`;
     } else if (type === 'blank') {
       htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:right;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
     }
   });
 
-  let bodyHtml = htmlFm;
-
+  let epsHtml = '';
 
   // 3. 목차 전 부속 (사용자가 추가한 앞부속)
   beforeTocEps.forEach(ep => {
@@ -3907,16 +3914,12 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     let safeBody = tempDiv.innerHTML;
     if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
-    htmlFm += `<div class="chapter matter-page" style="break-before: right;"><div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
+    epsHtml += `<div class="chapter matter-page" style="break-before: right;"><div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
   });
-
-  if (targetEpId === 'fm') return htmlFm;
-
-  bodyHtml = targetEpId ? '' : htmlFm;
 
   // 5. 본문 (목차 이후의 회차 및 뒷부속)
   afterTocEps.forEach((ep, i) => {
-    if (targetEpId && targetEpId !== ep.id) return;
+    if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
     const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
     const renderTitle = false; // !isMatter && pubSet.showTitle && !processed.hasTitle;
@@ -3937,12 +3940,19 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     let safeBody = tempDiv.innerHTML;
     if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
-    bodyHtml += `<div class="chapter ${isMatter ? 'matter-page' : ''}">` +
+    epsHtml += `<div class="chapter ${isMatter ? 'matter-page' : ''}">` +
       (renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : '') +
       `<div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
   });
 
-  return bodyHtml;
+  if (htmlFm.includes('<!--MAIN_BODY_PLACEHOLDER-->')) {
+    htmlFm = htmlFm.replace('<!--MAIN_BODY_PLACEHOLDER-->', epsHtml);
+    epsHtml = '';
+  }
+
+  if (targetEpId === 'fm') return htmlFm;
+
+  return targetEpId ? epsHtml : htmlFm + epsHtml;
 }
 
 async function exportPODPdf(isSilent = false) {
@@ -4944,13 +4954,13 @@ function runHiddenPagedJsForTree(p) {
           }
           document.body.appendChild(wrap); // DOM에 반드시 붙여야 무한 루프 안 빠짐
           window.PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
-            window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
+            window.parent.postMessage({ type:'pagedjs-error', error:err.stack || err.message }, '*');
           });
         } catch(e) {
-          window.parent.postMessage({ type:'pagedjs-error', error:e.message }, '*');
+          window.parent.postMessage({ type:'pagedjs-error', error:'sync:'+(e.stack || e.message) }, '*');
         }
       }).catch(function(err) {
-        window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
+        window.parent.postMessage({ type:'pagedjs-error', error:'promise:'+(err.stack || err.message) }, '*');
       });
     }
   </script>
