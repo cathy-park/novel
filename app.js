@@ -2192,10 +2192,10 @@ async function renderLivePodPreview(forceMode = null) {
       gH = `
       <!-- 가이드라인 (전면부 단면, 우측 페이지 기준) -->
       <div style="position:absolute; inset:0; pointer-events:none; z-index:9999;">
-        <!-- 재단선 (빨간 점선) -->
-        <div style="position:absolute; left:${m.bleed}mm; right:${m.bleed}mm; top:${m.bleed}mm; bottom:${m.bleed}mm; border:1px dashed rgba(255,0,0,0.4);"></div>
+        <!-- 재단선 (빨간 점선, 우측 페이지이므로 왼쪽 제본면은 0) -->
+        <div style="position:absolute; left:0; right:${m.bleed}mm; top:${m.bleed}mm; bottom:${m.bleed}mm; border:1px dashed red;"></div>
         <!-- 안전영역 (파란 실선, 우측 페이지이므로 왼쪽이 inner, 오른쪽이 outer) -->
-        <div style="position:absolute; left:${m.bleed+m.inner}mm; right:${m.bleed+m.outer}mm; top:${m.bleed+m.top}mm; bottom:${m.bleed+m.bottom}mm; border:1px solid rgba(0,0,255,0.3);"></div>
+        <div style="position:absolute; left:${m.inner}mm; right:${m.outer}mm; top:${m.top}mm; bottom:${m.bottom}mm; border:1px solid rgba(0,0,255,0.3);"></div>
       </div>`;
     }
 
