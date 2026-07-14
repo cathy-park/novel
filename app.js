@@ -35,6 +35,40 @@ function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toSt
 function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: '', status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
 function defaultPlanSection(title='새 기획 항목', body='') { return { id: uid('plan'), title, body, open: true }; }
 
+// ── 이미지 클라이언트 압축 (Canvas API) ──────────────────────
+function compressImage(file, maxWidth = 1200, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('파일 읽기 실패'));
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('이미지 디코딩 실패'));
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxWidth) {
+          h = Math.round(h * maxWidth / w);
+          w = maxWidth;
+        }
+        const cvs = document.createElement('canvas');
+        cvs.width = w;
+        cvs.height = h;
+        const ctx = cvs.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        // WebP 우선, 미지원 시 JPEG fallback
+        let dataUrl = cvs.toDataURL('image/webp', quality);
+        if (dataUrl.startsWith('data:image/webp')) {
+          resolve(dataUrl);
+        } else {
+          dataUrl = cvs.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 
 // --- File System Access API Logic ---
 // --- Supabase Cloud Logic ---
@@ -68,7 +102,7 @@ async function initApp() {
 
   sb.auth.onAuthStateChange(async (event, session) => {
 
-    console.log('Auth event:', event);
+
     if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session && !currentUser) {
       localStorage.removeItem('novel_emergency_backup'); // 불필요해진 로컬 백업 삭제
       showToast('로그인 성공! 서재를 불러옵니다...');
@@ -114,7 +148,7 @@ async function initApp() {
       }
     }
     if (session && !currentUser) {
-      console.log('Manual session recovery successful');
+
       showToast('세션을 복구했습니다. 서재를 불러옵니다...');
       currentUser = session.user;
       $('#welcomeScreen').style.display = 'none';
@@ -1821,6 +1855,12 @@ const POD_PRESETS = {
   }
 };
 
+// ── 내지 라이브 렌더링(Paged.js) ────────────────────────
+let podLiveRenderTimer = null;
+let podLastRenderedTotalPages = 0;
+let podRenderSessionId = 0; // Race Condition 방지용 렌더 세션 ID
+
+
 // ── mm → px 변환 (화면 축척 기준) ────────────────────────────
 const PREVIEW_SCALE = 1; // 화면 내 1mm = PREVIEW_SCALE px (JS에서 계산)
 let podPreviewScale = 1;
@@ -2035,14 +2075,16 @@ async function renderLivePodPreview(forceMode = null) {
   .chapter-content span { background-color:transparent !important; }
   .chapter-content p { text-indent:10pt !important; margin:0 !important; }
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width: 100% !important; width: 100% !important; height: auto !important; display: block; margin: 10px auto; }`;
+  img { max-width: 100% !important; width: 100% !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; }`;
 
-  // 메인 UI 메모리에 렌더링할 데이터를 저장해둡니다.
+  // 렌더 세션 ID 증가 — stale iframe의 READY 메시지를 무시하기 위함
+  const currentRenderSessionId = ++podRenderSessionId;
   window.podPendingRenderHTML = bodyHTML;
   window.podPendingRenderIsTreeMode = isTreeMode;
+  window.podPendingRenderId = currentRenderSessionId;
 
   const headScripts = `<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js" onload="window.parent.postMessage({ type: 'PAGEDJS_READY' }, '*')" onerror="window.parent.postMessage({ type: 'pagedjs-error', error: 'PagedJS 스크립트 로드 실패' }, '*')"><\/script>
+<script src="https://unpkg.com/pagedjs@0.4.3/dist/js/paged.polyfill.js" onload="window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*')" onerror="window.parent.postMessage({ type: 'pagedjs-error', error: 'PagedJS 스크립트 로드 실패' }, '*')"><\/script>
 <style>
   html,body { margin:0; padding:0; background:transparent !important; }
   .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
@@ -2051,10 +2093,10 @@ async function renderLivePodPreview(forceMode = null) {
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
 <\/style>
 <script>
+var _pagedHandlerRegistered = false;
 window.addEventListener('message', function(ev) {
   if (!ev.data) return;
 
-  // 1. START_RENDER 수신 시 PagedJS 조판 시작
   if (ev.data.type === 'START_RENDER') {
     if (typeof Paged === 'undefined') {
       window.parent.postMessage({ type:'pagedjs-error', error:'Paged 객체가 존재하지 않습니다.' }, '*');
@@ -2063,27 +2105,31 @@ window.addEventListener('message', function(ev) {
     
     var TREE = ev.data.isTreeMode;
     var htmlContent = ev.data.html;
+    var rid = ev.data.renderId;
 
-    Paged.registerHandlers(class extends Paged.Handler {
-      afterRendered(pages) {
-        try {
-          var map = pages.map(function(pg) {
-            var el  = pg.element || pg.pageNode || pg.wrapper;
-            var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
-            var fm  = el && el.querySelector('[data-fm-label]');
-            var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
-            return {
-              pageNum: num,
-              label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,14) : num+'쪽'),
-              epTitle: ch ? ch.textContent.trim() : ''
-            };
-          });
-          window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:TREE }, '*');
-        } catch(err) {
-          window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+    if (!_pagedHandlerRegistered) {
+      _pagedHandlerRegistered = true;
+      Paged.registerHandlers(class extends Paged.Handler {
+        afterRendered(pages) {
+          try {
+            var map = pages.map(function(pg) {
+              var el  = pg.element || pg.pageNode || pg.wrapper;
+              var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
+              var fm  = el && el.querySelector('[data-fm-label]');
+              var ch  = el && el.querySelector('.chapter-title,.chapter-content h1');
+              return {
+                pageNum: num,
+                label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,14) : num+'쪽'),
+                epTitle: ch ? ch.textContent.trim() : ''
+              };
+            });
+            window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:TREE, renderId:rid }, '*');
+          } catch(err) {
+            window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+          }
         }
-      }
-    });
+      });
+    }
 
     var wrap = document.createElement('div');
     wrap.innerHTML = htmlContent;
@@ -2092,7 +2138,6 @@ window.addEventListener('message', function(ev) {
     });
   }
 
-  // 2. SHOW_PAGES 수신 시 특정 페이지만 표시
   if (ev.data.type === 'SHOW_PAGES') {
     var tgt  = parseInt(ev.data.pageNum, 10);
     var mode = ev.data.mode;
@@ -2114,7 +2159,6 @@ window.addEventListener('message', function(ev) {
 });
 <\/script>`;
 
-  // Iframe 내부는 빈 <body>로 초기화
   const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2261,7 +2305,11 @@ function podSaveSettings() {
     return cvs.toDataURL('image/webp', 0.8);
   };
 
+  const activePresetBtn = document.querySelector('.pod-preset-btn.active');
+  const presetKey = activePresetBtn ? activePresetBtn.dataset.preset : '';
+
   p.publishSettings = {
+    preset: presetKey,
     paperSize: $('#podPaperSize').value,
     autoTOC: $('#podAutoTOC').checked,
     showTitle: $('#podShowTitle').checked,
@@ -2539,34 +2587,6 @@ function renderPodPageTree() {
 }
 
 
-// ── 설정 탭 전환 (Single Live Viewer) ───────────────────────
-$$('.pod-settings-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
-    $$('.pod-settings-pane').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    const pane = $('#podPane-' + btn.dataset.pane);
-    if (pane) pane.classList.add('active');
-
-    const tab = btn.dataset.pane;
-    if (tab === 'cover') {
-      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'none';
-      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'flex';
-      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
-      podUpdateCoverPreview();
-    } else if (tab === 'tree') {
-      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
-      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
-      renderLivePodPreview('tree');
-    } else {
-      if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
-      if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'flex';
-      renderLivePodPreview('single');
-    }
-  });
-});
 
 
 function podUpdateFmPreview() {
@@ -2599,7 +2619,8 @@ function podUpdateFmPreview() {
   const pSub    = escapeHtml(c.subtitle || '');
   const pAuth   = escapeHtml(c.author || set.frontMatter?.author || '저자');
   const pDate   = escapeHtml(c.date || set.frontMatter?.publishDate || new Date().getFullYear() + '년');
-  const pPub    = escapeHtml(c.publisher || set.frontMatter?.fmPublisher || '');
+  const presetObj = POD_PRESETS[set.preset] || {};
+  const pPub    = escapeHtml(c.publisher || set.frontMatter?.fmPublisher || presetObj.name || '');
   const pCustom = escapeHtml(c.customText || '').replace(/\\n/g, '<br>');
   const pQuote  = escapeHtml(c.quoteAuthor || '');
 
@@ -3183,7 +3204,7 @@ $('#podCoverBgColorHex').addEventListener('input', (e) => {
     podUpdateCoverPreview();
   }
 });
-$('#podPublisherLogo').addEventListener('change', podUpdateCoverPreview);
+
 $('#podSpineFont').addEventListener('change', podUpdateCoverPreview);
 $('#podSpineWidth').addEventListener('input', podUpdateCoverPreview);
 
