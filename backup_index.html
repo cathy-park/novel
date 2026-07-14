@@ -1,3 +1,1547 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>야니의 소설창고 — 소설 집필 워크스페이스</title>
+<meta name="theme-color" content="#FBFBFC">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
+
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<meta name="description" content="야니의 소설창고 — 장편소설 집필 워크스페이스 (v6)" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2717%27 fill=%27%23C8BEFF%27/%3E%3Cpath d=%27M14 17c8-2 14 0 18 5v27c-4-5-10-7-18-5V17Zm36 0c-8-2-14 0-18 5v27c4-5 10-7 18-5V17Z%27 fill=%27none%27 stroke=%27%2317141F%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3Cpath d=%27m40 13 7 7-12 12-8 2 2-8 11-13Z%27 fill=%27%23fff%27 stroke=%27%2317141F%27 stroke-width=%273%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E" />
+<style>
+:root{
+  --c-bg: #F8F8FB;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #FCFCFE;
+  --c-surface-3: #F2F3F7;
+  --c-line: #E4E6ED;
+  --c-line-mid: #D4D7E0;
+  --c-ink: #17141F;
+  --c-body: #454650;
+  --c-sub: #686A76;
+  --c-muted: #858793;
+  --c-accent: #6B5CE7;
+  --c-accent-dk: #5949D1;
+  --c-accent-lt: #ECE8FF;
+  --c-accent-bg: #F5F3FF;
+  --c-success: #258265;
+  --c-success-bg: #EAF7F2;
+  --c-warning: #B46A20;
+  --c-warning-bg: #FFF5E8;
+  --c-danger: #C94F68;
+  --c-danger-bg: #FFF0F3;
+  --c-brand-grad: linear-gradient(135deg, #BFEAFF 0%, #C8BEFF 52%, #FFD7E8 100%);
+  --shadow-xs: 0 1px 2px rgba(23,20,31,.04);
+  --shadow-sm: 0 4px 12px rgba(23,20,31,.06);
+  --shadow-md: 0 12px 36px rgba(23,20,31,.09);
+  --shadow-lg: 0 24px 72px rgba(23,20,31,.16);
+  --shadow-book: -4px 10px 24px rgba(23,20,31,.13), inset 4px 0 rgba(255,255,255,.15);
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+  --font: Pretendard, "Apple SD Gothic Neo", 'Tossface', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sidebar: 290px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100vh; overflow: hidden; background: var(--c-bg); color: var(--c-ink); font-family: var(--font); }
+button, input, textarea, select { font-family: inherit; }
+button { cursor: pointer; }
+textarea { resize: none; }
+.hidden { display: none !important; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgba(107,92,231,.22); outline-offset: 2px; }
+::selection { background: #DDD6FF; color: var(--c-ink); }
+mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 2px; }
+
+/* Shared */
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { position: relative; width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: var(--c-brand-grad); color: var(--c-ink); box-shadow: var(--shadow-xs); overflow: hidden; }
+.brand-mark::after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(23,20,31,.08); border-radius: inherit; pointer-events: none; }
+.brand-mark svg { width: 27px; height: 27px; position: relative; z-index: 1; }
+.brand-name { font-size: 19px; font-weight: 800; letter-spacing: -.04em; }
+.kicker { display: block; color: var(--c-accent); font-size: 11px; font-weight: 800; letter-spacing: .05em; margin-bottom: 7px; }
+.primary, .secondary, .ghost, .danger { min-height: 38px; border-radius: var(--r-md); padding: 0 14px; border: 1px solid transparent; font-weight: 700; font-size: 12px; transition: .16s; }
+.primary { background: var(--c-ink); color: #fff; box-shadow: var(--shadow-xs); }
+.primary:hover { background: #282431; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.secondary { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-line); }
+.secondary:hover { background: var(--c-surface-3); border-color: var(--c-line-mid); }
+.ghost { background: transparent; color: var(--c-sub); border-color: transparent; }
+.ghost:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.ghost.border { border-color: var(--c-line); }
+.danger { background: var(--c-surface); color: var(--c-danger); border-color: #F3CCD5; }
+.danger:hover { background: var(--c-danger-bg); border-color: #EFB6C3; }
+.icon-btn { width: 32px; height: 32px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--c-sub); font-size: 19px; display: grid; place-items: center; transition: .16s; }
+.icon-btn:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; border: 1px solid transparent; }
+.chip.serializing { background: var(--c-accent-bg); color: var(--c-accent-dk); border-color: #C8BEFF; }
+.chip.completed { background: var(--c-success-bg); color: var(--c-success); border-color: #CDEADF; }
+.toast { position: fixed; right: 24px; bottom: 24px; z-index: 100; transform: translateY(18px); opacity: 0; pointer-events: none; background: var(--c-ink); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: var(--shadow-md); font-size: 12px; font-weight: 700; transition: .2s; }
+.toast.show { opacity: 1; transform: none; }
+
+/* Library */
+.library-shell { height: 100vh; overflow-y: auto; background: linear-gradient(180deg,#fff 0,#fff 78px,var(--c-bg) 78px); }
+.library-top { height: 78px; border-bottom: 1px solid var(--c-line); background: rgba(255,255,255,.9); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: space-between; padding: 0 max(28px,calc((100vw - 1180px)/2)); position: sticky; top: 0; z-index: 8; }
+.library-main { max-width: 1180px; margin: 0 auto; padding: 62px 28px 90px; }
+.library-filters { display: flex; gap: 8px; margin-bottom: 30px; }
+.filter-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--c-line); background: #fff; color: var(--c-sub); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; box-shadow: var(--shadow-xs); transition: .16s; }
+.filter-btn:hover { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent-dk); }
+.filter-btn span { display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 6px; border-radius: 999px; background: var(--c-surface-3); font-size: 10px; }
+.filter-btn.active { border-color: var(--c-ink); background: var(--c-ink); color: #fff; }
+.filter-btn.active span { background: rgba(255,255,255,.14); color: #fff; }
+.project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 36px 28px; align-items: start; }
+.project-book { min-width: 0; position: relative; }
+.book-stage { position: relative; padding: 0 8px 14px; }
+.book-cover { position: relative; z-index: 1; width: 100%; aspect-ratio: 2/3; border: 1px solid rgba(23,20,31,.08); border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--c-brand-grad); box-shadow: var(--shadow-book); color: #fff; text-align: left; padding: 0; transition: .2s; cursor: pointer; display: block; }
+.book-cover:hover { transform: translateY(-5px) rotate(-.35deg); box-shadow: -6px 18px 40px rgba(23,20,31,.18), inset 4px 0 rgba(255,255,255,.15); }
+.book-cover::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 1px; background: currentColor; opacity: .12; z-index: 1; pointer-events: none; }
+.book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.book-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 22px 18px; background: var(--cover-color, var(--c-accent)); color: var(--cover-text, #fff); }
+.book-placeholder strong { position: relative; z-index: 1; font-size: 21px; line-height: 1.35; letter-spacing: -.045em; word-break: keep-all; }
+.cover-edit { position: absolute; z-index: 2; inset: auto 12px 12px 12px; min-height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(23,20,31,.78); backdrop-filter: blur(6px); color: #fff; font-size: 10px; font-weight: 800; opacity: 0; transition: .18s; }
+.book-cover:hover .cover-edit { opacity: 1; }
+.project-book-info { padding: 10px 8px 0; }
+.title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; min-width: 0; }
+.title-badge { flex-shrink: 0; display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .01em; }
+.title-badge.serializing { background: var(--c-accent-bg); color: var(--c-accent-dk); border: 1px solid #C8BEFF; }
+.title-badge.completed { background: var(--c-success-bg); color: var(--c-success); border: 1px solid #CDEADF; }
+.project-book h2 { font-size: 15px; font-weight: 700; letter-spacing: -.035em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--c-ink); min-width: 0; }
+.book-meta { display: flex; gap: 9px; align-items: center; color: var(--c-muted); font-size: 10px; }
+.project-book-actions { display: flex; gap: 6px; margin-top: 11px; align-items: center; }
+.project-book-actions .primary { flex: 1; min-height: 32px; font-size: 11px; }
+.kebab-btn { width: 32px; height: 32px; border: 0; background: transparent; border-radius: 6px; color: var(--c-sub); display: grid; place-items: center; position: relative; }
+.kebab-btn:hover { background: var(--c-surface-3); }
+/* Kebab dropdown */
+.kebab-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 4px; background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--shadow-sm); z-index: 30; display: none; flex-direction: column; min-width: 110px; padding: 4px; }
+.kebab-menu.show { display: flex; }
+.kebab-menu button { text-align: left; background: transparent; border: 0; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--c-ink); border-radius: 4px; width: 100%; }
+.kebab-menu button:hover { background: var(--c-surface-3); }
+.kebab-menu .danger-item { color: var(--c-danger); }
+.kebab-menu .danger-item:hover { background: var(--c-danger-bg); }
+.empty-state { grid-column: 1/-1; padding: 72px 24px; border: 1px dashed var(--c-line-mid); border-radius: var(--r-lg); text-align: center; background: rgba(255,255,255,.6); }
+.empty-state strong { display: block; font-size: 17px; margin-bottom: 8px; }
+.empty-state p { color: var(--c-sub); font-size: 13px; margin: 0; }
+
+/* Workspace Shell & Editor */
+.workspace-shell { display: grid; grid-template-columns: var(--sidebar) 1fr; height: 100vh; overflow: hidden; }
+.workspace-shell.focus-mode { grid-template-columns: 0 1fr; }
+.sidebar { background: var(--c-surface-2); border-right: 1px solid var(--c-line); display: flex; flex-direction: column; padding: 18px 14px; gap: 8px; overflow-y: auto; overflow-x: hidden; }
+.workspace-shell.focus-mode .sidebar { display: none; }
+.sidebar-brand { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 8px; }
+.library-back { border: 0; background: transparent; color: var(--c-sub); font-size: 12px; font-weight: 700; padding: 6px 8px; border-radius: 8px; }
+.library-back:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.project-summary { padding: 14px; border: 1px solid var(--c-line); background: #fff; border-radius: var(--r-md); box-shadow: var(--shadow-xs); }
+.project-summary label { display: block; color: var(--c-muted); font-size: 10px; margin-bottom: 6px; }
+.project-title-input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 15px; font-weight: 800; color: var(--c-ink); letter-spacing: -.04em; padding: 0; }
+.project-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.project-stats { color: var(--c-muted); font-size: 10px; }
+.project-status { border: 1px solid var(--c-line); border-radius: 8px; background: var(--c-surface-3); color: var(--c-sub); padding: 5px 24px 5px 8px; font-size: 10px; font-weight: 700; outline: 0; }
+.nav-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--c-sub); text-align: left; font-size: 12px; font-weight: 700; }
+.nav-item:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.section-title { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px 4px; color: var(--c-sub); font-size: 11px; font-weight: 800; }
+/* 에피소드 목록: 간겹 축소 + 디자인 정리 */
+.episode-list { flex: 1; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 1px; }
+.tree-category-label { font-size: 11px; font-weight: 700; color: var(--c-muted); padding: 12px 8px 4px 8px; margin-top: 4px; display: flex; align-items: center; gap: 6px; letter-spacing: -0.01em; border-bottom: 1px solid var(--c-line); user-select: none; }
+.tree-category-label:first-child { margin-top: 0; padding-top: 4px; }
+.tree-category-label .tree-icon { font-size: 14px; opacity: 0.8; }
+.episode-row.tree-item { margin-left: 8px; border-left: 1px solid var(--c-line); padding-left: 6px; border-radius: 0 4px 4px 0; }
+.episode-row { display: grid; grid-template-columns: 16px minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; color: var(--c-sub); user-select: none; transition: background .12s; }
+.episode-row:hover .delete-ep-btn { opacity: 1 !important; }
+.delete-ep-btn { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.episode-row:hover { background: var(--c-surface-3); }
+.episode-row.active { background: var(--c-accent-bg); border-color: var(--c-accent-lt); color: var(--c-ink); }
+.episode-row.dragging { opacity: .35; }
+/* 드래그 핸들: 슬림하게 */
+.drag { color: var(--c-line); cursor: grab; text-align: center; font-size: 10px; letter-spacing: -1px; opacity: .7; transition: opacity .15s; }
+.episode-row:hover .drag { opacity: 1; color: var(--c-muted); }
+.episode-row[draggable="false"] .drag { cursor: default; opacity: 0.2; }
+.episode-main { min-width: 0; cursor: pointer; }
+/* 제목: 검정 + 2사이즈 업 (12px→14px) */
+.episode-main strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 700; color: #17141F; }
+.episode-row.active .episode-main strong { color: var(--c-accent); }
+/* 자수 표시 */
+.episode-main span { display: block; margin-top: 2px; color: var(--c-muted); font-size: 9px; }
+.sidebar-foot { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--c-line); flex: 0 0 auto; }
+.sidebar-foot button { width: 100%; font-size: 11px; min-height: 32px; }
+
+.workspace { display: flex; flex-direction: column; height: 100vh; min-height: 0; overflow: hidden; background: var(--c-surface); position: relative; }
+.topbar { flex: 0 0 48px; border-bottom: 1px solid var(--c-line); background: var(--c-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+.workspace-shell.focus-mode .topbar { display: none; }
+.breadcrumb { display: flex; gap: 8px; align-items: center; min-width: 0; color: var(--c-sub); font-size: 12px; }
+.breadcrumb span, .breadcrumb strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slash { color: var(--c-line-mid); }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.save-status { color: var(--c-muted); font-size: 11px; margin-right: 8px; }
+
+#editorView { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.episode-header { flex: 0 0 auto; display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 24px 36px 16px; border-bottom: 1px solid var(--c-line); background: #fff; }
+.workspace-shell.focus-mode .episode-header { padding: 40px 0 16px; max-width: 680px; width: 100%; margin: 0 auto; border-bottom: none; }
+.workspace-shell.focus-mode .episode-meta-row, .workspace-shell.focus-mode .view-tabs { display: none; }
+.episode-title-wrap { flex: 1; min-width: 0; }
+.episode-title { width: 100%; border: 0; outline: 0; background: transparent; color: var(--c-ink); font-size: 32px; font-weight: 800; letter-spacing: -.055em; padding: 0 0 5px; }
+.episode-meta-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.episode-sub { display: flex; gap: 7px; }
+.episode-sub select { border: 1px solid var(--c-line); border-radius: 6px; background: var(--c-surface-3); color: var(--c-sub); padding: 5px 24px 5px 8px; font-size: 11px; font-weight: 700; outline: 0; }
+.view-tabs { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--c-line); border-radius: 10px; background: var(--c-surface-3); }
+.view-tab { border: 0; border-radius: 7px; background: transparent; color: var(--c-sub); padding: 7px 12px; font-size: 11px; font-weight: 800; transition: .15s; }
+.view-tab.active { background: #fff; color: var(--c-ink); box-shadow: var(--shadow-xs); }
+
+.editor-columns { flex: 1; min-height: 0; display: grid; overflow: hidden; }
+.mode-plan { grid-template-columns: 1fr; } .mode-plan .body-pane { display: none; }
+.mode-body { grid-template-columns: 1fr; } .mode-body .plan-pane { display: none; }
+.mode-split { grid-template-columns: minmax(320px, 0.8fr) minmax(480px, 1.2fr); }
+.mode-split .plan-pane { border-right: 1px solid var(--c-line); background: var(--c-bg); }
+
+.pane { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 24px 36px 0; position: relative; }
+.workspace-shell.focus-mode .pane { padding: 0; }
+.plan-editor, .body-editor { flex: 1; min-height: 0; width: 100%; max-width: 680px; margin: 0 auto; border: 0; outline: 0; background: transparent; resize: none; overflow-y: auto; padding-bottom: 60px; }
+.plan-editor { font-size: 15px; line-height: 1.9; color: var(--c-ink); }
+.body-editor { font-size: 17px; line-height: 2.1; color: var(--c-body); letter-spacing: -0.01em; }
+.plan-editor::placeholder, .body-editor::placeholder { color: var(--c-line-mid); }
+.editor-bottom-bar { flex: 0 0 auto; width: 100%; max-width: 680px; margin: 0 auto; padding: 12px 0 24px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to top, var(--c-surface) 70%, transparent); }
+.mode-split .plan-pane .plan-editor { max-width: none; }
+.workspace-shell.focus-mode .editor-bottom-bar { justify-content: flex-end; }
+.workspace-shell.focus-mode .dropdown-container { display: none; }
+
+/* ─────────────────────────────────────────────────────────────
+   Narrative Blocks — 소설 본문 서사 블록 (이미지 가이드 v3)
+   원칙: 출판 원고 흐름 안에 자연스럽게 삽입, 웹 UI 컴포넌트 금지
+   타입별 차이: 배경색이 아닌 정렬/너비/테두리/여백/서체로 구분
+───────────────────────────────────────────────────────────────── */
+
+/* ① 메시지 (n-msg) */
+.ql-editor p.n-msg,
+.ql-editor .n-msg,
+.n-msg {
+  display: block !important;
+  max-width: 70% !important;
+  margin: 16px 0 !important;
+  background: #EAF4FF !important; /* 연한 블루 파스텔 계열 */
+  border: none !important;
+  border-radius: 18px 18px 18px 2px !important;
+  padding: 12px 18px !important;
+  font-size: 0.95em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  text-indent: 0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+}
+/* 연속된 메시지 블록 그룹화 */
+.ql-editor p.n-msg:has(+ p.n-msg),
+.n-msg:has(+ .n-msg) {
+  margin-bottom: 4px !important;
+  border-bottom-left-radius: 6px !important;
+}
+.ql-editor p.n-msg + p.n-msg,
+.n-msg + .n-msg {
+  margin-top: 0 !important;
+  border-top-left-radius: 6px !important;
+}
+.ql-editor p.n-msg + p.n-msg:not(:has(+ p.n-msg)),
+.n-msg + .n-msg:not(:has(+ .n-msg)) {
+  border-bottom-left-radius: 2px !important;
+}
+
+/* ①-2 메시지 (노랑) (n-msg-y) */
+.ql-editor p.n-msg-y,
+.ql-editor .n-msg-y,
+.n-msg-y {
+  display: block !important;
+  max-width: 70% !important;
+  margin: 16px 0 !important;
+  background: #FFF7DE !important;
+  color: #5C5230 !important;
+  border: none !important;
+  border-radius: 18px 18px 18px 2px !important;
+  padding: 12px 18px !important;
+  font-size: 0.95em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  text-indent: 0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+}
+.ql-editor p.n-msg-y:has(+ p.n-msg-y),
+.n-msg-y:has(+ .n-msg-y) {
+  margin-bottom: 4px !important;
+  border-bottom-left-radius: 6px !important;
+}
+.ql-editor p.n-msg-y + p.n-msg-y,
+.n-msg-y + .n-msg-y {
+  margin-top: 0 !important;
+  border-top-left-radius: 6px !important;
+}
+.ql-editor p.n-msg-y + p.n-msg-y:not(:has(+ p.n-msg-y)),
+.n-msg-y + .n-msg-y:not(:has(+ .n-msg-y)) {
+  border-bottom-left-radius: 2px !important;
+}
+
+/* 모든 서사 블록 아이콘에 토스페이스 강제 적용 */
+.ql-editor p.n-msg::before, .n-msg::before,
+.ql-editor p.n-msg-y::before, .n-msg-y::before,
+.ql-editor p.n-noti::before, .n-noti::before,
+.ql-editor p.n-sys::before, .n-sys::before,
+.ql-editor p.n-log::before, .n-log::before,
+.ql-editor p.n-alert::before, .n-alert::before,
+.ql-editor p.n-record::before, .n-record::before,
+.ql-editor p.n-status::before, .n-status::before,
+.ql-editor p.n-email::before, .n-email::before,
+.ql-editor p.n-email-body::before, .n-email-body::before,
+.ql-editor p.n-doc::before, .n-doc::before,
+.ql-editor p.n-field::before, .n-field::before {
+  font-family: 'Tossface', 'Pretendard', sans-serif !important;
+}
+
+/* 아이콘 숨김 처리 (no-icon-true) */
+.ql-editor p.no-icon-true::before { content: none !important; }
+.ql-editor p.n-email-body.no-icon-true { padding-left: 38px !important; }
+.ql-editor p.n-doc.no-icon-true { padding-left: 38px !important; }
+.ql-editor p.n-noti.no-icon-true { padding-left: 38px !important; }
+.ql-editor p.n-msg.no-icon-true { padding-left: 20px !important; }
+.ql-editor p.n-msg-y.no-icon-true { padding-left: 20px !important; }
+.ql-editor p.n-email.no-icon-true { padding-left: 18px !important; }
+
+
+/* ② 시스템 문구 (n-sys) */
+.ql-editor p.n-sys, .ql-editor .n-sys, .n-sys {
+  display: block !important;
+  text-align: left !important;
+  background: #F2F7F4 !important;
+  border: none !important;
+  border-left: 4px solid #5E9C76 !important;
+  border-radius: 6px !important;
+  padding: 14px 18px !important;
+  margin: 20px 0 !important;
+  color: #4A5A53 !important;
+  font-size: 0.95em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-weight: 500 !important;
+  line-height: 1.8 !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-sys::before, .n-sys::before {
+  content: '\25C7' !important;
+  display: inline-block !important;
+  font-size: 11px !important;
+  color: #5E9C76 !important;
+  margin-right: 8px !important;
+}
+
+/* ③ 시스템 로그 (n-log) */
+.ql-editor p.n-log, .ql-editor .n-log, .n-log {
+  display: block !important;
+  text-align: left !important;
+  background: #E8EAF6 !important;
+  border: none !important;
+  border-left: 4px solid #5C6BC0 !important;
+  font-family: 'D2Coding', 'Fira Code', 'Consolas', 'Courier New', monospace !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
+  font-size: 0.92em !important;
+  line-height: 1.8 !important;
+  color: #384A60 !important;
+  white-space: pre-wrap !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-log *, .ql-editor .n-log *, .n-log * {
+  font-family: 'D2Coding', 'Fira Code', 'Consolas', 'Courier New', monospace !important;
+}
+
+/* ④ 알림·경고 (n-alert) */
+.ql-editor p.n-alert, .ql-editor .n-alert, .n-alert {
+  display: block !important;
+  text-align: left !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  background: #FEF4F4 !important;
+  border: none !important;
+  border-left: 4px solid #E06C6C !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 42px !important;
+  margin: 20px 0 0 0 !important;
+  position: relative !important;
+  font-size: 0.95em !important;
+  color: #464646 !important;
+  line-height: 1.8 !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-alert::before, .n-alert::before {
+  content: '⚠️' !important;
+  position: absolute !important;
+  left: 14px !important;
+  top: 14px !important;
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+
+/* ⑤ 기록·게시물 (n-record) */
+.ql-editor p.n-record, .ql-editor .n-record, .n-record {
+  display: block !important;
+  text-align: left !important;
+  background: #F2F6FC !important;
+  border: none !important;
+  border-left: 4px solid #6B9ED9 !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  line-height: 1.9 !important;
+  color: #505050 !important;
+  font-style: normal !important;
+  text-indent: 0 !important;
+}
+
+/* ⑥ 이메일 알림 (n-email) */
+.ql-editor p.n-email, .ql-editor .n-email, .n-email {
+  display: block !important;
+  max-width: 70% !important;
+  margin: 16px 0 !important;
+  background: #FAF5FF !important;
+  border: none !important;
+  border-radius: 18px 18px 18px 2px !important;
+  padding: 12px 18px 12px 38px !important;
+  font-size: 0.95em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  text-indent: 0 !important;
+  position: relative !important;
+}
+.ql-editor p.n-email::before, .n-email::before { content: '📧' !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
+.ql-editor p.n-email:has(+ p.n-email), .n-email:has(+ .n-email) { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; }
+.ql-editor p.n-email + p.n-email, .n-email + .n-email { margin-top: 0 !important; border-top-left-radius: 6px !important; padding-left: 18px !important; }
+.ql-editor p.n-email + p.n-email:not(:has(+ p.n-email)), .n-email + .n-email:not(:has(+ .n-email)) { border-bottom-left-radius: 2px !important; }
+.ql-editor p.n-email + p.n-email::before, .n-email + .n-email::before { content: none !important; }
+/* 이메일 본문 (n-email-body) */
+.ql-editor p.n-email-body, .ql-editor .n-email-body, .n-email-body {
+  display: block !important;
+  text-align: left !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  background: #FAF5FF !important;
+  border-left: 4px solid #6B5CE7 !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  line-height: 1.7 !important;
+  text-indent: 0 !important;
+  color: #333333 !important;
+  border-top-left-radius: 6px !important;
+  border-top-right-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 16px 20px 4px 20px !important;
+  margin: 20px 0 0 0 !important;
+}
+.ql-editor p.n-email-body::before, .n-email-body::before { content: '📧' !important; display: inline-block !important; font-size: 14px !important; margin-right: 8px !important; }
+.ql-editor p.n-email-body + p.n-email-body, .n-email-body + .n-email-body { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
+.ql-editor p.n-email-body + p.n-email-body::before, .n-email-body + .n-email-body::before { content: none !important; }
+.ql-editor p.n-email-body:not(:has(+ p.n-email-body)), .ql-editor p.n-email-body + p.n-email-body:not(:has(+ p.n-email-body)), .n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+  padding-bottom: 16px !important;
+  margin-bottom: 20px !important;
+}
+
+/* ⑦ 문서/서신 (n-doc) */
+.ql-editor p.n-doc, .ql-editor .n-doc, .n-doc {
+  display: block !important;
+  text-align: left !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  background: #FAFAFA !important;
+  border-left: 4px solid #95AED0 !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  line-height: 1.7 !important;
+  text-indent: 0 !important;
+  color: #222222 !important;
+  border-top-left-radius: 6px !important;
+  border-top-right-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 16px 20px 4px 20px !important;
+  margin: 20px 0 0 0 !important;
+}
+.ql-editor p.n-doc::before, .n-doc::before { content: '📄' !important; display: inline-block !important; font-size: 14px !important; color: #95AED0 !important; margin-right: 8px !important; }
+.ql-editor p.n-doc + p.n-doc, .n-doc + .n-doc { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
+.ql-editor p.n-doc + p.n-doc::before, .n-doc + .n-doc::before { content: none !important; }
+.ql-editor p.n-doc:not(:has(+ p.n-doc)), .ql-editor p.n-doc + p.n-doc:not(:has(+ p.n-doc)), .n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+  padding-bottom: 16px !important;
+  margin-bottom: 20px !important;
+}
+
+/* ⑧ 휴대폰 알림 (n-noti) */
+.ql-editor p.n-noti, .ql-editor .n-noti, .n-noti {
+  display: block !important;
+  max-width: 70% !important;
+  margin: 16px 0 !important;
+  background: #FFF9C4 !important;
+  border: none !important;
+  border-radius: 18px 18px 18px 2px !important;
+  padding: 12px 18px 12px 38px !important;
+  font-size: 0.95em !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  text-indent: 0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+  position: relative !important;
+  color: #4A4011 !important;
+}
+.ql-editor p.n-noti::before, .n-noti::before { content: '🔔' !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
+.ql-editor p.n-noti:has(+ p.n-noti), .n-noti:has(+ .n-noti) { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; }
+.ql-editor p.n-noti + p.n-noti, .n-noti + .n-noti { margin-top: 0 !important; border-top-left-radius: 6px !important; }
+.ql-editor p.n-noti + p.n-noti:not(:has(+ p.n-noti)), .n-noti + .n-noti:not(:has(+ .n-noti)) { border-bottom-left-radius: 2px !important; }
+.ql-editor p.n-noti + p.n-noti::before, .n-noti + .n-noti::before { content: none !important; }
+.ql-editor p.n-noti + p.n-noti, .n-noti + .n-noti { padding-left: 18px !important; }
+
+/* ⑨ 상태창 / 선택지 (n-status) */
+.ql-editor p.n-status, .ql-editor .n-status, .n-status {
+  display: block !important;
+  text-align: left !important;
+  background: #F2F7F4 !important;
+  border: none !important;
+  border-left: 4px solid #5E9C76 !important;
+  border-radius: 6px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding: 14px 18px 4px 18px !important;
+  margin: 20px 0 0 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.92em !important;
+  color: #384A42 !important;
+  line-height: 1.8 !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-status::before, .n-status::before { content: '\25C7' !important; display: inline-block !important; font-size: 11px !important; color: #5E9C76 !important; margin-right: 8px !important; }
+.ql-editor p.n-status + p.n-status, .n-status + .n-status { color: #4A5A53 !important; }
+
+/* ⑩ 입력칸 (n-field) */
+.ql-editor p.n-field, .ql-editor .n-field, .n-field {
+  display: block !important;
+  text-align: left !important;
+  background: #F4F5F6 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  margin: 20px 0 !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  color: #17141F !important;
+  caret-color: #5E9C76 !important;
+  line-height: 1.7 !important;
+  text-indent: 0 !important;
+}
+.ql-editor p.n-field:empty::after, .ql-editor p.n-field:has(> br:only-child)::after {
+  content: "여기에 입력하세요..." !important;
+  color: #A0AAB5 !important;
+  font-style: italic !important;
+  pointer-events: none !important;
+}
+
+/* ⑪ 메모 (n-memo) */
+.ql-editor p.n-memo, .ql-editor .n-memo, .n-memo {
+  display: block !important;
+  text-align: left !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-size: 0.95em !important;
+  color: #4A4A4A !important;
+  padding: 16px 20px !important;
+  margin: 20px 0 !important;
+  border-radius: 2px !important;
+  position: relative !important;
+  text-indent: 0 !important;
+  border: none !important;
+  background: 
+    linear-gradient(to top left, #BEEFCD 0%, #BEEFCD 50%, transparent 50%) bottom right / 22px 22px no-repeat,
+    linear-gradient(-45deg, transparent 15px, #DEFFE6 0) !important;
+}
+.ql-editor p.n-memo::before, .n-memo::before {
+  content: '📝' !important;
+  display: inline-block !important;
+  font-family: 'Tossface', sans-serif !important;
+  font-size: 14px !important;
+  margin-right: 8px !important;
+}
+.ql-editor p.n-memo:has(+ p.n-memo), .n-memo:has(+ .n-memo) {
+  margin-bottom: 0 !important;
+  padding-bottom: 4px !important;
+  background: #DEFFE6 !important;
+  border-bottom-left-radius: 0 !important;
+}
+.ql-editor p.n-memo + p.n-memo, .n-memo + .n-memo {
+  margin-top: 0 !important;
+  padding-top: 4px !important;
+  padding-left: 42px !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+.ql-editor p.n-memo + p.n-memo::before, .n-memo + .n-memo::before {
+  content: none !important;
+}
+.ql-editor p.n-memo:empty::after, .ql-editor p.n-memo:has(> br:only-child)::after {
+  content: "메모 입력..." !important; color: #A5BA85 !important; font-style: italic !important; pointer-events: none !important;
+}
+
+/* ==========================================
+   빈 블록 Placeholder 안내 문구 (에디터 내에서만)
+   ========================================== */
+.ql-editor p.n-msg:empty::after, .ql-editor p.n-msg:has(> br:only-child)::after { content: "메시지 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-msg-y:empty::after, .ql-editor p.n-msg-y:has(> br:only-child)::after { content: "메시지(노랑) 입력..." !important; color: #C4B282 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-sys:empty::after, .ql-editor p.n-sys:has(> br:only-child)::after { content: "시스템 문구 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-log:empty::after, .ql-editor p.n-log:has(> br:only-child)::after { content: "시스템 로그 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-alert:empty::after, .ql-editor p.n-alert:has(> br:only-child)::after { content: "알림/경고 내용 입력..." !important; color: #E89E9E !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-record:empty::after, .ql-editor p.n-record:has(> br:only-child)::after { content: "기록/게시물 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-email:empty::after, .ql-editor p.n-email:has(> br:only-child)::after { content: "이메일 알림 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-email-body:empty::after, .ql-editor p.n-email-body:has(> br:only-child)::after { content: "이메일 본문 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-doc:empty::after, .ql-editor p.n-doc:has(> br:only-child)::after { content: "문서 내용 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-noti:empty::after, .ql-editor p.n-noti:has(> br:only-child)::after { content: "알림 내용 입력..." !important; color: #A0A0A0 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-status:empty::after, .ql-editor p.n-status:has(> br:only-child)::after { content: "상태창 내용 입력..." !important; color: #888888 !important; font-style: italic !important; pointer-events: none !important; }
+/* ==========================================
+   시스템 패밀리 그룹핑 공통 로직 (log, alert, record, status)
+   ========================================== */
+.ql-editor p.n-log + p.n-log, .n-log + .n-log,
+.ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert,
+.ql-editor p.n-record + p.n-record, .n-record + .n-record,
+.ql-editor p.n-status + p.n-status, .n-status + .n-status {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  padding-top: 4px !important;
+}
+/* 두 번째 줄부터 아이콘 숨김 */
+.ql-editor p.n-alert + p.n-alert::before, .n-alert + .n-alert::before,
+.ql-editor p.n-status + p.n-status::before, .n-status + .n-status::before {
+  content: none !important;
+}
+/* 두 번째 줄 들여쓰기 보정 */
+.ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert { padding-left: 42px !important; }
+.ql-editor p.n-status + p.n-status, .n-status + .n-status { padding-left: 40px !important; }
+
+/* 그룹 마지막 줄 둥근 모서리 및 하단 여백 복원 */
+.ql-editor p.n-log:not(:has(+ p.n-log)), .ql-editor p.n-log + p.n-log:not(:has(+ p.n-log)), .n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),
+.ql-editor p.n-alert:not(:has(+ p.n-alert)), .ql-editor p.n-alert + p.n-alert:not(:has(+ p.n-alert)), .n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),
+.ql-editor p.n-record:not(:has(+ p.n-record)), .ql-editor p.n-record + p.n-record:not(:has(+ p.n-record)), .n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),
+.ql-editor p.n-status:not(:has(+ p.n-status)), .ql-editor p.n-status + p.n-status:not(:has(+ p.n-status)), .n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+  padding-bottom: 14px !important;
+  margin-bottom: 20px !important;
+}
+
+/* ⑦ UI 인라인 칩 (n-ui) */
+.ql-editor .n-ui,
+.n-ui {
+  display: inline-block !important;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.88em !important;
+  color: #4A4A4A !important;
+  background: #EFEFEF !important;
+  border: 1px solid #D6D6D6 !important;
+  border-radius: 4px !important;
+  padding: 0 5px !important;
+  margin: 0 2px !important;
+  line-height: 1.5 !important;
+  text-indent: 0 !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+}
+
+/* Quill Toolbar Narrative Dropdown */
+.ql-snow .ql-picker.ql-narrative .ql-picker-label,
+.ql-snow .ql-picker.ql-narrative .ql-picker-item { font-family: 'Tossface', Pretendard, sans-serif !important; }
+.ql-snow .ql-picker.ql-narrative { width: 140px; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg"]::before { content: '💬 메시지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg-y"]::before { content: '💬 메시지(노랑)'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="sys"]::before { content: '◇ 시스템 문구'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="log"]::before { content: '>_ 시스템 로그'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠️ 알림 · 경고'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email"]::before { content: '📧 이메일 알림'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email-body"]::before { content: '📧 이메일 본문'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="doc"]::before { content: '📄 문서 · 서신'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="field"]::before { content: '✍️ 입력칸'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="memo"]::before { content: '📝 메모'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
+
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 메시지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg-y"]::before { content: '💬 메시지(노랑)'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="sys"]::before { content: '◇ 시스템 문구'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="log"]::before { content: '>_ 시스템 로그'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠️ 알림 · 경고'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email"]::before { content: '📧 이메일 알림'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email-body"]::before { content: '📧 이메일 본문'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="field"]::before { content: '✍️ 입력칸'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="memo"]::before { content: '📝 메모'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
+
+.ql-snow .ql-toolbar button.ql-hideicon::before { content: '🚫'; font-size: 14px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
+.ql-snow .ql-toolbar button.ql-hideicon.ql-active::before { background: rgba(0,0,0,0.1); border-radius: 4px; }
+.ql-snow .ql-toolbar button.ql-divider,
+.ql-snow .ql-toolbar button.ql-ui {
+  width: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.ql-snow .ql-toolbar button.ql-divider::after {
+  content: "―" !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #444 !important;
+  display: block !important;
+}
+.ql-snow .ql-toolbar button.ql-ui::after {
+  content: "UI" !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #444 !important;
+  display: block !important;
+}
+.ql-snow .ql-toolbar button.ql-divider:hover::after,
+.ql-snow .ql-toolbar button.ql-ui:hover::after,
+.ql-snow .ql-toolbar button.ql-divider.ql-active::after,
+.ql-snow .ql-toolbar button.ql-ui.ql-active::after {
+  color: #06c !important;
+}
+
+/* Plan Drawer */
+.ql-editor hr { border: none; border-top: 1px solid #D4D7E0; margin: 32px auto; width: 80px; }
+.plan-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 440px; background: var(--c-surface); border-left: 1px solid var(--c-line); box-shadow: var(--shadow-lg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 40; display: flex; flex-direction: column; }
+.plan-drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--c-line); }
+.drawer-head h2 { font-size: 17px; margin: 0; font-weight: 800; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.plan-accordion { border: 1px solid var(--c-line); border-radius: var(--r-lg); background: #fff; box-shadow: var(--shadow-xs); }
+.plan-accordion-head { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; }
+.accordion-toggle { width: 28px; height: 28px; border: 1px solid var(--c-line); border-radius: 6px; background: var(--c-surface-3); color: var(--c-sub); display: grid; place-items: center; font-size: 16px; transition: .18s; }
+.plan-accordion.open .accordion-toggle { transform: rotate(90deg); }
+.plan-section-title { width: 100%; border: 0; outline: 0; background: transparent; font-size: 14px; font-weight: 800; padding: 4px; color: var(--c-ink); }
+.plan-accordion-body { display: none; padding: 0 12px 12px; }
+.plan-accordion.open .plan-accordion-body { display: block; }
+.plan-section-body { width: 100%; border: 1px solid var(--c-line); border-radius: 8px; background: var(--c-bg); color: var(--c-body); padding: 12px; font-size: 14px; line-height: 1.8; outline: 0; resize: vertical; overflow-y: auto; min-height: 250px; }
+.plan-section-body:focus { background: #fff; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(107,92,231,.12); }
+.plan-empty { text-align: center; padding: 40px 20px; border: 1px dashed var(--c-line-mid); border-radius: var(--r-md); color: var(--c-sub); font-size: 13px; }
+
+/* Dropdown */
+.dropdown-container { position: relative; display: inline-block; }
+.copy-group { display: flex; align-items: center; }
+.copy-group .primary { border-radius: var(--r-md) 0 0 var(--r-md); padding: 0 12px; height: 32px; font-size: 11px; }
+.copy-group .dropdown-toggle { border-radius: 0 var(--r-md) var(--r-md) 0; padding: 0 8px; height: 32px; border-left: 1px solid rgba(255,255,255,0.2); }
+.dropdown-menu { position: absolute; bottom: calc(100% + 4px); left: 0; width: 160px; background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--shadow-sm); z-index: 50; display: none; flex-direction: column; padding: 4px; }
+.dropdown-menu.show { display: flex; }
+.dropdown-item { text-align: left; background: transparent; border: 0; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--c-ink); border-radius: 4px; }
+.dropdown-item:hover { background: var(--c-surface-3); }
+
+/* Modals & Others */
+.modal-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: start center; padding-top: 8vh; background: rgba(23,20,31,.24); backdrop-filter: blur(8px); }
+.modal { width: min(640px, calc(100vw - 32px)); max-height: 82vh; overflow-y: auto; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); padding: 24px; }
+.modal-head { display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; }
+.modal-head h2 { font-size: 22px; margin: 0; letter-spacing: -.04em; }
+.modal-field { display: grid; gap: 8px; margin-top: 16px; }
+.modal-field span { font-size: 11px; font-weight: 800; color: var(--c-sub); }
+.input { height: 44px; padding: 0 14px; border: 1px solid var(--c-line); border-radius: 10px; background: var(--c-surface-3); color: var(--c-ink); font-size: 14px; outline: 0; }
+.input:focus { background: #fff; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(107,92,231,.12); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.search-results { display: grid; gap: 8px; margin-top: 12px; }
+.search-result { border: 1px solid var(--c-line); border-radius: 8px; background: #fff; padding: 12px; text-align: left; }
+.search-result:hover { background: var(--c-accent-bg); border-color: #C8BEFF; }
+.search-result strong { display: block; font-size: 12px; margin-bottom: 4px; }
+.search-result span { display: block; color: var(--c-sub); font-size: 11px; line-height: 1.6; }
+.version-list { display: grid; gap: 8px; }
+.version-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--c-line); border-radius: 8px; }
+.version-item strong { display: block; font-size: 12px; }
+.version-item span { display: block; color: var(--c-muted); font-size: 11px; margin-top: 4px; }
+.cover-modal-layout { display: grid; grid-template-columns: 180px 1fr; gap: 24px; align-items: start; }
+.cover-preview { position: relative; width: 180px; aspect-ratio: 2/3; border: 1px solid var(--c-line); border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--c-surface-3); box-shadow: var(--shadow-book); }
+.cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cover-settings { display: grid; gap: 20px; }
+.cover-colors { display: flex; flex-wrap: wrap; gap: 8px; }
+.cover-color-swatch { width: 32px; height: 32px; border: 2px solid #fff; border-radius: 8px; box-shadow: 0 0 0 1px var(--c-line); padding: 0; }
+.cover-color-swatch.active { box-shadow: 0 0 0 2px var(--c-accent); }
+.cover-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cover-custom-row input[type=color] { width: 40px; height: 36px; border: 1px solid var(--c-line); border-radius: 8px; background: #fff; padding: 2px; }
+.cover-custom-row span { color: var(--c-sub); font-size: 11px; }
+.cover-image-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.content-view { height: 100vh; overflow-y: auto; padding: 40px 24px 80px; background: var(--c-bg); display: none; }
+.content-view.active { display: block; }
+.manuscript { max-width: 880px; margin: 0 auto; background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); padding: 70px 80px; }
+.manuscript-ep { margin-bottom: 60px; padding-bottom: 60px; border-bottom: 1px solid var(--c-line); }
+.manuscript-ep:last-child { margin: 0; padding: 0; border: 0; }
+.manuscript-ep h2 { font-size: 26px; margin: 0 0 30px; letter-spacing: -.04em; }
+.manuscript-ep p { white-space: pre-wrap; font-size: 17px; line-height: 2.1; color: var(--c-body); margin: 0; }
+
+/* ── 모바일 이북 뷰어 ───────────────────────────── */
+#ebookView {
+  position: fixed; inset: 0; z-index: 200;
+  background: #FFFFFF;
+  display: flex; flex-direction: column;
+  font-family: 'Noto Serif KR', serif;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+#ebookView.open { opacity: 1; pointer-events: all; }
+
+.ebook-topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.ebook-topbar-title {
+  font-size: 14px; font-weight: 700; color: #3B3529;
+  max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ebook-back-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; font-size: 14px; font-weight: 600;
+  color: #6B5CE7; cursor: pointer; padding: 6px 0;
+}
+.ebook-ep-btn {
+  background: none; border: 1px solid rgba(0,0,0,.12); border-radius: 8px;
+  font-size: 13px; font-weight: 600; color: #3B3529;
+  padding: 5px 12px; cursor: pointer;
+}
+
+.ebook-body {
+  flex: 1; overflow-y: auto;
+  padding: 28px 22px 120px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ebook-ep-header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.ebook-ep-header .ep-num {
+  font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: #6B5CE7;
+  margin-bottom: 6px;
+}
+.ebook-ep-header h1 {
+  font-size: 22px; font-weight: 700; line-height: 1.35;
+  color: #1C1813; margin: 0;
+  letter-spacing: -.03em;
+}
+
+.ebook-content .ql-editor {
+  padding: 0;
+  font-size: 17px;
+  line-height: 2.1;
+  color: #2E2A25;
+  background: transparent;
+}
+.ebook-content .ql-editor p { margin-bottom: 0.6em; }
+.ebook-content .ql-editor h1, .ebook-content .ql-editor h2, .ebook-content .ql-editor h3 {
+  font-weight: 700; margin-top: 1.6em; margin-bottom: .5em;
+}
+
+.ebook-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  display: flex; gap: 10px;
+  padding: 14px 18px 28px;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0,0,0,.08);
+}
+.ebook-nav button {
+  flex: 1; height: 48px;
+  border-radius: 14px; border: none;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: opacity .15s;
+}
+.ebook-nav .ep-prev { background: #EFECE4; color: #3B3529; }
+.ebook-nav .ep-next { background: #6B5CE7; color: #fff; }
+.ebook-nav button:disabled { opacity: .35; cursor: default; }
+
+/* 회차 목록 시트 */
+.ebook-ep-sheet {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.45);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+.ebook-ep-sheet.open { opacity: 1; pointer-events: all; }
+.ebook-ep-list {
+  background: #FAF7F0; border-radius: 24px 24px 0 0;
+  padding: 8px 0 40px;
+  max-height: 72vh; overflow-y: auto;
+}
+.ebook-sheet-handle {
+  width: 36px; height: 4px;
+  background: rgba(0,0,0,.15); border-radius: 2px;
+  margin: 12px auto 16px;
+}
+.ebook-ep-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 22px;
+  font-size: 15px; font-weight: 600; color: #2E2A25;
+  cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+  transition: background .12s;
+}
+.ebook-ep-item:active { background: rgba(0,0,0,.05); }
+.ebook-ep-item.active { color: #6B5CE7; }
+.ebook-ep-item .ep-badge { flex-shrink: 0; }
+
+@media(max-width:760px) {
+  .workspace-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .mode-split { grid-template-columns: 1fr; }
+  .mode-split .plan-pane { display: none; }
+  .plan-drawer { width: 100%; border-left: 0; }
+  #newProjectBtn, .kebab-btn, button[data-book-cover] { display: none !important; }
+}
+
+.ql-toolbar.ql-snow { border: none; border-bottom: 1px solid var(--c-line); font-family: 'Pretendard', sans-serif; padding: 12px 24px; background: var(--c-bg); flex-shrink: 0; z-index: 10; position: relative; }
+.ql-container.ql-snow { border: none; font-family: 'Noto Serif KR', serif; font-size: 16px; background: transparent; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ql-editor { line-height: 2.0; padding: 40px 60px 120px 60px; color: var(--c-ink); flex: 1; overflow-y: auto; height: 100%; }
+.ql-editor h1, .ql-editor h2, .ql-editor h3 { font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
+.ql-editor p { margin-bottom: 1.0em; text-indent: 0.5em; word-break: keep-all; }
+.ql-editor strong { font-weight: 700; color: var(--c-primary); }
+.manuscript-ep { font-family: 'Noto Serif KR', serif; }
+.manuscript-ep .ql-editor { padding: 0; }
+.body-editor-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; background: var(--c-bg); }
+#bodyEditor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ql-dialogue { color: #5B4DB8 !important; font-weight: 600 !important; background: rgba(200,190,255,0.15); border-radius: 4px; }
+
+.ql-editor blockquote {
+  background-color: #F1F3F5 !important;
+  border-left: none !important;
+  border-radius: 12px 12px 12px 0;
+  padding: 16px 20px;
+  margin: 24px 0 !important;
+  color: #17141F !important;
+  font-family: 'Pretendard', sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+}
+.ql-editor blockquote * { font-family: 'Pretendard', sans-serif !important; background-color: transparent !important; color: #17141F !important; }
+
+.ql-snow .ql-picker.ql-header { width: 110px; }
+
+
+/* 집중모드 개선 */
+.workspace-shell.focus-mode .topbar { display: none; }
+.workspace-shell.focus-mode .ql-toolbar.ql-snow { display: none !important; }
+.workspace-shell.focus-mode .ql-editor { padding-top: 80px; }
+
+
+/* 색상 찌꺼기 강제 무력화 (blockquote 제외) */
+.ql-editor *:not(blockquote) { 
+  color: var(--c-ink) !important; 
+  background-color: transparent !important; 
+}
+/* 문단 구분 확실하게 */
+.ql-editor p { 
+  margin-bottom: 1.6em !important; 
+  text-indent: 12px; 
+}
+
+
+.episode-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.episode-main {
+  flex: 1;
+  min-width: 0;
+}
+.delete-ep-btn {
+  opacity: 0;
+  color: var(--c-muted);
+  transition: opacity 0.2s, color 0.2s;
+  padding: 4px;
+}
+.episode-row:hover .delete-ep-btn {
+  opacity: 1;
+}
+.delete-ep-btn:hover {
+  color: #FF4B4B;
+  background: rgba(255, 75, 75, 0.1);
+  border-radius: 4px;
+}
+
+
+.plan-md-view h1, .plan-md-view h2, .plan-md-view h3 { margin: 12px 0 6px; font-weight: 800; }
+.plan-md-view h1 { font-size: 16px; }
+.plan-md-view h2 { font-size: 15px; }
+.plan-md-view h3 { font-size: 14px; }
+.plan-md-view p { margin: 0 0 10px; }
+.plan-md-view ul, .plan-md-view ol { margin: 0 0 10px; padding-left: 20px; }
+.plan-md-view strong { font-weight: 700; color: var(--c-accent-dk); }
+.plan-md-view em { font-style: italic; color: var(--c-sub); }
+.plan-md-view blockquote { border-left: 3px solid var(--c-line); margin: 0 0 10px; padding-left: 10px; color: var(--c-sub); }
+.plan-md-view table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+.plan-md-view th, .plan-md-view td { border: 1px solid var(--c-line); padding: 4px 8px; }
+.plan-md-view th { background: var(--c-surface-3); }
+
+.ep-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.ep-badge.prologue { background: #F3E8FF; color: #7E22CE; }
+.ep-badge.chapter { background: #E0F2FE; color: #0369A1; }
+.ep-badge.epilogue { background: #DCFCE7; color: #15803D; }
+
+/* ==============================
+   POD Publishing Studio (Phase 1)
+   ============================== */
+
+/* 스튜디오 전체 레이아웃 — 전체 화면 오버레이 */
+#podStudioView {
+  display: none;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  overflow: hidden;
+  background: var(--c-bg);
+}
+#podStudioView.active { display: flex; }
+
+/* 스튜디오 상단 툴바 */
+.pod-studio-toolbar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--c-line);
+  background: var(--c-surface);
+  gap: 12px;
+}
+.pod-studio-toolbar-left { display: flex; align-items: center; gap: 12px; }
+.pod-studio-toolbar-right { display: flex; align-items: center; gap: 8px; }
+.pod-studio-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--c-ink);
+  letter-spacing: -0.02em;
+}
+.pod-studio-breadcrumb {
+  font-size: 12px;
+  color: var(--c-muted);
+  font-weight: 500;
+}
+
+/* 스튜디오 바디 (설정 패널 + 미리보기) */
+.pod-studio-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  overflow: hidden;
+}
+
+/* 설정 패널 (좌측) */
+.pod-settings-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--c-line);
+  overflow-y: auto;
+  background: var(--c-surface);
+}
+.pod-settings-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--c-line);
+  position: sticky;
+  top: 0;
+  background: var(--c-surface);
+  z-index: 2;
+}
+.pod-settings-tab {
+  flex: 1;
+  padding: 12px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-muted);
+  text-align: center;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  border-bottom: 2px solid transparent;
+  transition: .16s;
+}
+.pod-settings-tab.active {
+  color: var(--c-accent);
+  border-bottom-color: var(--c-accent);
+}
+.pod-settings-pane {
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  padding: 20px 18px;
+}
+.pod-settings-pane.active { display: flex; }
+
+/* 설정 섹션 */
+.pod-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--c-line);
+}
+.pod-section:last-child { border-bottom: 0; }
+.pod-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--c-muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.pod-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pod-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-sub);
+}
+.pod-input {
+  padding: 8px 10px;
+  font-size: 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  outline: none;
+  transition: border-color .16s;
+  width: 100%;
+  font-family: inherit;
+}
+.pod-input:focus { border-color: var(--c-accent); }
+.pod-input[type="number"] { -moz-appearance: textfield; }
+.pod-input[type="number"]::-webkit-inner-spin-button,
+.pod-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+/* 여백 그리드 (4방향 입력) */
+.pod-margin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pod-margin-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pod-margin-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-sub);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* 출판 준비도 체크리스트 */
+.pod-progress-wrap {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--c-line);
+}
+.pod-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--c-line-mid);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.pod-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.pod-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pod-check-item {
+  font-size: 11px;
+  color: var(--c-sub);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+.pod-check-item.done {
+  color: var(--c-ink);
+  font-weight: 500;
+}
+.pod-check-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--c-line-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.pod-check-item.done .pod-check-icon {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.pod-check-item.done .pod-check-icon::after {
+  content: '✓';
+  color: #fff;
+  font-size: 9px;
+  font-weight: bold;
+}
+.pod-margin-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+.pod-margin-badge.gutter { background: #FFE4E8; color: #C94F68; }
+.pod-margin-badge.safe { background: #E8F4FF; color: #1D70C2; }
+.pod-margin-badge.bleed { background: #FFF3E0; color: #B46A20; }
+.pod-mm-input-wrap {
+  position: relative;
+}
+.pod-mm-input-wrap input {
+  width: 100%;
+  padding: 7px 28px 7px 8px;
+  font-size: 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  outline: none;
+  transition: border-color .16s;
+  font-family: inherit;
+  -moz-appearance: textfield;
+}
+.pod-mm-input-wrap input::-webkit-inner-spin-button,
+.pod-mm-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.pod-mm-input-wrap input:focus { border-color: var(--c-accent); }
+.pod-mm-suffix {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--c-muted);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* 체크박스 라벨 */
+.pod-check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-body);
+}
+.pod-check-label input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--c-accent); }
+
+/* 프리셋 버튼 행 */
+.pod-preset-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pod-preset-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--c-surface);
+  color: var(--c-sub);
+  cursor: pointer;
+  transition: .16s;
+}
+.pod-preset-btn:hover { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-bg); }
+.pod-preset-btn.active { border-color: var(--c-accent); color: var(--c-accent-dk); background: var(--c-accent-lt); }
+
+/* 미리보기 패널 (우측) */
+.pod-preview-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #E8E8EC;
+}
+.pod-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-line-mid);
+  background: #DDDDE4;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.pod-preview-tabs {
+  display: flex;
+  gap: 4px;
+}
+.pod-preview-tab {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--c-sub);
+  transition: .16s;
+}
+.pod-preview-tab.active { background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-xs); }
+.pod-preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pod-page-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.pod-page-toggle button {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-sub);
+  cursor: pointer;
+  transition: .16s;
+}
+.pod-page-toggle button.active {
+  background: var(--c-accent);
+  color: #fff;
+}
+.pod-guide-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--c-sub);
+}
+.pod-guide-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.pod-guide-dot::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+.pod-guide-dot.bleed::before { border: 1.5px dashed #FF6B6B; }
+.pod-guide-dot.safe::before { border: 1.5px dashed #3B82F6; }
+.pod-guide-dot.gutter::before { background: #E879A088; }
+
+/* 미리보기 캔버스 영역 */
+.pod-preview-canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px;
+}
+.pod-preview-canvas.cover-tab { display: none; }
+.pod-preview-canvas.inner-tab { display: flex; }
+
+/* 실제 페이지 카드 */
+.pod-page-card {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2), 0 2px 8px rgba(0,0,0,.12);
+  border-radius: 1px;
+  flex-shrink: 0;
+  /* 크기는 JS에서 CSS variables로 제어 */
+  width: var(--page-w, 260px);
+  height: var(--page-h, 368px);
+  overflow: hidden;
+}
+
+/* 가이드라인 레이어들 */
+.pod-guide-bleed {
+  position: absolute;
+  inset: calc(-1 * var(--bleed-px, 0px));
+  border: 1.5px dashed #FF6B6B99;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 1px;
+}
+.pod-guide-safe {
+  position: absolute;
+  top: var(--margin-top-px, 40px);
+  bottom: var(--margin-bottom-px, 40px);
+  left: var(--margin-left-px, 30px);
+  right: var(--margin-right-px, 30px);
+  border: 1.5px dashed #3B82F699;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 1px;
+}
+.pod-guide-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--gutter-px, 20px);
+  background: repeating-linear-gradient(
+    -45deg,
+    #E879A01A,
+    #E879A01A 3px,
+    transparent 3px,
+    transparent 8px
+  );
+  pointer-events: none;
+  z-index: 9;
+}
+.pod-guide-gutter.left { left: 0; }
+.pod-guide-gutter.right { right: 0; display: none; }
+
+/* 텍스트 컨텐츠 영역 미리보기 */
+.pod-page-content {
+  position: absolute;
+  top: var(--margin-top-px, 40px);
+  bottom: var(--margin-bottom-px, 40px);
+  left: var(--margin-left-px, 30px);
+  right: var(--margin-right-px, 30px);
+  overflow: hidden;
+  font-size: var(--font-size-px, 12px);
+  line-height: var(--line-height, 1.75);
+  color: #333;
+  font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+}
+.pod-page-content p {
+  margin: 0 0 calc(var(--font-size-px, 12px) * 0.5);
+  text-indent: calc(var(--font-size-px, 12px) * 1.2);
+  font-size: var(--font-size-px, 12px);
+  color: #444;
+  word-break: keep-all;
+}
+.pod-page-num {
+  position: absolute;
+  bottom: calc(var(--margin-bottom-px, 40px) / 2);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: calc(var(--font-size-px, 12px) * 0.8);
+  color: #999;
+  font-family: serif;
+}
+
+/* 페이지 정보 배지 */
+.pod-page-info {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--c-muted);
+  white-space: nowrap;
+  background: #E8E8EC;
+  padding: 2px 8px;
+  border-radius: 99px;
+  z-index: 20;
+  pointer-events: none;
+  top: -24px;
+}
+
+/* 표지 미리보기 */
+.pod-cover-preview-wrap {
+  flex: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px;
+}
+.pod-cover-preview-wrap.active { display: flex; }
+
+/* 하단 액션 바 */
+.pod-action-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--c-line-mid);
+  background: #DDDDE4;
+}
+
+/* 반응형 */
+@media (max-width: 900px) {
+  .pod-studio-body { grid-template-columns: 1fr; }
+  .pod-preview-panel { display: none; }
+  .pod-settings-panel { border-right: 0; }
+}
+
+
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <script>
 window.addEventListener('error', function(e) {
   setTimeout(() => showToast('에러: ' + e.message), 1000);
@@ -6,6 +1550,876 @@ window.addEventListener('unhandledrejection', function(e) {
   setTimeout(() => showToast('Promise 에러: ' + e.reason), 1000);
 });
 </script></head>
+<body>
+
+<div id="welcomeScreen" style="position:fixed;inset:0;background:var(--c-bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+  <img src="/apple-touch-icon.png" width="64" height="64" style="border-radius:16px; margin-bottom:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+  <h1 style="font-size:24px;margin:0 0 8px;font-weight:800;">야니의 소설창고 (Cloud)</h1>
+  <p style="color:var(--c-body);margin:0 0 24px;line-height:1.6;">모든 원고가 클라우드에 안전하게 보관됩니다.<br>언제 어디서든 로그인하여 집필을 이어가세요.</p>
+  <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;text-align:center;">
+    <button id="googleLoginBtn" class="primary" style="height:48px;font-size:16px;background:#fff;color:#17141F;border:1px solid #E4E6ED;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Google 계정으로 시작하기
+    </button>
+    <div id="authError" style="color:#C94F68;font-size:13px;text-align:center;min-height:20px;margin-top:8px;"></div>
+  </div>
+</div>
+
+
+<div id="libraryView" class="library-shell">
+  <header class="library-top">
+    <div class="brand"><div class="brand-mark"><img src="/apple-touch-icon.png" width="32" height="32" style="border-radius:8px;" /></div><div class="brand-name">야니의 소설창고</div></div>
+    <div style="display:flex;gap:8px;"><button id="logoutBtn" class="ghost border" type="button">로그아웃</button><button id="newProjectBtn" class="primary" type="button">＋ 새 작품</button></div>
+  </header>
+  <main class="library-main">
+    <div class="library-filters"><button class="filter-btn active" data-filter="all" type="button">모든 작품 <span id="allCount">0</span></button><button class="filter-btn" data-filter="serializing" type="button">연재 중 <span id="serializingCount">0</span></button><button class="filter-btn" data-filter="completed" type="button">완결 <span id="completedCount">0</span></button></div>
+    <div id="projectGrid" class="project-grid"></div>
+  </main>
+</div>
+
+<!-- 모바일 이북 뷰어 -->
+<div id="ebookView">
+  <div class="ebook-topbar">
+    <button class="ebook-back-btn" id="ebookBackBtn">← 서재</button>
+    <span class="ebook-topbar-title" id="ebookTitle"></span>
+    <button class="ebook-ep-btn" id="ebookEpListBtn">목차 ☰</button>
+  </div>
+  <div class="ebook-body" id="ebookBody">
+    <div class="ebook-ep-header">
+      <div class="ep-num" id="ebookEpNum"></div>
+      <h1 id="ebookEpTitle"></h1>
+    </div>
+    <div class="ebook-content" id="ebookContent"></div>
+  </div>
+  <div class="ebook-nav">
+    <button class="ep-prev" id="ebookPrev">← 이전 화</button>
+    <button class="ep-next" id="ebookNext">다음 화 →</button>
+  </div>
+  <!-- 회차 목록 바텀 시트 -->
+  <div class="ebook-ep-sheet" id="ebookEpSheet">
+    <div class="ebook-ep-list" id="ebookEpList">
+      <div class="ebook-sheet-handle"></div>
+    </div>
+  </div>
+</div>
+
+<div id="workspaceView" class="workspace-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand"><div class="brand-name" style="font-size:16px;">야니의 소설창고</div></div><button id="backLibraryBtn" class="library-back" type="button">← 서재</button></div>
+    <div class="project-summary">
+      <label>작품명</label><input id="projectTitle" class="project-title-input" />
+      <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
+    </div>
+    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
+    <div id="episodeList" class="episode-list"></div>
+    <div class="sidebar-foot">
+      <button id="openManuscriptBtn" class="secondary" type="button">전체 원고 보기</button>
+      <button id="openSearchBtn" class="ghost border" type="button">⌘ K · 전체 검색</button>
+      <div style="display:flex;gap:6px;">
+        <button id="exportBackupBtn" class="ghost border" style="flex:1;">백업 내보내기</button>
+        <button id="importBackupBtn" class="ghost border" style="flex:1;">불러오기</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb"><span id="projectBreadcrumb"></span><span class="slash">/</span><strong id="episodeBreadcrumb"></strong></div>
+      <div class="top-actions">
+        <span id="saveStatus" class="save-status">저장됨</span>
+        <button id="openPCEbookBtn" class="ghost" type="button">📖 이북 뷰어</button>
+        <button id="toggleDrawerBtn" class="ghost" type="button">기획 ▤</button>
+      </div>
+    </header>
+
+    <section id="editorView">
+      <div class="episode-header">
+        <div class="episode-title-wrap">
+          <input id="episodeTitle" class="episode-title" aria-label="회차 제목" />
+          <div class="episode-meta-row">
+            <div class="episode-sub">
+              <select id="episodeType">
+                <optgroup label="앞부속">
+                  <option value="frontmatter">📄 앞부속 (속표지·헌사·서문 등)</option>
+                </optgroup>
+                <optgroup label="본문">
+                  <option value="prologue">프롤로그</option>
+                  <option value="chapter">본편</option>
+                  <option value="epilogue">에필로그</option>
+                </optgroup>
+                <optgroup label="뒷부속">
+                  <option value="backmatter">📄 뒷부속 (작가의 말·참고문헌 등)</option>
+                </optgroup>
+              </select>
+              
+            </div>
+            <div class="view-tabs"><button class="view-tab" data-mode="plan" type="button">기획</button><button class="view-tab" data-mode="body" type="button">본문</button><button class="view-tab active" data-mode="split" type="button">분할</button></div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="editorColumns" class="editor-columns mode-split">
+        <section class="pane plan-pane">
+          <div id="planMdPreview" class="plan-md-view" style="padding:12px;font-size:13px;line-height:1.7;cursor:pointer;overflow-y:auto;height:100%;" title="클릭하여 수정"></div>
+          <textarea id="planEditor" class="plan-editor hidden" spellcheck="false" placeholder="이번 화 기획이나 메모를 자유롭게 적으세요."></textarea>
+        </section>
+        <section class="pane body-pane">
+          <div id="bodyEditor" spellcheck="false"></div>
+          <div class="editor-bottom-bar">
+            <div class="dropdown-container">
+              <div class="copy-group">
+                <button id="quickCopyBodyBtn" class="primary" type="button">📋 본문 복사</button>
+                <button id="copyDropdownToggle" class="primary dropdown-toggle" type="button">▾</button>
+              </div>
+              <div id="copyDropdownMenu" class="dropdown-menu">
+                <button class="dropdown-item" data-copy="body">본문만</button>
+                <button class="dropdown-item" data-copy="title-body">제목 + 본문</button>
+                <button class="dropdown-item" data-copy="plan">기획만</button>
+                <button class="dropdown-item" data-copy="plan-body">기획 + 본문</button>
+              </div>
+            </div>
+            <div class="project-stats" id="bodyStats">0자 · 0매</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- 전체 원고 보기 (동일 메인 내에서 전환) -->
+    <section id="manuscriptView" class="content-view">
+      <div style="max-width:880px; margin:0 auto 20px; display:flex; justify-content:space-between; align-items:center;">
+        <div><h1 id="manuscriptTitle" style="display:none;"></h1><p id="manuscriptMeta" style="margin:4px 0 0;color:var(--c-sub);font-size:12px;"></p></div>
+        <div style="display:flex; gap:8px;">
+          <button id="openPublishSettingsBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
+          <button id="copyManuscriptFull" class="primary" type="button">전체 본문 복사</button>
+          <button id="backFromManuscript" class="ghost" type="button">돌아가기</button>
+        </div>
+      </div>
+      <div id="manuscriptContent" class="manuscript"></div>
+    </section>
+  </main>
+
+  <!-- =====================================================
+       POD Publishing Studio — Phase 1 Split View
+       ===================================================== -->
+  <div id="podStudioView">
+    <!-- 상단 툴바 -->
+    <div class="pod-studio-toolbar">
+      <div class="pod-studio-toolbar-left">
+        <button id="backFromPodStudio" class="icon-btn" title="돌아가기" style="font-size:20px;">←</button>
+        <div>
+          <div class="pod-studio-title">📐 출판 스튜디오</div>
+          <div class="pod-studio-breadcrumb" id="podStudioBreadcrumb">작품을 선택하세요</div>
+        </div>
+      </div>
+      <div class="pod-studio-toolbar-right" style="display:flex; gap:8px;">
+        <button class="secondary" style="font-size:12px; padding:0 12px;" onclick="window.open('https://free.upscaler.video/ko/', '_blank')" title="표지 화질 업스케일링">✨</button>
+        <button id="podExportCoverBtn" class="secondary" type="button" style="font-size:12px;">🎨 표지 JPG 저장</button>
+        <button id="podExportPdfBtn" class="primary" style="background:#2E2A25; font-size:12px;" type="button">🖨️ 내지 PDF 인쇄</button>
+      </div>
+    </div>
+
+    <!-- 바디 (설정 패널 + 미리보기) -->
+    <div class="pod-studio-body">
+
+      <!-- ─── 좌측: 설정 패널 ─── -->
+      <div class="pod-settings-panel">
+        <div class="pod-settings-tabs">
+          <button class="pod-settings-tab active" data-pane="inner">📄 내지 설정</button>
+          <button class="pod-settings-tab" data-pane="fm">✦ 전면부 디자인</button>
+          <button class="pod-settings-tab" data-pane="tree">📑 페이지 구조</button>
+          <button class="pod-settings-tab" data-pane="cover">🎨 표지 설정</button>
+          <button class="pod-settings-tab" data-pane="extra">⚙️ 기타</button>
+        </div>
+
+        <!-- ── 내지 설정 탭 ── -->
+        <div class="pod-settings-pane active" id="podPane-inner">
+
+          <!-- 판형 + 출판사 프리셋 -->
+          <div class="pod-section">
+            <div class="pod-section-title">판형</div>
+            <div class="pod-field">
+              <label>용지 크기</label>
+              <select id="podPaperSize" class="pod-input">
+                <option value="A5">A5 — 신국판/국판 (148 × 210 mm)</option>
+                <option value="B6">B6 — 문고판 (128 × 182 mm)</option>
+              </select>
+            </div>
+            <div class="pod-field">
+              <label>출판사 프리셋 <span style="color:var(--c-muted);font-weight:400;">(선택 시 여백 자동 적용)</span></label>
+              <div class="pod-preset-row">
+                <button class="pod-preset-btn" data-preset="purple">교보 퍼플</button>
+                <button class="pod-preset-btn" data-preset="bookcube">부크크</button>
+                <button class="pod-preset-btn" data-preset="onehyphen">원하이프레스</button>
+                <button class="pod-preset-btn" data-preset="custom">직접 입력</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 내지 여백 (핵심) -->
+          <div class="pod-section">
+            <div class="pod-section-title">내지 여백</div>
+            <div style="font-size:11px;color:var(--c-muted);line-height:1.5;margin-bottom:4px;">
+              우측 미리보기에 <span style="color:#FF6B6B;font-weight:700;">재단선</span>과 <span style="color:#3B82F6;font-weight:700;">안전영역</span>이 실시간으로 표시됩니다.
+            </div>
+            <div class="pod-margin-grid">
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">상단 (Top)</div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginTop" value="20" min="5" max="50" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">하단 (Bottom)</div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginBottom" value="20" min="5" max="50" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">
+                  내측 (Gutter)
+                  <span class="pod-margin-badge gutter">제본</span>
+                </div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginInner" value="25" min="10" max="60" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+              <div class="pod-margin-item">
+                <div class="pod-margin-label">
+                  외측 (Outer)
+                  <span class="pod-margin-badge safe">외곽</span>
+                </div>
+                <div class="pod-mm-input-wrap">
+                  <input type="number" id="podMarginOuter" value="18" min="5" max="50" step="0.5">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+              </div>
+            </div>
+            <div class="pod-margin-item" style="margin-top:4px;">
+              <div class="pod-margin-label">
+                재단선 (Bleed)
+                <span class="pod-margin-badge bleed">사방</span>
+              </div>
+              <div class="pod-mm-input-wrap" style="width:50%;">
+                <input type="number" id="podBleed" value="3" min="0" max="5" step="0.5">
+                <span class="pod-mm-suffix">mm</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 본문 서식 -->
+          <div class="pod-section">
+            <div class="pod-section-title">본문 서식</div>
+            <div class="pod-field">
+              <label>본문 폰트 크기 (pt)</label>
+              <div class="pod-mm-input-wrap" style="width:50%;">
+                <input type="number" id="podFontSize" value="10" min="8" max="14" step="0.5" class="">
+                <span class="pod-mm-suffix">pt</span>
+              </div>
+            </div>
+            <div class="pod-field">
+              <label>줄간격</label>
+              <select id="podLineHeight" class="pod-input">
+                <option value="1.6">1.6 (좁게)</option>
+                <option value="1.75" selected>1.75 (기본)</option>
+                <option value="1.9">1.9 (넓게)</option>
+                <option value="2.0">2.0 (매우 넓게)</option>
+              </select>
+            </div>
+            <label class="pod-check-label">
+              <input type="checkbox" id="podAutoTOC" checked> 목차 자동 생성
+            </label>
+            <label class="pod-check-label">
+              <input type="checkbox" id="podShowTitle"> 회차 제목 자동 삽입
+            </label>
+          </div>
+
+          <!-- 판권지 세부 설정 (저자/날짜)은 전면부 탭으로 이동 -->
+          <div class="pod-section" style="border:1px dashed var(--c-line); border-radius:6px; padding:12px; text-align:center;">
+            <div style="font-size:12px; color:var(--c-muted); line-height:1.5;">
+              ✨ 전면부 페이지(속표지, 본표지, 판권지 등)의 내용과 스타일은<br>
+              <b>[전면부 디자인]</b> 탭에서 설정하세요.
+            </div>
+            <button class="pod-btn" onclick="$$('.pod-settings-tab')[1].click()" style="margin-top:8px; font-size:12px; padding:6px 16px;">🚀 전면부 디자인 탭으로 이동</button>
+          </div>
+        </div>
+
+        <!-- ── 전면부 디자인 탭 ── -->
+        <div class="pod-settings-pane" id="podPane-fm">
+
+          <!-- 디자인 테마 선택 (삭제됨) -->
+
+          <!-- 블록 추가 버튼 -->
+          <div style="position:sticky; top:0; z-index:5; background:var(--c-bg); padding:12px 0 8px; border-bottom:1px solid var(--c-line); margin-bottom:12px;">
+            <div style="font-size:11px; color:var(--c-muted); margin-bottom:8px;">드래그하여 순서 변경. 각 블록 클릭 시 개별 스타일 편집.</div>
+            <div class="pod-preset-row" style="flex-wrap:wrap; gap:4px;" id="fmAddBtns">
+              <button class="pod-preset-btn" data-fm-add="half_title">+ 속표지</button>
+              <button class="pod-preset-btn" data-fm-add="title_page">+ 본표지</button>
+              <button class="pod-preset-btn" data-fm-add="dedication">+ 헌사</button>
+              <button class="pod-preset-btn" data-fm-add="epigraph">+ 인용구</button>
+              <button class="pod-preset-btn" data-fm-add="copyright">+ 판권지</button>
+              <button class="pod-preset-btn" data-fm-add="toc">+ 목차</button>
+              <button class="pod-preset-btn" data-fm-add="blank">+ 빈 면지</button>
+            </div>
+          </div>
+
+          <!-- 블록 목록 -->
+          <div id="podFmBlockList" style="display:flex; flex-direction:column; gap:6px; min-height:60px; margin-bottom:12px;">
+            <!-- JS로 렌더링 -->
+          </div>
+
+          <!-- 선택된 블록 스타일 편집 패널 -->
+          <div id="fmBlockEditor" style="display:none; border-top:2px solid var(--primary); margin-top:8px; padding-top:16px;">
+            <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.05em;" id="fmEditorTitle">블록 편집</div>
+
+            <!-- 고급 설정 (배경/텍스트 정렬/여백/폰트) -->
+            <details style="margin-bottom: 16px; border: 1px solid var(--c-line); border-radius: 6px; padding: 12px; background: var(--c-surface);">
+              <summary style="cursor:pointer; font-weight:700; color:var(--c-body); font-size:12px; outline:none; user-select:none;">고급 설정 (배경 · 여백 · 폰트)</summary>
+              <div style="margin-top: 16px;">
+
+            <!-- 배경 -->
+            <div class="pod-section">
+              <div class="pod-section-title">배경</div>
+              <div class="pod-field">
+                <label>배경색</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="color" id="fmBgColorPicker" style="width:40px; height:32px; border:none; cursor:pointer; border-radius:4px;">
+                  <input type="text" id="fmBgColorHex" class="pod-input" placeholder="#ffffff" style="flex:1;">
+                </div>
+              </div>
+              <div class="pod-field">
+                <label>배경 이미지 <span style="color:var(--c-muted);font-weight:400;">(전면 꽉 차게)</span></label>
+                <input type="file" id="fmBgImageInput" accept="image/*" class="pod-input" style="padding:4px;">
+                <div id="fmBgImagePreview" style="display:none; margin-top:6px; position:relative;">
+                  <img id="fmBgImageThumb" style="width:100%; height:60px; object-fit:cover; border-radius:4px; border:1px solid var(--c-line);">
+                  <button onclick="clearFmBgImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:12px;">×</button>
+                </div>
+              </div>
+              <div class="pod-field" id="fmBgOpacityField" style="display:none;">
+                <label>이미지 투명도 <span id="fmBgOpacityVal" style="color:var(--primary);">0.8</span></label>
+                <input type="range" id="fmBgOpacity" min="0.05" max="1" step="0.05" value="0.8" style="width:100%;">
+              </div>
+              <div class="pod-field">
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" id="fmHideText">
+                  <span style="font-size:12px; font-weight:600; color:var(--c-ink);">글자(텍스트) 숨기기</span>
+                </label>
+                <div style="font-size:10px; color:var(--c-muted); margin-top:2px;">이미지로만 페이지를 채울 때 체크하세요.</div>
+              </div>
+            </div>
+
+            <!-- 텍스트 정렬 (9-Grid) -->
+            <div class="pod-section">
+              <div class="pod-section-title">텍스트 위치</div>
+              <div id="fmAlignGrid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; width:108px; margin:0 auto 8px;">
+              </div>
+              <div style="font-size:10px; color:var(--c-muted); text-align:center;">선택된 칸 = 텍스트 배치 위치</div>
+            </div>
+
+            <!-- 내부 여백 (Padding) -->
+            <div class="pod-section">
+              <div class="pod-section-title">내부 여백 (Padding)</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div class="pod-field">
+                  <label>위쪽 (mm)</label>
+                  <input type="number" id="fmPaddingTop" class="pod-input" value="20" min="0" max="100">
+                </div>
+                <div class="pod-field">
+                  <label>아래쪽 (mm)</label>
+                  <input type="number" id="fmPaddingBottom" class="pod-input" value="20" min="0" max="100">
+                </div>
+                <div class="pod-field">
+                  <label>왼쪽 (mm)</label>
+                  <input type="number" id="fmPaddingLeft" class="pod-input" value="20" min="0" max="100">
+                </div>
+                <div class="pod-field">
+                  <label>오른쪽 (mm)</label>
+                  <input type="number" id="fmPaddingRight" class="pod-input" value="20" min="0" max="100">
+                </div>
+              </div>
+            </div>
+
+            <!-- 폰트 -->
+            <div class="pod-section">
+              <div class="pod-section-title">폰트 스타일</div>
+              <div class="pod-field">
+                <label>폰트</label>
+                <select id="fmFontFamily" class="pod-input">
+                  <option value="'KoPub Batang', serif">KoPub 바탕 (명조)</option>
+                  <option value="'Noto Serif KR', serif">Noto Serif (바탕)</option>
+                  <option value="'Noto Sans KR', sans-serif">Noto Sans (고딕)</option>
+                  <option value="Pretendard, sans-serif">Pretendard</option>
+                </select>
+              </div>
+              <div class="pod-field">
+                <label>제목 글자 크기 (pt)</label>
+                <input type="number" id="fmFontSize" class="pod-input" value="20" min="8" max="60">
+              </div>
+              <div class="pod-field">
+                <label>글자색</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="color" id="fmFontColorPicker" value="#1C1813" style="width:40px; height:32px; border:none; cursor:pointer; border-radius:4px;">
+                  <input type="text" id="fmFontColorHex" class="pod-input" placeholder="#1C1813" style="flex:1;">
+                </div>
+              </div>
+              <div class="pod-field">
+                <label>자간 (letter-spacing)</label>
+                <select id="fmLetterSpacing" class="pod-input">
+                  <option value="-0.02em">-0.02em (좁게)</option>
+                  <option value="0em" selected>0em (기본)</option>
+                  <option value="0.05em">0.05em (약간 넓게)</option>
+                  <option value="0.1em">0.1em (넓게)</option>
+                  <option value="0.2em">0.2em (매우 넓게)</option>
+                </select>
+              </div>
+            </div>
+
+              </div>
+            </details>
+
+            <!-- 콘텐츠 내용 -->
+            <div class="pod-section" id="fmContentSection">
+              <div class="pod-section-title">텍스트 내용</div>
+              <div class="pod-field" id="fmFieldTitle">
+                <label>제목 <span style="color:var(--c-muted); font-weight:400;">(빈칸 = 원고 제목)</span></label>
+                <input type="text" id="fmContentTitle" class="pod-input" placeholder="기본값: 원고 제목">
+              </div>
+              <div class="pod-field" id="fmFieldSubtitle">
+                <label>부제 / 저자명</label>
+                <input type="text" id="fmContentSubtitle" class="pod-input" placeholder="예: 박소연 지음">
+              </div>
+              <div class="pod-field" id="fmFieldPublisher">
+                <label>출판사 (본표지 하단)</label>
+                <input type="text" id="fmContentPublisher" class="pod-input" placeholder="예: 퍼플">
+              </div>
+              <div class="pod-field" id="fmFieldAuthor">
+                <label>지은이 (판권지)</label>
+                <input type="text" id="fmContentAuthor" class="pod-input" placeholder="예: 박소연">
+              </div>
+              <div class="pod-field" id="fmFieldDate">
+                <label>발행일</label>
+                <input type="text" id="fmContentDate" class="pod-input" placeholder="예: 2026년 07월">
+              </div>
+              <div class="pod-field" id="fmFieldCustom">
+                <label>자유 텍스트 <span style="color:var(--c-muted); font-weight:400;">(헌사·인용구 등)</span></label>
+                <textarea id="fmContentCustom" class="pod-input" rows="3" placeholder="예: 이 책을 엄마에게 바칩니다."></textarea>
+              </div>
+              <div class="pod-field" id="fmFieldQuoteAuthor">
+                <label>인용 출처</label>
+                <input type="text" id="fmContentQuoteAuthor" class="pod-input" placeholder="예: — 헤르만 헤세">
+              </div>
+            </div>
+
+            <button id="fmApplyBlockBtn" class="primary" style="width:100%; font-size:13px; padding:10px;">✓ 이 블록에 적용</button>
+          </div>
+        </div>
+
+        <!-- ── 페이지 구조 탭 (Tree) ── -->
+        <div class="pod-settings-pane" id="podPane-tree">
+          <div class="pod-section">
+            <div class="pod-section-title">페이지 구조도</div>
+            <div style="font-size:11px;color:var(--c-muted);margin-bottom:12px;">이 책의 전체 페이지 흐름과 구조를 확인합니다. 클릭 시 해당 영역으로 이동합니다.</div>
+            <div id="podPageTree" style="font-size:13px; line-height:1.6; display:flex; flex-direction:column; gap:4px; max-height: 60vh; overflow-y:auto; padding-right:8px; border-left:2px solid var(--border-color); padding-left:12px; margin-left:6px;">
+              <!-- JS 렌더링 영역 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 표지 설정 탭 ── -->
+        <div class="pod-settings-pane" id="podPane-cover">
+
+          <!-- 책등 -->
+          <div class="pod-section">
+            <div class="pod-section-title">책등 (Spine)</div>
+            <div class="pod-field">
+              <label>책등 두께</label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="pod-mm-input-wrap" style="width:60%;">
+                  <input type="number" id="podSpineWidth" min="1" step="0.5" class="">
+                  <span class="pod-mm-suffix">mm</span>
+                </div>
+                <span id="podSpineCalcText" style="font-size:11px; color:var(--c-muted);"></span>
+              </div>
+            </div>
+            <div class="pod-field">
+              <label>책등 폰트</label>
+              <select id="podSpineFont" class="pod-input">
+                <option value="'KoPub Batang', serif">KoPub 바탕 (명조)</option>
+                <option value="'Noto Serif KR', serif">Noto Serif (바탕)</option>
+                <option value="'Noto Sans KR', sans-serif">Noto Sans (고딕)</option>
+                <option value="Pretendard, sans-serif">Pretendard</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 표지 이미지 -->
+          <div class="pod-section">
+            <div class="pod-section-title">표지 이미지</div>
+            <div class="pod-field">
+              <label>앞표지 업로드 (우측)</label>
+              <input type="file" id="podFrontCoverInput" accept="image/png, image/jpeg" class="pod-input" style="padding:4px;">
+            </div>
+            <div class="pod-field">
+              <label>뒷표지 업로드 (좌측)</label>
+              <input type="file" id="podBackCoverInput" accept="image/png, image/jpeg" class="pod-input" style="padding:4px;">
+            </div>
+          </div>
+
+          <!-- 배경 + 로고 -->
+          <div class="pod-section">
+            <div class="pod-section-title">배경 & 로고</div>
+            <div class="pod-field">
+              <label>전체 배경색 (빈 영역)</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="color" id="podCoverBgColor" value="#2c2c2c" style="width:36px; height:36px; border:1px solid var(--c-line); border-radius:6px; cursor:pointer; padding:2px;">
+                <input type="text" id="podCoverBgColorHex" value="#2c2c2c" class="pod-input" style="flex:1; max-width:100px;">
+              </div>
+            </div>
+            <div class="pod-field">
+              <label>출판사 로고</label>
+              <select id="podPublisherLogo" class="pod-input">
+                <option value="">없음</option>
+                <option value="pod_logo/logo_black_kr.png">퍼플 흑백 (한글)</option>
+                <option value="pod_logo/logo_black_en.png">퍼플 흑백 (영문)</option>
+                <option value="pod_logo/logo_white_kr.png">퍼플 흰색 (한글)</option>
+                <option value="pod_logo/logo_white_en.png">퍼플 흰색 (영문)</option>
+              </select>
+            </div>
+            
+            <div id="podLogoOptions" style="display:none; padding:12px; background:var(--c-bg); border-radius:4px; margin-top:8px;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:8px;">앞표지 로고 설정</div>
+              <div style="display:flex; gap:12px; margin-bottom:12px;">
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">가로 크기 (mm)</label>
+                  <input type="number" id="podLogoFrontSize" value="7" min="1" max="100" class="pod-input" style="padding:6px;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">하단 여백 (mm)</label>
+                  <input type="number" id="podLogoFrontBottom" value="15" min="0" max="150" class="pod-input" style="padding:6px;">
+                </div>
+              </div>
+              <div style="font-size:12px; font-weight:700; margin-bottom:8px;">책등 로고 설정</div>
+              <div style="display:flex; gap:12px;">
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">가로 크기 비율 (%)</label>
+                  <input type="number" id="podLogoSpineRatio" value="60" min="10" max="100" class="pod-input" style="padding:6px;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:11px; margin-bottom:4px; display:block;">하단 여백 (mm)</label>
+                  <input type="number" id="podLogoSpineBottom" value="15" min="0" max="150" class="pod-input" style="padding:6px;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── 기타 탭 ── -->
+        <div class="pod-settings-pane" id="podPane-extra">
+          <div class="pod-section">
+            <div class="pod-section-title">책 두께 계산기</div>
+            <div style="font-size:12px;color:var(--c-body);line-height:1.7;">
+              <div>총 예상 페이지수: <strong id="podEstPages">—</strong> 페이지</div>
+              <div>책등 두께 (자동): <strong id="podEstSpine">—</strong> mm</div>
+              <div style="margin-top:8px;font-size:11px;color:var(--c-muted);">※ 설정된 용지 및 여백을 기반으로 한 추정값입니다. (정확도 향상)</div>
+              <button id="podCalcExactBtn" class="btn btn-outline" style="margin-top:10px; width:100%; font-size:11px;" type="button">✨ Paged.js 기반 실제 쪽수 정밀 계산</button>
+            </div>
+          </div>
+          <div class="pod-section">
+            <div class="pod-section-title">설정 초기화</div>
+            <button id="podResetSettingsBtn" class="danger" style="width:100%;" type="button">⚠️ 출판 설정 초기화</button>
+          </div>
+        </div>
+
+        <!-- 하단 저장 버튼 -->
+        <div style="padding:16px 18px; border-top:1px solid var(--c-line); background:var(--c-surface); position:sticky; bottom:0; z-index:2;">
+          <button id="podSaveSettingsBtn" class="primary" style="width:100%; height:40px;" type="button">설정 저장</button>
+        </div>
+      </div>
+
+      <!-- ─── 우측: 미리보기 패널 ─── -->
+      <div class="pod-preview-panel">
+        <!-- 미리보기 툴바 -->
+        <div class="pod-preview-toolbar">
+          <div class="pod-preview-tabs">
+            <button class="pod-preview-tab active" data-preview="inner">내지 미리보기</button>
+            <button class="pod-preview-tab" data-preview="fm">전면부 미리보기</button>
+            <button class="pod-preview-tab" data-preview="cover">표지 미리보기</button>
+          </div>
+          <div class="pod-preview-controls">
+            <!-- 홀수/짝수 토글 (내지 탭에서만) -->
+            <div class="pod-page-toggle" id="podPageToggleWrap">
+              <button id="podToggleOdd" class="active">홀수 페이지 (우측)</button>
+              <button id="podToggleEven">짝수 페이지 (좌측)</button>
+            </div>
+            <!-- 범례 -->
+            <div class="pod-guide-legend">
+              <span class="pod-guide-dot bleed">재단선</span>
+              <span class="pod-guide-dot safe">안전영역</span>
+              <span class="pod-guide-dot gutter">제본여백</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 전면부 미리보기 캔버스 (iframe) -->
+        <div class="pod-preview-canvas fm-tab" id="podPreviewFm" style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:var(--c-bg); padding:20px;">
+          <div style="font-size:12px; color:var(--c-muted); margin-bottom:12px;">좌측 패널에서 스타일을 변경하면 실시간으로 반영됩니다.</div>
+          <iframe id="podFmIframe" style="border:1px solid #ddd; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.15); width:148mm; height:210mm; transition: width 0.3s, height 0.3s; transform-origin: top center;"></iframe>
+        </div>
+
+        <!-- 내지 미리보기 캔버스 -->
+        <div class="pod-preview-canvas inner-tab" id="podPreviewInner">
+          <div style="position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div class="pod-page-info" id="podPageLabel" style="margin-bottom:0;">홀수 페이지 (1, 3, 5... — 우측면)</div>
+              <select id="podPreviewMode" class="pod-input" style="width:auto; padding:2px 8px; font-size:11px; background:var(--c-bg);">
+                <option value="body">본문 조판</option>
+                <option value="title_page">본표지(Front Matter)</option>
+                <option value="copyright">판권지</option>
+              </select>
+            </div>
+            <div class="pod-page-card" id="podPageCard">
+              <!-- 재단선 가이드 -->
+              <div class="pod-guide-bleed"></div>
+              <!-- 안전영역 가이드 -->
+              <div class="pod-guide-safe"></div>
+              <!-- 제본여백 (좌/우 사선) -->
+              <div class="pod-guide-gutter left" id="podGutterLeft"></div>
+              <div class="pod-guide-gutter right" id="podGutterRight"></div>
+              <!-- 본문 텍스트 미리보기 -->
+              <div class="pod-page-content" id="podPageContent">
+                <p>여기에 원고 본문이 조판되어 표시됩니다. 여백을 조절하면 이 텍스트 영역의 크기가 실시간으로 변합니다.</p>
+                <p>상하좌우 파란 점선이 안전영역(텍스트 인쇄 범위)이며, 붉은 점선이 재단선(최종 재단 위치)입니다.</p>
+                <p>내측의 분홍 사선 영역이 제본여백(Gutter)으로, 책이 제본될 때 안으로 말려 들어가는 부분입니다.</p>
+                <p>홀수/짝수 버튼으로 페이지를 전환하면 Gutter 위치가 좌우로 대칭 전환됩니다.</p>
+              </div>
+              <!-- 페이지 번호 위치 표시 -->
+              <div class="pod-page-num">— 1 —</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 표지 미리보기 이미지 -->
+        <div class="pod-cover-preview-wrap" id="podPreviewCover">
+          <div style="text-align:center;">
+            <img id="podCoverPreviewImage" style="max-width:100%; max-height:70vh; height:auto; display:none; box-shadow:0 8px 32px rgba(0,0,0,.25);" />
+            <div style="margin-top:12px; font-size:11px; color:var(--c-muted);">표지 설정 탭에서 이미지를 업로드하거나 배경색을 변경하면 미리보기가 업데이트됩니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <aside id="planDrawer" class="plan-drawer">
+    <div class="drawer-head" style="flex-direction:column; align-items:flex-start; gap:12px;">
+      <div style="display:flex; justify-content:space-between; width:100%;">
+        <div class="drawer-tabs" style="display:flex; gap:16px; font-size:16px; font-weight:800;">
+          <div id="tabPlanBtn" class="drawer-tab active" style="cursor:pointer;">작품 기획</div>
+          <div id="tabCommentBtn" class="drawer-tab" style="cursor:pointer; color:var(--c-muted);">코멘트 <span id="pcCommentBadge" style="font-size:11px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:10px;display:none;">0</span></div>
+        </div>
+        <button id="closePlanDrawerBtn" class="icon-btn">×</button>
+      </div>
+      <div id="planToolbar" style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+        <button id="copyAllPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">복사</button>
+        <button id="importPlanBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">가져오기</button>
+        <button id="addBeatSheetBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">🎬 비트시트</button>
+        <button id="addPlanSectionBtn" class="ghost" type="button" style="height:32px;padding:0 8px; font-size:12px;">＋ 항목</button>
+      </div>
+    </div>
+    <div id="planBodyWrapper" class="drawer-body" style="overflow-y:auto;"></div>
+    <div id="commentBodyWrapper" class="drawer-body" style="display:none; flex-direction:column; background:#fff;"></div>
+  </aside>
+</div>
+
+<!-- Modals -->
+<div id="newProjectModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">새 프로젝트</span><h2>새로운 작품 만들기</h2></div><button class="icon-btn" data-close="newProjectModal">×</button></div>
+<label class="modal-field"><span>작품 제목</span><input id="newProjectTitle" class="input" placeholder="제목을 입력하세요"/></label>
+<label class="modal-field"><span>표지 컬러</span><div id="newProjectColors" class="cover-colors" style="margin-top:4px;"></div></label>
+<div class="modal-actions"><button class="ghost" data-close="newProjectModal">취소</button><button id="createProjectBtn" class="primary">작품 만들기</button></div></div></div>
+
+<div id="publishSettingsModal" class="modal-overlay hidden" style="z-index:9999;">
+  <div class="modal" style="width: 540px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-head">
+      <div><span class="kicker">설정</span><h2>출판용 표지 및 템플릿 설정</h2></div>
+      <button class="icon-btn" data-close="publishSettingsModal">×</button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:20px; padding-bottom:20px;">
+      
+      <!-- 기본 템플릿 설정 -->
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <label style="font-size:12px; font-weight:600; color:var(--c-sub);">용지 크기</label>
+        <select id="pubPaperSize" style="padding:10px; border-radius:6px; border:1px solid #E2E2E2; outline:none; background:var(--c-bg); color:var(--c-ink);">
+          <option value="A5">A5 (신국판/국판 크기 - 148×210mm)</option>
+          <option value="B6">B6 (문고판 크기 - 128×182mm)</option>
+        </select>
+      </div>
+
+      <!-- 표지 설정 -->
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-3);">
+        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">표지 설정 (이미지 다운로드용)</label>
+        
+        <div id="pubCoverOptions" style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <div style="flex:1;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub); display:block; margin-bottom:4px;">앞표지 업로드 (우측면)</label>
+              <input type="file" id="pubFrontCoverInput" accept="image/png, image/jpeg" style="font-size:12px; width:100%;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub); display:block; margin-bottom:4px;">뒷표지 업로드 (좌측면)</label>
+              <input type="file" id="pubBackCoverInput" accept="image/png, image/jpeg" style="font-size:12px; width:100%;">
+            </div>
+          </div>
+          
+          <img id="pubCoverImagePreview" src="" style="display:none; width:100%; height:auto; max-height:500px; object-fit:contain; border:1px dashed var(--c-line-mid); border-radius:4px; background:#fff;" />
+
+          <div style="display:flex; gap:12px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">전체 배경색 (빈 영역)</label>
+              <div style="display:flex; gap:6px;">
+                <input type="color" id="pubCoverBgColor" value="#2c2c2c" style="width:32px; height:32px; border:1px solid var(--c-line); border-radius:4px; cursor:pointer; padding:0;">
+                <input type="text" id="pubCoverBgColorHex" value="#2c2c2c" style="flex:1; padding:6px; font-size:12px; border-radius:4px; border:1px solid var(--c-line); outline:none;">
+              </div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">출판사 로고 선택</label>
+              <select id="pubPublisherLogo" style="padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--c-line); outline:none;">
+                <option value="">없음</option>
+                <option value="pod_logo/흑백_타입(한글ver).png">퍼플 흑백 (한글)</option>
+                <option value="pod_logo/흑백_타입(영문ver).png">퍼플 흑백 (영문)</option>
+                <option value="pod_logo/흰색_타입(한글ver).png">퍼플 흰색 (한글)</option>
+                <option value="pod_logo/흰색_타입(영문ver).png">퍼플 흰색 (영문)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div style="display:flex; gap:12px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 두께 (mm)</label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" id="pubSpineWidth" style="width:80px; padding:6px; border-radius:4px; border:1px solid #E2E2E2; outline:none;" min="1" step="0.5">
+                <span style="font-size:11px; color:var(--c-muted);" id="pubSpineCalcText"></span>
+              </div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size:11px; font-weight:600; color:var(--c-sub);">책등 폰트</label>
+              <select id="pubSpineFont" style="padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--c-line); outline:none;">
+                <option value="'KoPub Batang', serif">KoPub 바탕 (명조)</option>
+                <option value="'Noto Serif KR', serif">Noto Serif (바탕)</option>
+                <option value="'Noto Sans KR', sans-serif">Noto Sans (고딕)</option>
+                <option value="Pretendard, sans-serif">Pretendard</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 판권지 설정 -->
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-3);">
+        <label style="font-size:13px; font-weight:700; color:var(--c-ink);">판권지(Copyright) 설정 (본문 PDF용)</label>
+        
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="pubShowCopyright"> <span style="font-size:12px; font-weight:600;">판권지 페이지 추가 (내지 끝 또는 시작 부분)</span>
+        </label>
+        
+        <div id="pubCopyrightOptions" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">지은이 (저자명)</span><input type="text" id="pubAuthor" class="input" placeholder="예: 박소연" style="padding:6px; font-size:12px;"></label>
+          <label class="modal-field" style="margin-bottom:0;"><span style="font-size:11px;">발행일</span><input type="text" id="pubPublishDate" class="input" placeholder="예: 2026년 07월 13일" style="padding:6px; font-size:12px;"></label>
+          <div style="display:none;">
+            <input type="text" id="pubPublisher">
+            <input type="text" id="pubPubReg">
+            <input type="text" id="pubAddress">
+            <input type="text" id="pubPhone">
+            <input type="text" id="pubHomepage">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <label style="font-size:12px; font-weight:600; color:var(--c-sub);">기타 옵션</label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubAutoTOC"> <span>원고 목차(Table of Contents) 페이지 자동 생성</span></label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="pubShowTitle"> <span>본문 시작 전에 회차 제목(예: 1화) 자동으로 삽입</span></label>
+        <p style="font-size:11px; color:#A0AAB5; margin:0 0 0 22px;">※ 본문 첫 줄에 이미 회차 제목을 적어두셨다면 위 옵션을 끄셔야 제목이 두 번 중복해서 나오지 않습니다.</p>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:0;">
+      <button class="ghost" data-close="publishSettingsModal">취소</button>
+      <button id="savePublishSettingsBtn" class="primary">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<div id="searchModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">전체 검색</span><h2>현재 작품에서 찾기</h2></div><button class="icon-btn" data-close="searchModal">×</button></div>
+<input id="searchInput" class="input" style="width:100%" placeholder="인물, 단서, 문장을 검색하세요" autocomplete="off"/>
+<div id="searchSummary" style="color:var(--c-muted);font-size:11px;margin:12px 2px;">검색어를 입력하세요.</div>
+<div id="searchResults" class="search-results"></div></div></div>
+
+<div id="versionModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">버전 기록</span><h2>이전 본문으로 돌아가기</h2></div><button class="icon-btn" data-close="versionModal">×</button></div>
+<div id="versionList" class="version-list"></div></div></div>
+
+<div id="coverModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <div><span class="kicker">책 표지</span><h2>표지를 꾸며볼까요?</h2></div>
+      <button class="icon-btn" data-close="coverModal">×</button>
+    </div>
+    <div class="cover-modal-layout">
+      <div id="coverPreview" class="cover-preview"></div>
+      <div class="cover-settings">
+        <div style="display:grid;gap:10px;">
+          <div style="font-size:12px;font-weight:800;color:var(--c-sub);">단색 표지</div>
+          <div id="coverColors" class="cover-colors"></div>
+          <div class="cover-custom-row">
+            <input id="coverCustomColor" type="color" value="#6B5CE7"/>
+            <span id="coverColorValue" style="font-size:11px;color:var(--c-sub);">#6B5CE7</span>
+          </div>
+        </div>
+        <div style="display:grid;gap:10px;margin-top:20px;">
+          <div style="font-size:12px;font-weight:800;color:var(--c-sub);">표지 이미지</div>
+          <div class="cover-image-actions">
+            <button id="uploadCoverBtn" class="primary" type="button" style="flex:1;">📁 이미지 업로드</button>
+            <button id="removeCoverImageBtn" class="ghost border" type="button">지우기</button>
+          </div>
+          <p style="font-size:11px;color:var(--c-muted);margin:0;line-height:1.5;">JPG, PNG, WEBP 이미지를 업로드하면 표지에 적용됩니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" data-close="coverModal" type="button">완료</button>
+    </div>
+  </div>
+</div>
+
+<div id="importModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">백업 불러오기</span><h2>데이터를 가져올 방식을 선택하세요.</h2></div><button class="icon-btn" data-close="importModal">×</button></div>
+<p style="font-size:13px;color:var(--c-body);line-height:1.6;">가져올 파일에 총 <strong id="importProjectCount">0</strong>개의 작품이 있습니다.<br>기존 데이터를 덮어쓸지, 추가할지 선택해주세요.</p>
+<div class="modal-actions"><button id="importReplaceBtn" class="danger">전체 교체 (기존 삭제)</button><button id="importAddBtn" class="primary">기존 데이터에 추가</button></div></div></div>
+
+
+<div id="planImportModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><span class="kicker">기획 가져오기</span><h2>문서 텍스트 변환 및 원본 첨부</h2></div><button class="icon-btn" data-close="planImportModal">×</button></div>
+<div style="display:grid;gap:16px;">
+  <div style="font-size:13px;color:var(--c-body);line-height:1.5;"><strong>[텍스트 변환]</strong> PDF/Word 문서를 불러오면 자동으로 쪼개어 항목으로 만듭니다.</div>
+  <textarea id="planImportText" class="input" style="height:140px;resize:none;" placeholder="여기에 마크다운 텍스트를 붙여넣으세요..."></textarea>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button id="uploadPlanPdfBtn" class="secondary" type="button">📄 변환할 파일 선택</button>
+    <span id="planImportFileName" style="font-size:12px;color:var(--c-muted);">선택된 파일 없음</span>
+  </div>
+</div>
+<hr style="border:0;border-top:1px solid var(--c-line);margin:16px 0;" />
+<div style="display:grid;gap:16px;">
+  <div style="font-size:13px;color:var(--c-body);line-height:1.5;"><strong>[원본 그대로 첨부]</strong> PDF 파일의 내용을 쪼개지 않고, 기획 목록에 원본 뷰어로 열 수 있도록 파일째로 첨부합니다.</div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button id="attachPdfRawBtn" class="secondary" style="width:100%;height:44px;font-size:14px;" type="button">📎 PDF 원본 첨부하기</button>
+  </div>
+</div>
+<div class="modal-actions" style="margin-top:24px;"><button class="ghost" data-close="planImportModal">취소</button><button id="executePlanImportBtn" class="primary">입력된 텍스트 항목으로 변환</button></div></div></div>
+<input id="attachPdfRawInput" type="file" accept="application/pdf" hidden />
+<input id="planImportFileInput" type="file" accept="application/pdf,.md,.txt,.docx" hidden />
+<input id="coverInput" type="file" accept="image/*" hidden />
+<input id="importInput" type="file" accept=".json,.gz,application/json" hidden />
+<div id="toast" class="toast" role="status"></div>
+
 <script>
 const STORAGE_KEY = 'munjang-novel-writer-v3';
 // --- 강제 캐시 초기화 (Service Worker 킬러) ---
@@ -1702,7 +4116,6 @@ $('#copyManuscriptFull').onclick = () => {
 };
 
 
-
 // Publish Settings Logic
 function getPublishSettings(p) {
   return p.publishSettings || { paperSize: 'A5', includeCover: true, autoTOC: true, showTitle: false };
@@ -1818,17 +4231,8 @@ async function showPodStudio() {
   $('#editorView').classList.add('hidden');
   $('#podStudioView').classList.add('active');
 
-  // 내지 탭을 명시적으로 활성화 (display 상태 확실히 초기화)
-  $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-  const innerTab = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-  if (innerTab) innerTab.classList.add('active');
-  $('#podPreviewInner').style.display = 'flex';
-  $('#podPreviewFm').style.display = 'none';
-  $('#podPreviewCover').classList.remove('active');
-  $('#podPageToggleWrap').style.display = 'flex';
-
-  // 초기 미리보기 렌더링 (300ms 딜레이로 DOM이 완전히 보인 후 실행)
-  setTimeout(() => { renderLivePodPreview(); }, 300);
+  // 초기 미리보기 업데이트
+  podUpdatePreview();
   podUpdateCoverPreview();
 }
 
@@ -1866,326 +4270,137 @@ function podEstimatePages(p) {
   return total + 8;
 }
 
-// ── 내지 라이브 렌더링(Paged.js) ────────────────────────────
-let podLiveRenderTimer = null;
-let podLastRenderedTotalPages = 0; // Paged.js 렌더링 후 얻은 실제 페이지 수
+// ── 내지 미리보기 실시간 업데이트 ────────────────────────────
+let podIsOddPage = true; // true = 홀수(우측), false = 짝수(좌측)
 
-function podScheduleLiveRender() {
-  $('#podLiveRenderStatus').textContent = '조판 재계산 중... (여백/폰트 적용 중)';
-  if (podLiveRenderTimer) clearTimeout(podLiveRenderTimer);
-  podLiveRenderTimer = setTimeout(() => {
-    renderLivePodPreview();
-  }, 800); // 디바운스 800ms
-}
-
-
-async function renderLivePodPreview() {
-  const p = currentProject();
-  if(!p) return;
-  
-  if (p.episodes.some(e => e.body === undefined)) {
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = '내용 데이터를 불러오는 중...';
-    await ensureProjectBodiesLoaded(p);
-  }
-  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if(loadedEps.length === 0) {
-    $('#podLiveRenderStatus').textContent = '출판할 본문 내용이 없습니다.';
-    return;
-  }
-
-  $('#podLiveRenderStatus').textContent = '조판 렌더링 진행 중... (Paged.js)';
-  const iframe = document.getElementById('podLiveIframe');
-  if(!iframe) return;
-  const pubSet = getPublishSettings(p);
-  
-  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
-
-  const paperKey = pubSet.paperSize || 'A5';
+function podUpdatePreview() {
+  const paperKey = $('#podPaperSize').value || 'A5';
   const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
-  // ★ Paged.js 렌더링 버그 방지: 렌더링 중에는 단면(1장) 크기로 강제
-  iframe.style.width = paper.w + 'mm';
-  iframe.style.height = paper.h + 'mm';
+
+  // 화면 높이에 맞춰 반응형으로 커지도록 설정
+  const maxH = Math.max(400, window.innerHeight - 140);
+  const scale = maxH / paper.h;
+  podPreviewScale = scale;
+  const cardW = Math.round(paper.w * scale);
+  const cardH = Math.round(paper.h * scale);
+
+  const card = $('#podPageCard');
+  card.style.setProperty('--page-w', cardW + 'px');
+  card.style.setProperty('--page-h', cardH + 'px');
+  card.style.width = cardW + 'px';
+  card.style.height = cardH + 'px';
+
+  // 여백값 읽기
+  const top    = parseFloat($('#podMarginTop').value)    || 20;
+  const bottom = parseFloat($('#podMarginBottom').value) || 20;
+  const inner  = parseFloat($('#podMarginInner').value)  || 25;
+  const outer  = parseFloat($('#podMarginOuter').value)  || 18;
+  const bleed  = parseFloat($('#podBleed').value)        || 0;
+  const fontSizePt = parseFloat($('#podFontSize').value) || 10;
+  const lineHeight = parseFloat($('#podLineHeight').value) || 1.75;
+
+  // 홀수/짝수에 따른 좌/우 여백 결정
+  // 홀수(우측 페이지): 내측=왼쪽, 외측=오른쪽
+  // 짝수(좌측 페이지): 내측=오른쪽, 외측=왼쪽
+  const leftMm  = podIsOddPage ? inner : outer;
+  const rightMm = podIsOddPage ? outer : inner;
+
+  const topPx    = mmToPreviewPx(top);
+  const bottomPx = mmToPreviewPx(bottom);
+  const leftPx   = mmToPreviewPx(leftMm);
+  const rightPx  = mmToPreviewPx(rightMm);
+  const bleedPx  = mmToPreviewPx(bleed);
+  const gutterPx = mmToPreviewPx(inner);
+  const fontSizeMm = fontSizePt * 0.352778; // 1pt = 0.352778mm
+
+  // CSS variables 적용
+  card.style.setProperty('--margin-top-px',    topPx    + 'px');
+  card.style.setProperty('--margin-bottom-px', bottomPx + 'px');
+  card.style.setProperty('--margin-left-px',   leftPx   + 'px');
+  card.style.setProperty('--margin-right-px',  rightPx  + 'px');
+  card.style.setProperty('--bleed-px',         bleedPx  + 'px');
+  card.style.setProperty('--gutter-px',        gutterPx + 'px');
+  card.style.setProperty('--font-size-px',     mmToPreviewPx(fontSizeMm) + 'px');
+  card.style.setProperty('--line-height',      lineHeight);
+
+  // 미리보기 모드 처리
+  const mode = $('#podPreviewMode')?.value || 'body';
+  const contentEl = $('#podPageContent');
   
-  const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
-  const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-  const singleW_px = paper.w * (96 / 25.4);
-  const paperH_px = paper.h * (96 / 25.4);
-  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / singleW_px, (canvasH - 40) / paperH_px));
-  iframe.style.transform = `scale(${scale})`;
+  // pt를 미리보기용 px로 변환하는 헬퍼
+  const pt2px = (pt) => mmToPreviewPx(pt * 0.352778);
 
-  // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
-  const srcdocScripts = `
-<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
-<style>
-  /* 스프레드(양면) 뷰어용 스타일 */
-  .pagedjs_page { 
-    margin: 0 !important; border: none !important; 
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; 
-    background: #fff !important;
-  }
-  
-  /* 책등(가운데 접히는 부분) 시각적 효과 */
-  .pagedjs_left_page::after {
-    content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 20px;
-    background: linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%);
-    pointer-events: none; z-index: 10;
-  }
-  .pagedjs_right_page::after {
-    content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 20px;
-    background: linear-gradient(to right, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%);
-    pointer-events: none; z-index: 10;
-  }
-</style>
-<script>
-function runPaged() {
-  if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
-    if (!window.pagedWaitCount) window.pagedWaitCount = 0;
-    window.pagedWaitCount++;
-    if (window.pagedWaitCount > 100) {
-      window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 5초 이상 로드되지 않았습니다.' }, '*');
-      return;
+  if (mode === 'body') {
+    card.style.backgroundColor = '#ffffff';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <p>여기에 원고 본문이 조판되어 표시됩니다. 여백을 조절하면 이 텍스트 영역의 크기가 실시간으로 변합니다.</p>
+        <p>상하좌우 파란 점선이 안전영역(텍스트 인쇄 범위)이며, 붉은 점선이 재단선(최종 재단 위치)입니다.</p>
+        <p>내측의 분홍 사선 영역이 제본여백(Gutter)으로, 책이 제본될 때 안으로 말려 들어가는 부분입니다.</p>
+        <p>홀수/짝수 버튼으로 페이지를 전환하면 Gutter 위치가 좌우로 대칭 전환됩니다.</p>
+      `;
     }
-    setTimeout(runPaged, 50);
-    return;
-  }
-  window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: Paged.js 초기화 시작' }, '*');
-  class LiveHandler extends Paged.Handler {
-    afterRendered(pages) {
-      try {
-        if (window.podProgressTimer) clearInterval(window.podProgressTimer);
-        var map = [];
-        pages.forEach(function(p, idx) {
-          var el = p.element || p.pageNode || p.wrapper;
-          if (!el) return;
-          
-          var pgNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10) || 0;
-          if (el.style) {
-            if (pgNum !== 1) {
-              el.style.display = 'none';
-            } else {
-              el.style.position = 'absolute';
-              el.style.top = '0';
-              el.style.right = '0';
-            }
-          }
-
-          var fmBlock = el.querySelector('.matter-page');
-          var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
-          var chTitle = el.querySelector('.chapter-title, .chapter-content h1');
-          var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
-          map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
-        });
-        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*');
-      } catch (err) {
-        window.parent.postMessage({ type: 'pagedjs-error', error: 'afterRendered Error: ' + err.message }, '*');
-      }
+  } else if (mode === 'title_page') {
+    const fmBgColor = $('#podFmBgColor')?.value || '#ffffff';
+    card.style.backgroundColor = fmBgColor && fmBgColor.trim() !== '' ? fmBgColor : '#ffffff';
+    const pTitle = $('#podFmTitle')?.value || currentProject()?.title || '제목 없음';
+    const pSubtitle = $('#podFmSubtitle')?.value || ($('#podAuthor')?.value || '저자') + ' 지음';
+    const pPublisher = $('#podFmPublisher')?.value || '퍼플';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center;">
+          <div style="font-size:${pt2px(24)}px; font-weight:700; margin-bottom:${pt2px(20)}px;">${escapeHtml(pTitle)}</div>
+          <div style="font-size:${pt2px(12)}px; color:#444; margin-bottom:${pt2px(40)}px;">${escapeHtml(pSubtitle)}</div>
+          <div style="font-size:${pt2px(12)}px; font-weight:700;">${escapeHtml(pPublisher)}</div>
+        </div>
+      `;
+    }
+  } else if (mode === 'copyright') {
+    const fmBgColor = $('#podFmBgColor')?.value || '#ffffff';
+    card.style.backgroundColor = fmBgColor && fmBgColor.trim() !== '' ? fmBgColor : '#ffffff';
+    const pTitle = $('#podFmTitle')?.value || currentProject()?.title || '제목 없음';
+    const pAuthor = $('#podAuthor')?.value || '저자';
+    const pDate = $('#podPublishDate')?.value || '2026년 07월 13일';
+    const pPublisher = $('#podFmPublisher')?.value || '퍼플';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="position:absolute; bottom:0; left:0; right:0; font-size:${pt2px(8)}px; text-align:left; line-height:1.6;">
+          <div style="font-size:${pt2px(12)}px; margin-bottom:${pt2px(20)}px; font-weight:700;">${escapeHtml(pTitle)}</div>
+          <div style="display:grid; grid-template-columns:${pt2px(40)}px 1fr; gap:4px; margin-bottom:${pt2px(12)}px;">
+            <div style="color:#666;">발행일</div><div>${escapeHtml(pDate)}</div>
+            <div style="color:#666;">지은이</div><div>${escapeHtml(pAuthor)}</div>
+            <div style="color:#666;">발행처</div><div>${escapeHtml(pPublisher)}</div>
+          </div>
+          <div style="display:grid; grid-template-columns:${pt2px(40)}px 1fr; gap:4px; margin-bottom:${pt2px(16)}px;">
+            <div style="color:#666;">출판등록</div><div>제 300-2012-167 호</div>
+            <div style="color:#666;">주 소</div><div>교보생명빌딩 15층 ㈜교보문고</div>
+          </div>
+          <div style="font-size:${pt2px(7.5)}px; color:#333; padding-top:${pt2px(12)}px; border-top:1px solid #ccc;">
+            <p>ⓒ ${escapeHtml(pAuthor)} 2026</p>
+          </div>
+        </div>
+      `;
     }
   }
-  try {
-    Paged.registerHandlers(LiveHandler);
-  } catch(err) {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Handler Error: ' + err.message }, '*');
+
+  // 제본여백 사선 표시 — 홀수면 왼쪽, 짝수면 오른쪽
+  $('#podGutterLeft').style.display  = podIsOddPage  ? 'block' : 'none';
+  $('#podGutterRight').style.display = !podIsOddPage ? 'block' : 'none';
+  // 좌/우 gutter 너비를 내측 여백으로 고정
+  card.style.setProperty('--gutter-px', mmToPreviewPx(inner) + 'px');
+
+  // 페이지 라벨 업데이트
+  $('#podPageLabel').textContent = podIsOddPage
+    ? '홀수 페이지 (1, 3, 5... — 우측면)'
+    : '짝수 페이지 (2, 4, 6... — 좌측면)';
+
+  // 페이지 번호 표시 위치도 미러 (짝수면 외측=왼쪽으로)
+  const pageNumEl = card.querySelector('.pod-page-num');
+  if (pageNumEl) {
+    pageNumEl.style.left  = podIsOddPage ? '50%' : 'auto';
+    pageNumEl.style.right = podIsOddPage ? 'auto' : '50%';
+    pageNumEl.style.transform = 'translateX(-50%)';
   }
-  window.addEventListener('message', function(ev) {
-    if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
-    
-    var pageNum = parseInt(ev.data.page, 10);
-    var targetSpread = [];
-    if (pageNum === 1) {
-      targetSpread = [1];
-    } else if (pageNum % 2 === 0) {
-      targetSpread = [pageNum, pageNum + 1];
-    } else {
-      targetSpread = [pageNum - 1, pageNum];
-    }
-    
-    // 1. 모든 페이지 숨기기
-    var allPages = document.querySelectorAll('.pagedjs_page');
-    allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
-    
-    // 2. 요청된 스프레드(양면) 보이기
-    targetSpread.forEach(function(num) {
-      var el = document.querySelector('.pagedjs_page[data-page-number="' + num + '"]');
-      if (el) {
-        el.style.display = 'block';
-        el.style.position = 'absolute';
-        el.style.top = '0';
-        if (num % 2 === 0) el.style.left = '0';
-        else el.style.right = '0';
-      }
-    });
-    window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
-  });
-
-  window.podProgressTimer = setInterval(function() {
-    var count = document.querySelectorAll('.pagedjs_page').length;
-    if (count > 0) {
-      try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: count }, '*'); } catch(err) {}
-    }
-  }, 250);
-  try {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 호출 직전' }, '*');
-    PagedPolyfill.preview().then(function() {
-      window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 완료' }, '*');
-    }).catch(function(e) {
-      try { window.parent.postMessage({ type: 'pagedjs-error', error: 'preview catch: ' + e.message }, '*'); } catch(e2) {}
-    });
-  } catch (err) {
-    try { window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*'); } catch(e2) {}
-  }
-}
-runPaged();
-<\/script>`;
-
-  let html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-<style>
-${mainStyles}
-</style>
-<style>
-  html, body { background: transparent !important; height: auto !important; overflow: visible !important; margin: 0; padding: 0; }
-  @page front-matter { @bottom-center { content: none; } }
-  .bg-colored { page: front-matter; }
-  @page {
-    size: ${pubSet.paperSize || 'A5'};
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
-    @bottom-center { content: counter(page); font-size: 9pt; font-family: 'KoPub Batang', 'Noto Serif KR', serif; }
-  }
-  @page:left { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm; }
-  @page:right { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm; }
-  @page:first { @bottom-center { content: none; } }
-  @page cover { margin: 0; @bottom-center { content: none; } }
-  body {
-    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: ${pubSet.fontSize||10}pt;
-    line-height: ${pubSet.lineHeight||1.75};
-    color: #111; background: transparent !important; text-align: justify; word-break: keep-all;
-  }
-  .ql-align-center { text-align: center !important; }
-  .ql-align-right { text-align: right !important; }
-  .ql-align-justify { text-align: justify !important; }
-  .cover-page { page: cover; break-after: right; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; background-color: ${p.coverColor || '#2c2c2c'}; color: #fff; }
-  .title-page { break-before: right; break-after: page; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; }
-  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
-  .toc-page { break-before: right; break-after: page; padding-top: 40px; }
-  .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
-  .toc-list { list-style: none; padding: 0; margin: 0 20px; overflow-x: hidden; }
-  .toc-list li { margin-bottom: 12px; font-size: 10pt; display: flex; align-items: baseline; }
-  .toc-list li .toc-title { flex: 0 0 auto; }
-  .toc-list li .toc-page-ref { color: inherit; text-decoration: none; flex: 0 0 auto; }
-  .toc-list li .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
-  .toc-list li .toc-page-ref::after { content: target-counter(attr(href), page); }
-  .chapter { break-before: page; margin-top: 40px; }
-  .chapter.matter-page { break-before: right; }
-  .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
-  .chapter-content span { background-color: transparent !important; }
-  .chapter-content p { text-indent: 10pt !important; margin: 0 !important; word-break: keep-all; }
-  .chapter-content h1, .chapter-content h3 { margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
-  .chapter-content h2 { margin-top: 1.5em !important; margin-bottom: 2.75em !important; line-height: 1.4; }
-  .chapter-content .ql-size-huge, .chapter-content .ql-size-large { display: block; margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
-  .chapter-content p.pdf-group-isolated, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-isolated, .chapter-content .pdf-group-last { margin-bottom: 24px !important; border-bottom-left-radius: 6px !important; border-bottom-right-radius: 6px !important; padding-bottom: 14px !important; }
-  .chapter-content p.n-msg.pdf-group-isolated, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-isolated, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-isolated, .chapter-content p.n-noti.pdf-group-last { margin-bottom: 12px !important; padding-bottom: 10px !important; border-radius: 18px 18px 18px 2px !important; }
-  .chapter-content p.pdf-group-first, .chapter-content p.pdf-group-middle, .chapter-content .pdf-group-first, .chapter-content .pdf-group-middle { margin-bottom: 0 !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; padding-bottom: 4px !important; }
-  .chapter-content p.n-msg.pdf-group-first, .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-first, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-noti.pdf-group-first, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-email.pdf-group-first, .chapter-content p.n-email.pdf-group-middle { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; padding-bottom: 10px !important; }
-  .chapter-content p.pdf-group-middle, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-middle, .chapter-content .pdf-group-last { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; padding-top: 4px !important; }
-  .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last, .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last { border-top-left-radius: 6px !important; padding-top: 10px !important; }
-  .chapter-content p.n-email-body.pdf-group-middle, .chapter-content p.n-email-body.pdf-group-last, .chapter-content p.n-doc.pdf-group-middle, .chapter-content p.n-doc.pdf-group-last { padding-left: 38px !important; }
-  html, body { height: auto !important; overflow: visible !important; }
-  .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
-</style>
-</head>
-<body>
-`;
-
-  html += generatePODBodyContent(p, pubSet, loadedEps);
-
-  html += srcdocScripts;
-  html += `</body></html>`;
-
-  iframe.removeAttribute('srcdoc');
-  setTimeout(() => { iframe.srcdoc = html; }, 10);
-}
-
-
-// ── pagedjs-rendered 메시지 수신 → 트리 업데이트 ──────────────────
-window.addEventListener('message', (e) => {
-  if (!e.data) return;
-  
-  if (e.data.type === 'pagedjs-progress') {
-    const st = $('#podLiveRenderStatus');
-    if (st && st.textContent.includes('진행 중')) {
-      st.textContent = `조판 렌더링 진행 중... (${e.data.pageNum}쪽 계산 완료)`;
-    }
-    const treeSt = $('#podTreeProgress');
-    if (treeSt) {
-      treeSt.textContent = `${e.data.pageNum}쪽 계산 완료...`;
-    }
-    return;
-  }
-  
-  if (e.data.type === 'pagedjs-rendered') {
-    const total = e.data.totalPages || 0;
-    podLastRenderedTotalPages = total;
-    window.podPageMap = e.data.pageMap || []; // ★ pageMap 저장
-    
-    // ★ 렌더링 완료 후 iframe 너비를 양면(스프레드) 크기로 확장
-    const iframe = document.getElementById('podLiveIframe');
-    if (iframe) {
-      const pubSet = getPublishSettings(currentProject());
-      const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      iframe.style.width = (paper.w * 2) + 'mm';
-      
-      const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
-      const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-      const spreadW_px = (paper.w * 2) * (96 / 25.4);
-      const paperH_px = paper.h * (96 / 25.4);
-      const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / spreadW_px, (canvasH - 40) / paperH_px));
-      iframe.style.transform = `scale(${newScale})`;
-    }
-
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 완료 ✓ 총 ${total}쪽`;
-    
-    // 책등 두께 계산 업데이트
-    updateSpineThickness(total);
-    
-    // ★ 조건 없이 항상 트리 footer를 업데이트
-    const totalLabel = document.getElementById('podTreeTotalLabel');
-    if (totalLabel) totalLabel.innerHTML = `내지 총합: ${total}쪽`;
-    
-    // 트리 탭이 열려 있으면 전체 트리 재렌더링
-    const treePane = document.getElementById('podPane-tree');
-    const isTreeVisible = treePane && (treePane.classList.contains('active') || getComputedStyle(treePane).display !== 'none');
-    if (isTreeVisible) {
-      renderPodPageTree();
-    }
-  } else if (e.data.type === 'pagedjs-error') {
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 에러: ${e.data.error}`;
-  }
-});
-
-function updateSpineThickness(totalPages) {
-  const paperType = $('#podPaperType')?.value || 'standard';
-  // 종이 종류별 1장(2쪽)당 두께 대략 추정 (단위: mm)
-  // 미색 모조 80g: 약 0.1mm, 100g: 약 0.12mm 등
-  const mmPerPage = (paperType === 'premium') ? 0.06 : 0.05; 
-  const spineMm = Math.max(1, Math.round(totalPages * mmPerPage * 10) / 10);
-  
-  // 설정 패널 및 썸네일에 노출
-  const label = $('#podSpineThicknessLabel');
-  if(label) label.textContent = `예상 책등 두께: 약 ${spineMm}mm`;
-  
-  // 기타 탭의 계산기 UI에도 노출
-  const estPages = $('#podEstPages');
-  const estSpine = $('#podEstSpine');
-  if(estPages) estPages.textContent = totalPages;
-  if(estSpine) estSpine.textContent = spineMm;
 }
 
 // ── 표지 미리보기 업데이트 ────────────────────────────────────
@@ -2328,8 +4543,7 @@ $('#openPublishSettingsBtn').onclick = showPodStudio;
 $('#backFromPodStudio').onclick = hidePodStudio;
 
 // 스튜디오 내 내보내기 버튼
-// 내지 전용 PDF: 2번째 인자 true → 표지 배제
-$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(false, true); };
+$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(); };
 $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
 
 // 저장 버튼
@@ -2350,180 +4564,49 @@ $$('.pod-settings-tab').forEach(btn => {
   });
 });
 
-// ── 페이지 트리 렌더링 ────────────────────────────────────────
 function renderPodPageTree() {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
   const treeEl = $('#podPageTree');
   if(!treeEl) return;
-
-  treeEl.innerHTML = '';
-  treeEl.style.cssText = 'display:block; padding:0; margin:0;';
-
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  const activeFm = (window.fmBlocks || set.fmBlocks || []).filter(b => b.active);
-
-  // ── [1] 표지 섹션 ──
-  const mkSectionHead = (txt) => {
-    const el = document.createElement('div');
-    el.style.cssText = 'font-size:10px; font-weight:700; color:var(--c-sub); text-align:center; padding:6px 0 4px; border-bottom:1px dashed var(--border-color); margin-bottom:12px;';
-    el.textContent = txt;
-    return el;
-  };
-
-  const mkThumb = (pageNum, label, sublabel, accentColor, clickFn) => {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;';
-
-    const thumb = document.createElement('div');
-    thumb.style.cssText = `
-      width:56px; height:78px;
-      background:#fff; border:1.5px solid var(--border-color);
-      border-radius:2px; box-shadow:1px 2px 5px rgba(0,0,0,.1);
-      position:relative; overflow:hidden;
-      transition:border-color .15s, box-shadow .15s;
-      flex-shrink:0;
-    `;
-    // 스켈레톤 라인
-    const skLines = accentColor
-      ? `<div style="width:70%;height:5px;background:${accentColor};opacity:.6;border-radius:2px;margin:14px auto 8px;"></div>`
-        + `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:0 auto 4px;"></div>`.repeat(5)
-      : `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:8px auto 4px;"></div>`.repeat(7);
-    thumb.innerHTML = `<div style="padding:4px 3px;">${skLines}</div>`;
-    if (pageNum) {
-      const badge = document.createElement('div');
-      badge.style.cssText = 'position:absolute;bottom:2px;right:3px;font-size:8px;color:#aaa;font-weight:600;';
-      badge.textContent = pageNum;
-      thumb.appendChild(badge);
-    }
-    thumb.onmouseenter = () => { thumb.style.borderColor = 'var(--primary)'; thumb.style.boxShadow = '1px 3px 8px rgba(0,0,0,.18)'; };
-    thumb.onmouseleave = () => { thumb.style.borderColor = 'var(--border-color)'; thumb.style.boxShadow = '1px 2px 5px rgba(0,0,0,.1)'; };
-    thumb.onclick = clickFn;
-
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'font-size:9px; color:var(--c-ink); font-weight:600; text-align:center; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.3;';
-    lbl.textContent = label;
-    if (sublabel) {
-      const sub = document.createElement('div');
-      sub.style.cssText = 'font-size:8px; color:var(--c-muted); text-align:center; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
-      sub.textContent = sublabel;
-      wrap.appendChild(thumb); wrap.appendChild(lbl); wrap.appendChild(sub);
-    } else {
-      wrap.appendChild(thumb); wrap.appendChild(lbl);
-    }
-    return wrap;
-  };
-
-  // ── [2] 표지 놀레 ──
-  const coverSec = document.createElement('div');
-  coverSec.style.cssText = 'padding:0 8px 16px; display:flex; flex-direction:column; align-items:center;';
-  coverSec.appendChild(mkSectionHead('─ 표지 (별도 판형) ─'));
-  const coverThumb = mkThumb('', '표지', '앞/뒤', '#555', () => {
-    // 표지 프리뷰 탭으로
-    $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-    const pb = document.querySelector('.pod-preview-tab[data-preview="cover"]');
-    if(pb) pb.classList.add('active');
-    $('#podPreviewInner').style.display = 'none';
-    $('#podPreviewFm').style.display = 'none';
-    $('#podPreviewCover').classList.add('active');
-    $('#podPageToggleWrap').style.display = 'none';
-    podUpdateCoverPreview();
+  
+  let html = `<div style="font-weight:700; font-size:14px; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">📚 ${escapeHtml(p.title)}</div>`;
+  
+  // 1. Cover
+  html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--c-bg); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='var(--c-bg)'" onmouseout="this.style.background='transparent'" onclick="$$('.pod-settings-tab')[3].click()">
+    <div><span style="display:inline-block; width:24px; text-align:center;">🖼</span> <span style="font-weight:600;">표지</span></div>
+    <div style="font-size:11px; color:var(--c-muted);">1장 (앞/뒤/책등)</div>
+  </div>`;
+  
+  // 2. Front matter
+  const fmBlocks = window.fmBlocks || set.fmBlocks || [];
+  fmBlocks.filter(b => b.active).forEach(b => {
+    const meta = FM_BLOCK_META[b.type] || {name: b.type, icon: '📄'};
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; padding-left:16px; border-bottom:1px solid var(--c-bg); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='var(--c-bg)'" onmouseout="this.style.background='transparent'" onclick="$$('.pod-settings-tab')[1].click()">
+      <div><span style="display:inline-block; width:24px; text-align:center;">${meta.icon}</span> ${meta.name}</div>
+      <div style="font-size:11px; color:var(--c-muted);">1쪽</div>
+    </div>`;
   });
-  coverSec.appendChild(coverThumb);
-  treeEl.appendChild(coverSec);
-
-  // ── [3] 내지 섭마노 ──
-  const innerSec = document.createElement('div');
-  innerSec.style.cssText = 'padding:0 8px;';
-  innerSec.appendChild(mkSectionHead('─ 내지 (속표지 ~ 본문) ─'));
-
-  // 페이지 데이터 구성 (에피소드 데이터 기반 — iframe DOM 쿼리 하지 않음)
-  const pagesData = [];
-  let pageNum = 1;
-
-  // Paged.js가 모든 페이지 정보를 주므로 여기서 전면부를 별도로 계산하지 않습니다.
-
-  // 본문 에피소드 (Paged.js 렌더링 완료 시에만 생성)
-  if (window.podPageMap && window.podPageMap.length > 0) {
-    // 렌더링 완료: postMessage로 받은 실제 페이지 맵 사용
-    window.podPageMap.forEach(pg => {
-      let isFm = false;
-      const FM_LABELS = ['속표지', '본표지', '판권지', '목차', '헌정', '제사', '여백'];
-      if (FM_LABELS.includes(pg.label)) isFm = true;
-      pagesData.push({ pageNum: pg.pageNum, label: pg.label, sublabel: pg.epTitle || '', type: isFm ? 'fm' : 'inner', accent: isFm ? '#7c6bf6' : null });
-    });
-  } else {
-    // 렌더링 전: 트리 목록 대신 안내 메시지 노출
-    const loadingDiv = document.createElement('div');
-    loadingDiv.style.cssText = 'padding:40px 20px; text-align:center; color:var(--c-muted); font-size:12px; line-height:1.6;';
-    loadingDiv.innerHTML = '<div style="margin-bottom:12px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg></div><style>@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }</style>조판 렌더링을 계산하고 있습니다.<br><span id="podTreeProgress">잠시만 기다려주세요...</span>';
-    innerSec.appendChild(loadingDiv);
-    treeEl.appendChild(innerSec);
-    return; // 그리드 렌더링 중단
-  }
-
-  // InDesign 스프레드 레이아웃: 2열 그리드 (좌=짝수, 우=홈수)
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:16px 8px; padding:0 4px 24px; position:relative;';
-
-  // 체등 중앙선
-  const spine = document.createElement('div');
-  spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;';
-  grid.appendChild(spine);
-
-  pagesData.forEach((data, i) => {
-    const isOdd = data.pageNum % 2 !== 0;
-    const cell = document.createElement('div');
-    cell.style.cssText = `display:flex; justify-content:${isOdd ? 'flex-start' : 'flex-end'}; align-items:flex-start;`;
-    if (i === 0 && isOdd) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
-
-    const thumb = mkThumb(
-      data.pageNum,
-      data.label,
-      data.sublabel,
-      data.accent,
-      () => {
-        // 모든 트리 노드(전면부, 내지) 클릭 시 내지 프리뷰(Paged.js)로 전환 후 스크롤
-        $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-        const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-        if(pb) pb.classList.add('active');
-        $('#podPreviewInner').style.display = 'flex';
-        $('#podPreviewFm').style.display = 'none';
-        $('#podPreviewCover').classList.remove('active');
-        $('#podPageToggleWrap').style.display = 'flex';
-        // postMessage로 iframe 내부에 스크롤 요청
-        const liveIframe = document.getElementById('podLiveIframe');
-        if (liveIframe?.contentWindow) {
-          liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
-        }
-        // 활성 표시
-        grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
-        cell.classList.add('tree-thumb-active');
-      }
-    );
-    cell.appendChild(thumb);
-    grid.appendChild(cell);
+  
+  // 3. Main body
+  html += `<div style="margin-top:16px; margin-bottom:4px; font-size:11px; font-weight:700; color:var(--c-sub); padding-left:4px;">─ 본 문 ─</div>`;
+  
+  const loadedEps = orderedEpisodes().filter(e => cleanText(e.body));
+  let totalBodyPages = 0;
+  
+  loadedEps.forEach(e => {
+    const len = e.body.replace(/<[^>]*>?/gm, '').length;
+    const pgs = Math.max(2, Math.ceil(len / 350));
+    totalBodyPages += pgs;
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--c-bg);">
+      <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%; padding-left:16px;"><span style="display:inline-block; width:20px; font-size:11px; color:var(--c-muted);">📄</span> ${escapeHtml(e.title)}</div>
+      <div style="font-size:11px; color:var(--c-muted); text-align:right;">예상 ${pgs}쪽 <br><span style="font-size:9px; opacity:0.6;">(${len.toLocaleString()}자)</span></div>
+    </div>`;
   });
-
-  innerSec.appendChild(grid);
-  treeEl.appendChild(innerSec);
-
-  // ── [4] 푸터 (쭔수/두글) ──
-  const footer = document.createElement('div');
-  footer.id = 'podTreeFooter';
-  footer.style.cssText = 'margin-top:8px; padding:10px 12px; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:700; color:var(--c-ink);';
-  const totalLabel = document.createElement('div');
-  totalLabel.id = 'podTreeTotalLabel';
-  totalLabel.textContent = podLastRenderedTotalPages > 0 ? `내지 쭜종: ${podLastRenderedTotalPages}쪽` : '렌더링 완료 대기 중...';
-  const spineLabel = document.createElement('div');
-  spineLabel.id = 'podSpineThicknessLabel';
-  spineLabel.style.color = 'var(--c-accent)';
-  spineLabel.textContent = '예상 책등 두께: 계산 중...';
-  footer.appendChild(totalLabel);
-  footer.appendChild(spineLabel);
-  treeEl.appendChild(footer);
-
-  if (podLastRenderedTotalPages > 0) updateSpineThickness(podLastRenderedTotalPages);
+  
+  html += `<div style="margin-top:12px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink);">본문 예상 총합: ${totalBodyPages}쪽</div>`;
+  
+  treeEl.innerHTML = html;
 }
 
 // 미리보기 탭 전환
@@ -2533,27 +4616,17 @@ $$('.pod-preview-tab').forEach(btn => {
     btn.classList.add('active');
     
     const view = btn.dataset.preview;
-    // 모든 패널 숨김 후 해당 패널만 표시
-    $('#podPreviewInner').style.display = 'none';
-    $('#podPreviewFm').style.display = 'none';
-    $('#podPreviewCover').classList.remove('active');
+    $('#podPreviewInner').style.display = view === 'inner' ? 'flex' : 'none';
+    $('#podPreviewFm').style.display = view === 'fm' ? 'flex' : 'none';
+    $('#podPreviewCover').classList.toggle('active', view === 'cover');
+    $('#podPageToggleWrap').style.display = view === 'inner' ? 'flex' : 'none';
     
-    if (view === 'inner') {
-      $('#podPreviewInner').style.display = 'flex';
-      $('#podPageToggleWrap').style.display = 'flex';
-    } else if (view === 'fm') {
-      $('#podPreviewFm').style.display = 'flex';
-      $('#podPageToggleWrap').style.display = 'none';
-      podUpdateFmPreview();
-    } else if (view === 'cover') {
-      $('#podPreviewCover').classList.add('active');
-      $('#podPageToggleWrap').style.display = 'none';
-      podUpdateCoverPreview();
-    }
+    if (view === 'cover') podUpdateCoverPreview();
+    if (view === 'fm') podUpdateFmPreview();
   });
 });
 
-// 설정 탭 전환 (display 직접 제어 — .click() 이벤트 버블링 제거)
+// 설정 탭 전환 시 미리보기 탭 동기화
 $$('.pod-settings-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
@@ -2562,20 +4635,17 @@ $$('.pod-settings-tab').forEach(btn => {
     const paneId = btn.dataset.pane;
     const pane = $('#podPane-' + paneId);
     if (pane) pane.classList.add('active');
-
-    // 페이지 구조도 탭 전환 시 트리 렌더링
-    if (paneId === 'tree') {
-      renderPodPageTree();
-      // 페이지 구조도에서는 내지 프리뷰를 도시적으로 유지
-      $('#podPreviewInner').style.display = 'flex';
-      $('#podPreviewFm').style.display = 'none';
-      $('#podPreviewCover').classList.remove('active');
-      $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-      const innerTab = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-      if(innerTab) innerTab.classList.add('active');
-      $('#podPageToggleWrap').style.display = 'flex';
+    
+    if (paneId === 'tree') renderPodPageTree();
+    
+    // 미리보기 패널 교체 연동
+    if (paneId === 'inner' || paneId === 'tree') {
+      $$('.pod-preview-tab[data-preview="inner"]')[0].click();
+    } else if (paneId === 'fm') {
+      $$('.pod-preview-tab[data-preview="fm"]')[0].click();
+    } else if (paneId === 'cover' || paneId === 'extra') {
+      $$('.pod-preview-tab[data-preview="cover"]')[0].click();
     }
-    // 다른 탭은 프리뷰를 강제로 바꾼 필요 없음 — 현재 프리뷰 상태 유지
   });
 });
 
@@ -2654,10 +4724,11 @@ function podUpdateFmPreview() {
   }
 
   // scale calculation to fit iframe in preview canvas
-  const canvasH = $('#podPreviewFm').clientHeight || window.innerHeight;
+  const canvasH = $('#podPreviewFm').clientHeight - 40;
   const paperH_px = paper.h * (96 / 25.4); // approx px
-  const scale = Math.max(0.2, Math.min(1, (canvasH - 40) / paperH_px));
+  const scale = Math.min(1, canvasH / paperH_px);
   iframe.style.transform = `scale(${scale})`;
+  
   const iframeHtml = `
 <!DOCTYPE html>
 <html>
@@ -2679,19 +4750,19 @@ $('#podToggleOdd').addEventListener('click', () => {
   podIsOddPage = true;
   $('#podToggleOdd').classList.add('active');
   $('#podToggleEven').classList.remove('active');
-  podScheduleLiveRender();
+  podUpdatePreview();
 });
 $('#podToggleEven').addEventListener('click', () => {
   podIsOddPage = false;
   $('#podToggleEven').classList.add('active');
   $('#podToggleOdd').classList.remove('active');
-  podScheduleLiveRender();
+  podUpdatePreview();
 });
 
 // 여백 등 입력 실시간 반영
 ['podPreviewMode','podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
   const el = $('#' + id);
-  if(el) el.addEventListener('input', () => { podScheduleLiveRender(); });
+  if(el) el.addEventListener('input', () => { podUpdatePreview(); });
 });
 
 // 출판사 로고 선택 시 옵션 패널 보이기/숨기기
@@ -3161,7 +5232,7 @@ function renderFmList() { renderFmBlockList(); }
 // 창 크기 변경 시 미리보기 크기 업데이트
 window.addEventListener('resize', () => {
   if ($('#podStudioView') && $('#podStudioView').classList.contains('active')) {
-    podScheduleLiveRender();
+    podUpdatePreview();
   }
 });
 
@@ -3205,7 +5276,7 @@ $$('.pod-preset-btn').forEach(btn => {
     $('#podMarginInner').value  = preset.margins.inner;
     $('#podMarginOuter').value  = preset.margins.outer;
     $('#podBleed').value        = preset.margins.bleed;
-    podScheduleLiveRender();
+    podUpdatePreview();
     showToast(`${preset.name} 여백 프리셋이 적용되었습니다.`);
   });
 });
@@ -3524,112 +5595,6 @@ async function exportPODCover() {
   link.click();
 }
 
-
-function generatePODBodyContent(p, pubSet, loadedEps) {
-  const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
-let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
-
-  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
-  
-  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
-  const afterTocEps = loadedEps.slice(firstMainIdx);
-
-  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
-  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
-    ? pubSet.fmBlocks : (window.fmBlocks || []);
-
-  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
-  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
-  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
-  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
-
-  let htmlFm = '';
-  fmBlocksForRender.filter(b => b.active).forEach(block => {
-    const s = block.style || {};
-    const c = block.content || {};
-    const type = block.type;
-
-    const pTitle  = escapeHtml(c.title || p.title || '');
-    const pSub    = escapeHtml(c.subtitle || '');
-    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
-    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
-    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
-    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
-    const pQuote  = escapeHtml(c.quoteAuthor || '');
-
-    const bgColor = s.bgColor || '#ffffff';
-    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
-    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
-
-    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
-    const titleSz = `font-size:${s.fontSize||20}pt;`;
-    const jc = s.alignY || 'center';
-    const ai = s.alignX || 'center';
-    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
-
-    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
-    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
-    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
-
-    const hideTxt = s.hideText ? 'display:none !important;' : '';
-    const podLogo = pubSet.coverOptions?.logo || '';
-    const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
-
-    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100%;${bgPrintCss}${rel}`;
-
-    if (type === 'half_title') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
-    } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
-    } else if (type === 'dedication') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
-    } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
-    } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
-    } else if (type === 'toc') {
-      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
-      if (pubSet.autoTOC !== false && tocEps.length > 0) {
-        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
-        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
-        tocHtml += `</ul></div></div>`;
-        htmlFm += tocHtml;
-      }
-    } else if (type === 'blank') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:right;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
-    }
-  });
-
-  let bodyHtml = htmlFm;
-
-
-  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
-  beforeTocEps.forEach(ep => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    bodyHtml += `
-  <div class="chapter matter-page" style="break-before: right;">
-    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
-  </div>`;
-  });
-
-  // 5. 본문 (목차 이후의 회차 및 뒷부속)
-  afterTocEps.forEach((ep, i) => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
-    const displayTitle = getEpisodeDisplayTitle(ep, p);
-    
-    bodyHtml += `
-  <div class="chapter ${isMatter ? 'matter-page' : ''}">
-    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
-    <div class="chapter-content ql-editor">${processed.body}</div>
-  </div>`;
-  });
-
-
-  return bodyHtml;
-}
-
 async function exportPODPdf(isSilent = false) {
   const p = currentProject();
   if(!p) return;
@@ -3738,7 +5703,7 @@ ${mainStyles}
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100%;
+    height: 100vh;
     width: 100%;
     background-color: ${p.coverColor || '#2c2c2c'};
     color: #fff;
@@ -3750,7 +5715,7 @@ ${mainStyles}
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100%;
+    height: 100vh;
     text-align: center;
   }
   .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
@@ -3901,10 +5866,7 @@ ${mainStyles}
 <body>
 `;
 
-  // ⚠️ 핵심 수정: isSilent(정밀계산용) 또는 coverExcluded(내지 전용 내보내기) 시 표지 완전 배제
-  //    내지 PDF 내보내기 버튼은 exportPODPdf(false, true)로 호출 → 표지 없이 내지만 출력
-  const coverExcluded = arguments[1] === true; // 2번째 인자가 true이면 내지 전용
-  if (!isSilent && !coverExcluded && pubSet.includeCover !== false) {
+  if (pubSet.includeCover !== false) {
     try {
       const coverB64 = await generateCoverPreview(p, pubSet);
       if (coverB64) {
@@ -3913,7 +5875,105 @@ ${mainStyles}
     } catch (err) { console.warn('Cover rendering skipped:', err); }
   }
 
-    html += generatePODBodyContent(p, pubSet, loadedEps);
+  let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+
+  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
+  
+  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
+  const afterTocEps = loadedEps.slice(firstMainIdx);
+
+  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
+  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
+    ? pubSet.fmBlocks : (window.fmBlocks || []);
+
+  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
+  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
+  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
+  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
+
+  let htmlFm = '';
+  fmBlocksForRender.filter(b => b.active).forEach(block => {
+    const s = block.style || {};
+    const c = block.content || {};
+    const type = block.type;
+
+    const pTitle  = escapeHtml(c.title || p.title || '');
+    const pSub    = escapeHtml(c.subtitle || '');
+    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
+    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
+    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
+    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
+    const pQuote  = escapeHtml(c.quoteAuthor || '');
+
+    const bgColor = s.bgColor || '#ffffff';
+    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
+    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
+
+    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
+    const titleSz = `font-size:${s.fontSize||20}pt;`;
+    const jc = s.alignY || 'center';
+    const ai = s.alignX || 'center';
+    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
+
+    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
+    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
+    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
+
+    const hideTxt = s.hideText ? 'display:none !important;' : '';
+    const podLogo = pubSet.coverOptions?.logo || '';
+    const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
+
+    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;${bgPrintCss}${rel}`;
+
+    if (type === 'half_title') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+    } else if (type === 'title_page') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
+    } else if (type === 'dedication') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+    } else if (type === 'epigraph') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    } else if (type === 'copyright') {
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    } else if (type === 'toc') {
+      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
+      if (pubSet.autoTOC !== false && tocEps.length > 0) {
+        let tocHtml = `<div class="chapter matter-page toc-page" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
+        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
+        tocHtml += `</ul></div></div>`;
+        htmlFm += tocHtml;
+      }
+    } else if (type === 'blank') {
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;height:100vh;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
+    }
+  });
+
+  html += htmlFm;
+
+
+  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
+  beforeTocEps.forEach(ep => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    html += `
+  <div class="chapter matter-page" style="break-before: right;">
+    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
+  </div>`;
+  });
+
+  // 5. 본문 (목차 이후의 회차 및 뒷부속)
+  afterTocEps.forEach((ep, i) => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
+    const displayTitle = getEpisodeDisplayTitle(ep, p);
+    
+    html += `
+  <div class="chapter ${isMatter ? 'matter-page' : ''}">
+    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
+    <div class="chapter-content ql-editor">${processed.body}</div>
+  </div>`;
+  });
+
   html += `
   <script>
     class PrintHandler extends window.Paged.Handler {
@@ -4504,3 +6564,5 @@ $('#ebookNext').onclick = () => {
 // forceSaveAllSupabase 에서 ep.plan 저장할 때쳀럼 JSON.stringify로 함께 저장
 
 </script>
+</body>
+</html>

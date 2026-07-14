@@ -1,12 +1,9 @@
-<script>
 window.addEventListener('error', function(e) {
   setTimeout(() => showToast('에러: ' + e.message), 1000);
 });
 window.addEventListener('unhandledrejection', function(e) {
   setTimeout(() => showToast('Promise 에러: ' + e.reason), 1000);
 });
-</script></head>
-<script>
 const STORAGE_KEY = 'munjang-novel-writer-v3';
 // --- 강제 캐시 초기화 (Service Worker 킬러) ---
 if ('serviceWorker' in navigator) {
@@ -1916,7 +1913,6 @@ async function renderLivePodPreview() {
 
   // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
   const srcdocScripts = `
-<script>window.PagedConfig = { auto: false };<\/script>
 <script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
 <style>
   /* 스프레드(양면) 뷰어용 스타일 */
@@ -1938,7 +1934,6 @@ async function renderLivePodPreview() {
     pointer-events: none; z-index: 10;
   }
 </style>
-<script>
 function runPaged() {
   if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
     if (!window.pagedWaitCount) window.pagedWaitCount = 0;
@@ -3915,7 +3910,6 @@ ${mainStyles}
 
     html += generatePODBodyContent(p, pubSet, loadedEps);
   html += `
-  <script>
     class PrintHandler extends window.Paged.Handler {
       afterRendered(pages) {
         if (window.parent && window.parent !== window) {
@@ -4503,4 +4497,3 @@ $('#ebookNext').onclick = () => {
 // 코멘트는 Supabase 에피소드에 저장됨 (ep.comments 필드)
 // forceSaveAllSupabase 에서 ep.plan 저장할 때쳀럼 JSON.stringify로 함께 저장
 
-</script>

@@ -1,12 +1,4 @@
-<script>
-window.addEventListener('error', function(e) {
-  setTimeout(() => showToast('에러: ' + e.message), 1000);
-});
-window.addEventListener('unhandledrejection', function(e) {
-  setTimeout(() => showToast('Promise 에러: ' + e.reason), 1000);
-});
-</script></head>
-<script>
+
 const STORAGE_KEY = 'munjang-novel-writer-v3';
 // --- 강제 캐시 초기화 (Service Worker 킬러) ---
 if ('serviceWorker' in navigator) {
@@ -37,8 +29,6 @@ let isAppInitialized = false;
 let isFocusMode = false;
 let isPlanDrawerOpen = false;
 let episodeScrollState = new Map();
-let currentFrontCoverObj = null;
-let currentBackCoverObj = null;
 
 function uid(prefix='id') { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
 function defaultEpisode(type='prologue', index=0) { return { id: uid('ep'), type, title: '', status: 'idea', plan: '', body: '', versions: [], lastVersionAt: Date.now(), _dirty: true }; }
@@ -712,44 +702,9 @@ function getEpisodeDisplayTitle(ep, p, asHtml = false) {
 
 function renderEpisodeList() {
   const p = currentProject(), eps = orderedEpisodes(p);
-  const listEl = $('#episodeList');
-  listEl.innerHTML = '';
-  
-  // 표지 (고정 항목) - 인디자인 느낌
-  const coverRow = document.createElement('div');
-  coverRow.className = 'tree-category-label';
-  coverRow.style.cursor = 'pointer';
-  coverRow.style.color = 'var(--c-ink)';
-  coverRow.style.transition = 'color 0.2s';
-  coverRow.onmouseover = () => coverRow.style.color = 'var(--c-accent)';
-  coverRow.onmouseout = () => coverRow.style.color = 'var(--c-ink)';
-  coverRow.innerHTML = `<span class="tree-icon">🖼</span> <span>표지 (Cover)</span>`;
-  coverRow.title = "표지 설정 열기";
-  coverRow.onclick = () => {
-    const btn = $('#openPodSettingsBtn');
-    if(btn) btn.click();
-    setTimeout(() => { if($$('.pod-settings-tab')[3]) $$('.pod-settings-tab')[3].click(); }, 50);
-  };
-  listEl.appendChild(coverRow);
-
+  $('#episodeList').innerHTML = '';
   let chapterIdx = 1;
-  let currentCategory = null;
-
   eps.forEach(ep=>{
-    let cat = 'body';
-    if (ep.type === 'frontmatter' || ep.type === 'prologue') cat = 'front';
-    else if (ep.type === 'epilogue' || ep.type === 'backmatter') cat = 'back';
-
-    if (cat !== currentCategory) {
-      const catLabel = document.createElement('div');
-      catLabel.className = 'tree-category-label';
-      if (cat === 'front') catLabel.innerHTML = `<span class="tree-icon">📂</span> <span>앞부속 (Front Matter)</span>`;
-      else if (cat === 'body') catLabel.innerHTML = `<span class="tree-icon">📖</span> <span>본문 (Main Body)</span>`;
-      else if (cat === 'back') catLabel.innerHTML = `<span class="tree-icon">📄</span> <span>뒷부속 (Back Matter)</span>`;
-      listEl.appendChild(catLabel);
-      currentCategory = cat;
-    }
-
     const isChap = ep.type==='chapter';
     let rawTitle = ep.title;
     let badgeType = '', badgeText = '';
@@ -779,7 +734,7 @@ function renderEpisodeList() {
     let dispTitle = rawTitle || '(제목 없는 회차)';
     
     const row = document.createElement('div');
-    row.className = `episode-row tree-item ${ep.id===p.selectedEpisodeId?'active':''}`;
+    row.className = `episode-row ${ep.id===p.selectedEpisodeId?'active':''}`;
     row.draggable = true;
     row.innerHTML = `<span class="drag" title="드래그하여 순서 변경">⋮</span><div class="episode-main"><strong><span style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">${badgeHtml}<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dispTitle)}</span></span></strong><span>${stats(ep.body).withSpaces.toLocaleString()}자</span></div>` + 
                     `<button class="icon-btn delete-ep-btn" title="삭제" onclick="event.stopPropagation(); deleteEpisode('${ep.id}')" style="opacity:0; transition:opacity .15s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
@@ -788,7 +743,7 @@ function renderEpisodeList() {
     row.ondragover = e=>e.preventDefault();
     row.ondrop = e=>{ e.preventDefault(); reorderEpisode(ep.id); };
     row.ondragend = ()=>row.classList.remove('dragging');
-    listEl.appendChild(row);
+    $('#episodeList').appendChild(row);
   });
   requestAnimationFrame(()=>{ const el = $('.episode-row.active'); if(el) el.scrollIntoView({block:'nearest'}); });
 }
@@ -1123,11 +1078,11 @@ function removeBeatSheetFromPlan(planStr) {
   return planStr.replace(/\n{3,}/g, '\n\n').trim();
 }
 function parseBeatSheet(text) {
-  // #, ##, ### 헤더 모두 인식 가능하도록 파싱
+  // ## 헤더 기준으로 파싱
   const blocks = [];
   let currentHeader = null, currentLines = [];
   for (const line of text.split('\n')) {
-    const hMatch = line.match(/^#{1,4}\s*([^#].*)/);
+    const hMatch = line.match(/^##\s*([^#].*)/);
     if (hMatch) {
       if (currentHeader !== null) blocks.push({ header: currentHeader, body: currentLines.join('\n').trim() });
       currentHeader = hMatch[1].trim();
@@ -1190,18 +1145,10 @@ function matchEpisodeForBeat(header, episodes) {
 
 function distributeBeatSheet(sectionId) {
   const p = currentProject();
-  
-  // 편집 중인 내용(textarea)이 있다면 실시간으로 반영 (블러 이벤트 전에 배포 버튼 누를 수 있으므로)
-  const tx = document.querySelector(`.plan-section-body[data-bdy="${sectionId}"]`);
-  if(tx) {
-    const secObj = (p.planSections || []).find(x => x.id === sectionId);
-    if(secObj) secObj.body = tx.value;
-  }
-
   const section = (p.planSections || []).find(x => x.id === sectionId);
   if (!section) return;
   const blocks = parseBeatSheet(section.body);
-  if (!blocks.length) { alert('비트시트 내용이 없거나 #, ##, ### 기호로 구분된 회차 헤더(예: "## 1화")를 찾을 수 없습니다.'); return; }
+  if (!blocks.length) { showToast('## 헤더로 구분된 비트시트 내용이 없습니다.'); return; }
   let eps = orderedEpisodes(p);
   let matched = 0, created = 0; const matchedEpNames = [];
   for (const block of blocks) {
@@ -1230,7 +1177,7 @@ function distributeBeatSheet(sectionId) {
       matched++; matchedEpNames.push(ep.title);
     }
   }
-  if (matched === 0 && created === 0) { alert('매칭되는 회차를 찾지 못했습니다.\\n"1화", "프롤로그" 등의 제목이나 번호가 있는지 확인해주세요.'); return; }
+  if (matched === 0 && created === 0) { showToast('매칭되는 회차를 찾지 못했습니다.'); return; }
   section.distributed = true;
   touchProject();
   forceSaveAllSupabase();
@@ -1348,10 +1295,7 @@ function renderProjectPlan() {
       touchProject(); queueSaveFS(); renderProjectPlan(); 
     }
   });
-  $$('[data-distribute-beat]').forEach(b=>b.onclick=(e)=>{
-    e.stopPropagation(); e.preventDefault();
-    distributeBeatSheet(b.dataset.distributeBeat);
-  });
+  $$('[data-distribute-beat]').forEach(b=>b.onclick=()=>distributeBeatSheet(b.dataset.distributeBeat));
   $$('[data-open-pdf]').forEach(b=>b.onclick=()=>openAttachedPdf(b.dataset.openPdf));
 }
 
@@ -1702,15 +1646,24 @@ $('#copyManuscriptFull').onclick = () => {
 };
 
 
-
 // Publish Settings Logic
 function getPublishSettings(p) {
   return p.publishSettings || { paperSize: 'A5', includeCover: true, autoTOC: true, showTitle: false };
 }
 
 function calculateSpineWidth(p) {
-  const estimatedPages = p.podExactPages || podEstimatePages(p);
-  return Math.max(1, Math.round(estimatedPages * (8.8 / 96) * 10) / 10);
+  const eps = p.episodes || [];
+  let estimatedPages = 0;
+  
+  for (const e of eps) {
+    if (!e.body) continue;
+    const textLen = e.body.replace(/<[^>]*>?/gm, '').length;
+    let epPages = Math.max(2, Math.ceil(textLen / 350));
+    estimatedPages += epPages;
+  }
+  
+  estimatedPages += 10;
+  return Math.max(1, Math.round(estimatedPages * 0.05 * 10) / 10);
 }
 
 // ============================================================
@@ -1793,13 +1746,9 @@ async function showPodStudio() {
   }
 
   // 기타 탭 통계
-  const estPages = p.podExactPages || podEstimatePages(p);
-  if (p.podExactPages) {
-    $('#podEstPages').innerHTML = `${p.podExactPages} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
-  } else {
-    $('#podEstPages').textContent = estPages;
-  }
-  $('#podEstSpine').textContent = Math.max(1, Math.round(estPages * (8.8 / 96) * 10) / 10).toFixed(1);
+  const estPages = podEstimatePages(p);
+  $('#podEstPages').textContent = estPages;
+  $('#podEstSpine').textContent = Math.max(1, Math.round(estPages * 0.05 * 10) / 10);
 
   // 이미지 로드 (표지) - async 로딩 보장
   const loadImg = src => src ? new Promise(res => {
@@ -1818,17 +1767,8 @@ async function showPodStudio() {
   $('#editorView').classList.add('hidden');
   $('#podStudioView').classList.add('active');
 
-  // 내지 탭을 명시적으로 활성화 (display 상태 확실히 초기화)
-  $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-  const innerTab = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-  if (innerTab) innerTab.classList.add('active');
-  $('#podPreviewInner').style.display = 'flex';
-  $('#podPreviewFm').style.display = 'none';
-  $('#podPreviewCover').classList.remove('active');
-  $('#podPageToggleWrap').style.display = 'flex';
-
-  // 초기 미리보기 렌더링 (300ms 딜레이로 DOM이 완전히 보인 후 실행)
-  setTimeout(() => { renderLivePodPreview(); }, 300);
+  // 초기 미리보기 업데이트
+  podUpdatePreview();
   podUpdateCoverPreview();
 }
 
@@ -1841,351 +1781,145 @@ function hidePodStudio() {
 
 function podEstimatePages(p) {
   let total = 0;
-  const set = p.publishSettings || {};
-  const paperKey = set.paperSize || 'A5';
-  
-  // 용지 크기에 따른 한 페이지당 대략적인 글자 수 (여백 포함 보수적 산정)
-  let charsPerPage = 500;
-  if (paperKey === 'B6') charsPerPage = 400;
-  else if (paperKey === '46') charsPerPage = 450;
-  
-  const eps = orderedEpisodes(p);
-  for (const e of eps) {
+  for (const e of (p.episodes || [])) {
     if (!e.body) continue;
-    const text = e.body.replace(/<[^>]*>?/gm, '').trim();
-    if (text.length === 0 && !e.title) continue; // 내용이 완전히 없는 회차 제외
-    
-    let pages = Math.ceil(text.length / charsPerPage);
-    if (pages === 0) pages = 1; // 최소 1페이지
-    
-    // 장이 시작될 때 우측면(홀수) 시작이므로 평균 1.5쪽 소모, 여유분 1쪽 추가
-    total += pages + 1;
+    const len = e.body.replace(/<[^>]*>?/gm, '').length;
+    total += Math.max(2, Math.ceil(len / 350));
   }
-  
-  // 앞/뒷부속(속표지, 본표지, 판권지, 목차 등) 대략 8쪽 추가
-  return total + 8;
+  return total + 10;
 }
 
-// ── 내지 라이브 렌더링(Paged.js) ────────────────────────────
-let podLiveRenderTimer = null;
-let podLastRenderedTotalPages = 0; // Paged.js 렌더링 후 얻은 실제 페이지 수
+// ── 내지 미리보기 실시간 업데이트 ────────────────────────────
+let podIsOddPage = true; // true = 홀수(우측), false = 짝수(좌측)
 
-function podScheduleLiveRender() {
-  $('#podLiveRenderStatus').textContent = '조판 재계산 중... (여백/폰트 적용 중)';
-  if (podLiveRenderTimer) clearTimeout(podLiveRenderTimer);
-  podLiveRenderTimer = setTimeout(() => {
-    renderLivePodPreview();
-  }, 800); // 디바운스 800ms
-}
-
-
-async function renderLivePodPreview() {
-  const p = currentProject();
-  if(!p) return;
-  
-  if (p.episodes.some(e => e.body === undefined)) {
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = '내용 데이터를 불러오는 중...';
-    await ensureProjectBodiesLoaded(p);
-  }
-  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if(loadedEps.length === 0) {
-    $('#podLiveRenderStatus').textContent = '출판할 본문 내용이 없습니다.';
-    return;
-  }
-
-  $('#podLiveRenderStatus').textContent = '조판 렌더링 진행 중... (Paged.js)';
-  const iframe = document.getElementById('podLiveIframe');
-  if(!iframe) return;
-  const pubSet = getPublishSettings(p);
-  
-  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
-
-  const paperKey = pubSet.paperSize || 'A5';
+function podUpdatePreview() {
+  const paperKey = $('#podPaperSize').value || 'A5';
   const paper = PAPER_SIZES[paperKey] || PAPER_SIZES.A5;
-  // ★ Paged.js 렌더링 버그 방지: 렌더링 중에는 단면(1장) 크기로 강제
-  iframe.style.width = paper.w + 'mm';
-  iframe.style.height = paper.h + 'mm';
+
+  // 화면 높이에 맞춰 반응형으로 커지도록 설정
+  const maxH = Math.max(400, window.innerHeight - 140);
+  const scale = maxH / paper.h;
+  podPreviewScale = scale;
+  const cardW = Math.round(paper.w * scale);
+  const cardH = Math.round(paper.h * scale);
+
+  const card = $('#podPageCard');
+  card.style.setProperty('--page-w', cardW + 'px');
+  card.style.setProperty('--page-h', cardH + 'px');
+  card.style.width = cardW + 'px';
+  card.style.height = cardH + 'px';
+
+  // 여백값 읽기
+  const top    = parseFloat($('#podMarginTop').value)    || 20;
+  const bottom = parseFloat($('#podMarginBottom').value) || 20;
+  const inner  = parseFloat($('#podMarginInner').value)  || 25;
+  const outer  = parseFloat($('#podMarginOuter').value)  || 18;
+  const bleed  = parseFloat($('#podBleed').value)        || 0;
+  const fontSizePt = parseFloat($('#podFontSize').value) || 10;
+  const lineHeight = parseFloat($('#podLineHeight').value) || 1.75;
+
+  // 홀수/짝수에 따른 좌/우 여백 결정
+  // 홀수(우측 페이지): 내측=왼쪽, 외측=오른쪽
+  // 짝수(좌측 페이지): 내측=오른쪽, 외측=왼쪽
+  const leftMm  = podIsOddPage ? inner : outer;
+  const rightMm = podIsOddPage ? outer : inner;
+
+  const topPx    = mmToPreviewPx(top);
+  const bottomPx = mmToPreviewPx(bottom);
+  const leftPx   = mmToPreviewPx(leftMm);
+  const rightPx  = mmToPreviewPx(rightMm);
+  const bleedPx  = mmToPreviewPx(bleed);
+  const gutterPx = mmToPreviewPx(inner);
+  const fontSizeMm = fontSizePt * 0.352778; // 1pt = 0.352778mm
+
+  // CSS variables 적용
+  card.style.setProperty('--margin-top-px',    topPx    + 'px');
+  card.style.setProperty('--margin-bottom-px', bottomPx + 'px');
+  card.style.setProperty('--margin-left-px',   leftPx   + 'px');
+  card.style.setProperty('--margin-right-px',  rightPx  + 'px');
+  card.style.setProperty('--bleed-px',         bleedPx  + 'px');
+  card.style.setProperty('--gutter-px',        gutterPx + 'px');
+  card.style.setProperty('--font-size-px',     mmToPreviewPx(fontSizeMm) + 'px');
+  card.style.setProperty('--line-height',      lineHeight);
+
+  // 미리보기 모드 처리
+  const mode = $('#podPreviewMode')?.value || 'body';
+  const contentEl = $('#podPageContent');
   
-  const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
-  const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-  const singleW_px = paper.w * (96 / 25.4);
-  const paperH_px = paper.h * (96 / 25.4);
-  const scale = Math.max(0.2, Math.min(1, (canvasW - 40) / singleW_px, (canvasH - 40) / paperH_px));
-  iframe.style.transform = `scale(${scale})`;
+  // pt를 미리보기용 px로 변환하는 헬퍼
+  const pt2px = (pt) => mmToPreviewPx(pt * 0.352778);
 
-  // body content 뒤에 scripts를 붙여서 DOM 파싱 완료 후 실행 보장
-  const srcdocScripts = `
-<script>window.PagedConfig = { auto: false };<\/script>
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"><\/script>
-<style>
-  /* 스프레드(양면) 뷰어용 스타일 */
-  .pagedjs_page { 
-    margin: 0 !important; border: none !important; 
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important; 
-    background: #fff !important;
-  }
-  
-  /* 책등(가운데 접히는 부분) 시각적 효과 */
-  .pagedjs_left_page::after {
-    content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 20px;
-    background: linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%);
-    pointer-events: none; z-index: 10;
-  }
-  .pagedjs_right_page::after {
-    content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 20px;
-    background: linear-gradient(to right, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 100%);
-    pointer-events: none; z-index: 10;
-  }
-</style>
-<script>
-function runPaged() {
-  if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
-    if (!window.pagedWaitCount) window.pagedWaitCount = 0;
-    window.pagedWaitCount++;
-    if (window.pagedWaitCount > 100) {
-      window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 5초 이상 로드되지 않았습니다.' }, '*');
-      return;
+  if (mode === 'body') {
+    card.style.backgroundColor = '#ffffff';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <p>여기에 원고 본문이 조판되어 표시됩니다. 여백을 조절하면 이 텍스트 영역의 크기가 실시간으로 변합니다.</p>
+        <p>상하좌우 파란 점선이 안전영역(텍스트 인쇄 범위)이며, 붉은 점선이 재단선(최종 재단 위치)입니다.</p>
+        <p>내측의 분홍 사선 영역이 제본여백(Gutter)으로, 책이 제본될 때 안으로 말려 들어가는 부분입니다.</p>
+        <p>홀수/짝수 버튼으로 페이지를 전환하면 Gutter 위치가 좌우로 대칭 전환됩니다.</p>
+      `;
     }
-    setTimeout(runPaged, 50);
-    return;
-  }
-  window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: Paged.js 초기화 시작' }, '*');
-  class LiveHandler extends Paged.Handler {
-    afterRendered(pages) {
-      try {
-        if (window.podProgressTimer) clearInterval(window.podProgressTimer);
-        var map = [];
-        pages.forEach(function(p, idx) {
-          var el = p.element || p.pageNode || p.wrapper;
-          if (!el) return;
-          
-          var pgNum = parseInt(el.dataset ? el.dataset.pageNumber : el.getAttribute('data-page-number'), 10) || 0;
-          if (el.style) {
-            if (pgNum !== 1) {
-              el.style.display = 'none';
-            } else {
-              el.style.position = 'absolute';
-              el.style.top = '0';
-              el.style.right = '0';
-            }
-          }
-
-          var fmBlock = el.querySelector('.matter-page');
-          var fmLabel = fmBlock ? fmBlock.getAttribute('data-fm-label') : null;
-          var chTitle = el.querySelector('.chapter-title, .chapter-content h1');
-          var label = fmLabel ? fmLabel : (chTitle ? chTitle.textContent.trim().substring(0,12) : pgNum+'쪽');
-          map.push({ pageNum: parseInt(pgNum, 10), label: label, epTitle: chTitle ? chTitle.textContent.trim() : '' });
-        });
-        window.parent.postMessage({ type: 'pagedjs-rendered', totalPages: pages.length, pageMap: map }, '*');
-      } catch (err) {
-        window.parent.postMessage({ type: 'pagedjs-error', error: 'afterRendered Error: ' + err.message }, '*');
-      }
+  } else if (mode === 'title_page') {
+    const fmBgColor = $('#podFmBgColor')?.value || '#ffffff';
+    card.style.backgroundColor = fmBgColor && fmBgColor.trim() !== '' ? fmBgColor : '#ffffff';
+    const pTitle = $('#podFmTitle')?.value || currentProject()?.title || '제목 없음';
+    const pSubtitle = $('#podFmSubtitle')?.value || ($('#podAuthor')?.value || '저자') + ' 지음';
+    const pPublisher = $('#podFmPublisher')?.value || '퍼플';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center;">
+          <div style="font-size:${pt2px(24)}px; font-weight:700; margin-bottom:${pt2px(20)}px;">${escapeHtml(pTitle)}</div>
+          <div style="font-size:${pt2px(12)}px; color:#444; margin-bottom:${pt2px(40)}px;">${escapeHtml(pSubtitle)}</div>
+          <div style="font-size:${pt2px(12)}px; font-weight:700;">${escapeHtml(pPublisher)}</div>
+        </div>
+      `;
+    }
+  } else if (mode === 'copyright') {
+    const fmBgColor = $('#podFmBgColor')?.value || '#ffffff';
+    card.style.backgroundColor = fmBgColor && fmBgColor.trim() !== '' ? fmBgColor : '#ffffff';
+    const pTitle = $('#podFmTitle')?.value || currentProject()?.title || '제목 없음';
+    const pAuthor = $('#podAuthor')?.value || '저자';
+    const pDate = $('#podPublishDate')?.value || '2026년 07월 13일';
+    const pPublisher = $('#podFmPublisher')?.value || '퍼플';
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="position:absolute; bottom:0; left:0; right:0; font-size:${pt2px(8)}px; text-align:left; line-height:1.6;">
+          <div style="font-size:${pt2px(12)}px; margin-bottom:${pt2px(20)}px; font-weight:700;">${escapeHtml(pTitle)}</div>
+          <div style="display:grid; grid-template-columns:${pt2px(40)}px 1fr; gap:4px; margin-bottom:${pt2px(12)}px;">
+            <div style="color:#666;">발행일</div><div>${escapeHtml(pDate)}</div>
+            <div style="color:#666;">지은이</div><div>${escapeHtml(pAuthor)}</div>
+            <div style="color:#666;">발행처</div><div>${escapeHtml(pPublisher)}</div>
+          </div>
+          <div style="display:grid; grid-template-columns:${pt2px(40)}px 1fr; gap:4px; margin-bottom:${pt2px(16)}px;">
+            <div style="color:#666;">출판등록</div><div>제 300-2012-167 호</div>
+            <div style="color:#666;">주 소</div><div>교보생명빌딩 15층 ㈜교보문고</div>
+          </div>
+          <div style="font-size:${pt2px(7.5)}px; color:#333; padding-top:${pt2px(12)}px; border-top:1px solid #ccc;">
+            <p>ⓒ ${escapeHtml(pAuthor)} 2026</p>
+          </div>
+        </div>
+      `;
     }
   }
-  try {
-    Paged.registerHandlers(LiveHandler);
-  } catch(err) {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Handler Error: ' + err.message }, '*');
+
+  // 제본여백 사선 표시 — 홀수면 왼쪽, 짝수면 오른쪽
+  $('#podGutterLeft').style.display  = podIsOddPage  ? 'block' : 'none';
+  $('#podGutterRight').style.display = !podIsOddPage ? 'block' : 'none';
+  // 좌/우 gutter 너비를 내측 여백으로 고정
+  card.style.setProperty('--gutter-px', mmToPreviewPx(inner) + 'px');
+
+  // 페이지 라벨 업데이트
+  $('#podPageLabel').textContent = podIsOddPage
+    ? '홀수 페이지 (1, 3, 5... — 우측면)'
+    : '짝수 페이지 (2, 4, 6... — 좌측면)';
+
+  // 페이지 번호 표시 위치도 미러 (짝수면 외측=왼쪽으로)
+  const pageNumEl = card.querySelector('.pod-page-num');
+  if (pageNumEl) {
+    pageNumEl.style.left  = podIsOddPage ? '50%' : 'auto';
+    pageNumEl.style.right = podIsOddPage ? 'auto' : '50%';
+    pageNumEl.style.transform = 'translateX(-50%)';
   }
-  window.addEventListener('message', function(ev) {
-    if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
-    
-    var pageNum = parseInt(ev.data.page, 10);
-    var targetSpread = [];
-    if (pageNum === 1) {
-      targetSpread = [1];
-    } else if (pageNum % 2 === 0) {
-      targetSpread = [pageNum, pageNum + 1];
-    } else {
-      targetSpread = [pageNum - 1, pageNum];
-    }
-    
-    // 1. 모든 페이지 숨기기
-    var allPages = document.querySelectorAll('.pagedjs_page');
-    allPages.forEach(function(p) { p.style.display = 'none'; p.style.position = ''; p.style.left = ''; p.style.right = ''; });
-    
-    // 2. 요청된 스프레드(양면) 보이기
-    targetSpread.forEach(function(num) {
-      var el = document.querySelector('.pagedjs_page[data-page-number="' + num + '"]');
-      if (el) {
-        el.style.display = 'block';
-        el.style.position = 'absolute';
-        el.style.top = '0';
-        if (num % 2 === 0) el.style.left = '0';
-        else el.style.right = '0';
-      }
-    });
-    window.scrollTo(0, 0); // 내부 스크롤 강제 초기화
-  });
-
-  window.podProgressTimer = setInterval(function() {
-    var count = document.querySelectorAll('.pagedjs_page').length;
-    if (count > 0) {
-      try { window.parent.postMessage({ type: 'pagedjs-progress', pageNum: count }, '*'); } catch(err) {}
-    }
-  }, 250);
-  try {
-    window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 호출 직전' }, '*');
-    PagedPolyfill.preview().then(function() {
-      window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 완료' }, '*');
-    }).catch(function(e) {
-      try { window.parent.postMessage({ type: 'pagedjs-error', error: 'preview catch: ' + e.message }, '*'); } catch(e2) {}
-    });
-  } catch (err) {
-    try { window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*'); } catch(e2) {}
-  }
-}
-runPaged();
-<\/script>`;
-
-  let html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-<style>
-${mainStyles}
-</style>
-<style>
-  html, body { background: transparent !important; height: auto !important; overflow: visible !important; margin: 0; padding: 0; }
-  @page front-matter { @bottom-center { content: none; } }
-  .bg-colored { page: front-matter; }
-  @page {
-    size: ${pubSet.paperSize || 'A5'};
-    margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm;
-    @bottom-center { content: counter(page); font-size: 9pt; font-family: 'KoPub Batang', 'Noto Serif KR', serif; }
-  }
-  @page:left { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.inner||25}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.outer||18}mm; }
-  @page:right { margin: ${pubSet.margins?.top||20}mm ${pubSet.margins?.outer||18}mm ${pubSet.margins?.bottom||20}mm ${pubSet.margins?.inner||25}mm; }
-  @page:first { @bottom-center { content: none; } }
-  @page cover { margin: 0; @bottom-center { content: none; } }
-  body {
-    font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    font-size: ${pubSet.fontSize||10}pt;
-    line-height: ${pubSet.lineHeight||1.75};
-    color: #111; background: transparent !important; text-align: justify; word-break: keep-all;
-  }
-  .ql-align-center { text-align: center !important; }
-  .ql-align-right { text-align: right !important; }
-  .ql-align-justify { text-align: justify !important; }
-  .cover-page { page: cover; break-after: right; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; background-color: ${p.coverColor || '#2c2c2c'}; color: #fff; }
-  .title-page { break-before: right; break-after: page; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; }
-  .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
-  .toc-page { break-before: right; break-after: page; padding-top: 40px; }
-  .toc-page h2 { font-size: 16pt; font-weight: 700; margin-bottom: 40px; text-align: center; }
-  .toc-list { list-style: none; padding: 0; margin: 0 20px; overflow-x: hidden; }
-  .toc-list li { margin-bottom: 12px; font-size: 10pt; display: flex; align-items: baseline; }
-  .toc-list li .toc-title { flex: 0 0 auto; }
-  .toc-list li .toc-page-ref { color: inherit; text-decoration: none; flex: 0 0 auto; }
-  .toc-list li .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #999; margin: 0 8px; position: relative; top: -4px; }
-  .toc-list li .toc-page-ref::after { content: target-counter(attr(href), page); }
-  .chapter { break-before: page; margin-top: 40px; }
-  .chapter.matter-page { break-before: right; }
-  .chapter-title { font-size: 14pt; font-weight: 700; margin-bottom: 30px; text-align: center; }
-  .chapter-content span { background-color: transparent !important; }
-  .chapter-content p { text-indent: 10pt !important; margin: 0 !important; word-break: keep-all; }
-  .chapter-content h1, .chapter-content h3 { margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
-  .chapter-content h2 { margin-top: 1.5em !important; margin-bottom: 2.75em !important; line-height: 1.4; }
-  .chapter-content .ql-size-huge, .chapter-content .ql-size-large { display: block; margin-top: 1.5em !important; margin-bottom: 1em !important; line-height: 1.4; }
-  .chapter-content p.pdf-group-isolated, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-isolated, .chapter-content .pdf-group-last { margin-bottom: 24px !important; border-bottom-left-radius: 6px !important; border-bottom-right-radius: 6px !important; padding-bottom: 14px !important; }
-  .chapter-content p.n-msg.pdf-group-isolated, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-isolated, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-isolated, .chapter-content p.n-noti.pdf-group-last { margin-bottom: 12px !important; padding-bottom: 10px !important; border-radius: 18px 18px 18px 2px !important; }
-  .chapter-content p.pdf-group-first, .chapter-content p.pdf-group-middle, .chapter-content .pdf-group-first, .chapter-content .pdf-group-middle { margin-bottom: 0 !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; padding-bottom: 4px !important; }
-  .chapter-content p.n-msg.pdf-group-first, .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-first, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-noti.pdf-group-first, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-email.pdf-group-first, .chapter-content p.n-email.pdf-group-middle { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; padding-bottom: 10px !important; }
-  .chapter-content p.pdf-group-middle, .chapter-content p.pdf-group-last, .chapter-content .pdf-group-middle, .chapter-content .pdf-group-last { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; padding-top: 4px !important; }
-  .chapter-content p.n-msg.pdf-group-middle, .chapter-content p.n-msg.pdf-group-last, .chapter-content p.n-msg-y.pdf-group-middle, .chapter-content p.n-msg-y.pdf-group-last, .chapter-content p.n-noti.pdf-group-middle, .chapter-content p.n-noti.pdf-group-last, .chapter-content p.n-email.pdf-group-middle, .chapter-content p.n-email.pdf-group-last { border-top-left-radius: 6px !important; padding-top: 10px !important; }
-  .chapter-content p.n-email-body.pdf-group-middle, .chapter-content p.n-email-body.pdf-group-last, .chapter-content p.n-doc.pdf-group-middle, .chapter-content p.n-doc.pdf-group-last { padding-left: 38px !important; }
-  html, body { height: auto !important; overflow: visible !important; }
-  .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
-</style>
-</head>
-<body>
-`;
-
-  html += generatePODBodyContent(p, pubSet, loadedEps);
-
-  html += srcdocScripts;
-  html += `</body></html>`;
-
-  iframe.removeAttribute('srcdoc');
-  setTimeout(() => { iframe.srcdoc = html; }, 10);
-}
-
-
-// ── pagedjs-rendered 메시지 수신 → 트리 업데이트 ──────────────────
-window.addEventListener('message', (e) => {
-  if (!e.data) return;
-  
-  if (e.data.type === 'pagedjs-progress') {
-    const st = $('#podLiveRenderStatus');
-    if (st && st.textContent.includes('진행 중')) {
-      st.textContent = `조판 렌더링 진행 중... (${e.data.pageNum}쪽 계산 완료)`;
-    }
-    const treeSt = $('#podTreeProgress');
-    if (treeSt) {
-      treeSt.textContent = `${e.data.pageNum}쪽 계산 완료...`;
-    }
-    return;
-  }
-  
-  if (e.data.type === 'pagedjs-rendered') {
-    const total = e.data.totalPages || 0;
-    podLastRenderedTotalPages = total;
-    window.podPageMap = e.data.pageMap || []; // ★ pageMap 저장
-    
-    // ★ 렌더링 완료 후 iframe 너비를 양면(스프레드) 크기로 확장
-    const iframe = document.getElementById('podLiveIframe');
-    if (iframe) {
-      const pubSet = getPublishSettings(currentProject());
-      const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      iframe.style.width = (paper.w * 2) + 'mm';
-      
-      const canvasW = $('#podPreviewInner').clientWidth || window.innerWidth;
-      const canvasH = $('#podPreviewInner').clientHeight || window.innerHeight;
-      const spreadW_px = (paper.w * 2) * (96 / 25.4);
-      const paperH_px = paper.h * (96 / 25.4);
-      const newScale = Math.max(0.2, Math.min(1, (canvasW - 40) / spreadW_px, (canvasH - 40) / paperH_px));
-      iframe.style.transform = `scale(${newScale})`;
-    }
-
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 완료 ✓ 총 ${total}쪽`;
-    
-    // 책등 두께 계산 업데이트
-    updateSpineThickness(total);
-    
-    // ★ 조건 없이 항상 트리 footer를 업데이트
-    const totalLabel = document.getElementById('podTreeTotalLabel');
-    if (totalLabel) totalLabel.innerHTML = `내지 총합: ${total}쪽`;
-    
-    // 트리 탭이 열려 있으면 전체 트리 재렌더링
-    const treePane = document.getElementById('podPane-tree');
-    const isTreeVisible = treePane && (treePane.classList.contains('active') || getComputedStyle(treePane).display !== 'none');
-    if (isTreeVisible) {
-      renderPodPageTree();
-    }
-  } else if (e.data.type === 'pagedjs-error') {
-    const st = $('#podLiveRenderStatus');
-    if(st) st.textContent = `렌더링 에러: ${e.data.error}`;
-  }
-});
-
-function updateSpineThickness(totalPages) {
-  const paperType = $('#podPaperType')?.value || 'standard';
-  // 종이 종류별 1장(2쪽)당 두께 대략 추정 (단위: mm)
-  // 미색 모조 80g: 약 0.1mm, 100g: 약 0.12mm 등
-  const mmPerPage = (paperType === 'premium') ? 0.06 : 0.05; 
-  const spineMm = Math.max(1, Math.round(totalPages * mmPerPage * 10) / 10);
-  
-  // 설정 패널 및 썸네일에 노출
-  const label = $('#podSpineThicknessLabel');
-  if(label) label.textContent = `예상 책등 두께: 약 ${spineMm}mm`;
-  
-  // 기타 탭의 계산기 UI에도 노출
-  const estPages = $('#podEstPages');
-  const estSpine = $('#podEstSpine');
-  if(estPages) estPages.textContent = totalPages;
-  if(estSpine) estSpine.textContent = spineMm;
 }
 
 // ── 표지 미리보기 업데이트 ────────────────────────────────────
@@ -2216,7 +1950,7 @@ async function podUpdateCoverPreview() {
         { id: 'copyright', name: '판권지', active: true },
         { id: 'toc', name: '목차', active: true }
       ],
-      author: window.fmBlocks?.find(x => x.type === 'copyright')?.content?.author || set.frontMatter?.author || ''
+      author: $('#podAuthor').value || set.frontMatter?.author || ''
     }
   };
 
@@ -2295,14 +2029,7 @@ function podSaveSettings() {
   } catch(e) { console.warn('pubset save failed', e); }
 
   touchProject(); queueSaveFS();
-  
-  const saveBtn = $('#podSaveSettingsBtn');
-  if (saveBtn) {
-    const orig = saveBtn.innerHTML;
-    saveBtn.innerHTML = '✔ 저장되었습니다';
-    setTimeout(() => { saveBtn.innerHTML = orig; }, 1500);
-  }
-  showToast('✅ 설정이 저장되었습니다.');
+  showToast('✅ 출판 설정이 저장되었습니다.');
 }
 
 // 구형 modal 입력에 값 동기화 (exportPODPdf가 pubPaperSize 등을 읽기 때문)
@@ -2328,8 +2055,7 @@ $('#openPublishSettingsBtn').onclick = showPodStudio;
 $('#backFromPodStudio').onclick = hidePodStudio;
 
 // 스튜디오 내 내보내기 버튼
-// 내지 전용 PDF: 2번째 인자 true → 표지 배제
-$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(false, true); };
+$('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(); };
 $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
 
 // 저장 버튼
@@ -2350,180 +2076,49 @@ $$('.pod-settings-tab').forEach(btn => {
   });
 });
 
-// ── 페이지 트리 렌더링 ────────────────────────────────────────
 function renderPodPageTree() {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
   const treeEl = $('#podPageTree');
   if(!treeEl) return;
-
-  treeEl.innerHTML = '';
-  treeEl.style.cssText = 'display:block; padding:0; margin:0;';
-
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  const activeFm = (window.fmBlocks || set.fmBlocks || []).filter(b => b.active);
-
-  // ── [1] 표지 섹션 ──
-  const mkSectionHead = (txt) => {
-    const el = document.createElement('div');
-    el.style.cssText = 'font-size:10px; font-weight:700; color:var(--c-sub); text-align:center; padding:6px 0 4px; border-bottom:1px dashed var(--border-color); margin-bottom:12px;';
-    el.textContent = txt;
-    return el;
-  };
-
-  const mkThumb = (pageNum, label, sublabel, accentColor, clickFn) => {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;';
-
-    const thumb = document.createElement('div');
-    thumb.style.cssText = `
-      width:56px; height:78px;
-      background:#fff; border:1.5px solid var(--border-color);
-      border-radius:2px; box-shadow:1px 2px 5px rgba(0,0,0,.1);
-      position:relative; overflow:hidden;
-      transition:border-color .15s, box-shadow .15s;
-      flex-shrink:0;
-    `;
-    // 스켈레톤 라인
-    const skLines = accentColor
-      ? `<div style="width:70%;height:5px;background:${accentColor};opacity:.6;border-radius:2px;margin:14px auto 8px;"></div>`
-        + `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:0 auto 4px;"></div>`.repeat(5)
-      : `<div style="width:90%;height:3px;background:#eee;border-radius:1px;margin:8px auto 4px;"></div>`.repeat(7);
-    thumb.innerHTML = `<div style="padding:4px 3px;">${skLines}</div>`;
-    if (pageNum) {
-      const badge = document.createElement('div');
-      badge.style.cssText = 'position:absolute;bottom:2px;right:3px;font-size:8px;color:#aaa;font-weight:600;';
-      badge.textContent = pageNum;
-      thumb.appendChild(badge);
-    }
-    thumb.onmouseenter = () => { thumb.style.borderColor = 'var(--primary)'; thumb.style.boxShadow = '1px 3px 8px rgba(0,0,0,.18)'; };
-    thumb.onmouseleave = () => { thumb.style.borderColor = 'var(--border-color)'; thumb.style.boxShadow = '1px 2px 5px rgba(0,0,0,.1)'; };
-    thumb.onclick = clickFn;
-
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'font-size:9px; color:var(--c-ink); font-weight:600; text-align:center; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.3;';
-    lbl.textContent = label;
-    if (sublabel) {
-      const sub = document.createElement('div');
-      sub.style.cssText = 'font-size:8px; color:var(--c-muted); text-align:center; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
-      sub.textContent = sublabel;
-      wrap.appendChild(thumb); wrap.appendChild(lbl); wrap.appendChild(sub);
-    } else {
-      wrap.appendChild(thumb); wrap.appendChild(lbl);
-    }
-    return wrap;
-  };
-
-  // ── [2] 표지 놀레 ──
-  const coverSec = document.createElement('div');
-  coverSec.style.cssText = 'padding:0 8px 16px; display:flex; flex-direction:column; align-items:center;';
-  coverSec.appendChild(mkSectionHead('─ 표지 (별도 판형) ─'));
-  const coverThumb = mkThumb('', '표지', '앞/뒤', '#555', () => {
-    // 표지 프리뷰 탭으로
-    $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-    const pb = document.querySelector('.pod-preview-tab[data-preview="cover"]');
-    if(pb) pb.classList.add('active');
-    $('#podPreviewInner').style.display = 'none';
-    $('#podPreviewFm').style.display = 'none';
-    $('#podPreviewCover').classList.add('active');
-    $('#podPageToggleWrap').style.display = 'none';
-    podUpdateCoverPreview();
+  
+  let html = `<div style="font-weight:700; font-size:14px; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">📚 ${escapeHtml(p.title)}</div>`;
+  
+  // 1. Cover
+  html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--c-bg); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='var(--c-bg)'" onmouseout="this.style.background='transparent'" onclick="$$('.pod-settings-tab')[3].click()">
+    <div><span style="display:inline-block; width:24px; text-align:center;">🖼</span> <span style="font-weight:600;">표지</span></div>
+    <div style="font-size:11px; color:var(--c-muted);">1장 (앞/뒤/책등)</div>
+  </div>`;
+  
+  // 2. Front matter
+  const fmBlocks = window.fmBlocks || set.fmBlocks || [];
+  fmBlocks.filter(b => b.active).forEach(b => {
+    const meta = FM_BLOCK_META[b.type] || {name: b.type, icon: '📄'};
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; padding-left:16px; border-bottom:1px solid var(--c-bg); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='var(--c-bg)'" onmouseout="this.style.background='transparent'" onclick="$$('.pod-settings-tab')[1].click()">
+      <div><span style="display:inline-block; width:24px; text-align:center;">${meta.icon}</span> ${meta.name}</div>
+      <div style="font-size:11px; color:var(--c-muted);">1쪽</div>
+    </div>`;
   });
-  coverSec.appendChild(coverThumb);
-  treeEl.appendChild(coverSec);
-
-  // ── [3] 내지 섭마노 ──
-  const innerSec = document.createElement('div');
-  innerSec.style.cssText = 'padding:0 8px;';
-  innerSec.appendChild(mkSectionHead('─ 내지 (속표지 ~ 본문) ─'));
-
-  // 페이지 데이터 구성 (에피소드 데이터 기반 — iframe DOM 쿼리 하지 않음)
-  const pagesData = [];
-  let pageNum = 1;
-
-  // Paged.js가 모든 페이지 정보를 주므로 여기서 전면부를 별도로 계산하지 않습니다.
-
-  // 본문 에피소드 (Paged.js 렌더링 완료 시에만 생성)
-  if (window.podPageMap && window.podPageMap.length > 0) {
-    // 렌더링 완료: postMessage로 받은 실제 페이지 맵 사용
-    window.podPageMap.forEach(pg => {
-      let isFm = false;
-      const FM_LABELS = ['속표지', '본표지', '판권지', '목차', '헌정', '제사', '여백'];
-      if (FM_LABELS.includes(pg.label)) isFm = true;
-      pagesData.push({ pageNum: pg.pageNum, label: pg.label, sublabel: pg.epTitle || '', type: isFm ? 'fm' : 'inner', accent: isFm ? '#7c6bf6' : null });
-    });
-  } else {
-    // 렌더링 전: 트리 목록 대신 안내 메시지 노출
-    const loadingDiv = document.createElement('div');
-    loadingDiv.style.cssText = 'padding:40px 20px; text-align:center; color:var(--c-muted); font-size:12px; line-height:1.6;';
-    loadingDiv.innerHTML = '<div style="margin-bottom:12px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg></div><style>@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }</style>조판 렌더링을 계산하고 있습니다.<br><span id="podTreeProgress">잠시만 기다려주세요...</span>';
-    innerSec.appendChild(loadingDiv);
-    treeEl.appendChild(innerSec);
-    return; // 그리드 렌더링 중단
-  }
-
-  // InDesign 스프레드 레이아웃: 2열 그리드 (좌=짝수, 우=홈수)
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:16px 8px; padding:0 4px 24px; position:relative;';
-
-  // 체등 중앙선
-  const spine = document.createElement('div');
-  spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;';
-  grid.appendChild(spine);
-
-  pagesData.forEach((data, i) => {
-    const isOdd = data.pageNum % 2 !== 0;
-    const cell = document.createElement('div');
-    cell.style.cssText = `display:flex; justify-content:${isOdd ? 'flex-start' : 'flex-end'}; align-items:flex-start;`;
-    if (i === 0 && isOdd) cell.style.gridColumn = '2'; // 1쪽은 우측 시작
-
-    const thumb = mkThumb(
-      data.pageNum,
-      data.label,
-      data.sublabel,
-      data.accent,
-      () => {
-        // 모든 트리 노드(전면부, 내지) 클릭 시 내지 프리뷰(Paged.js)로 전환 후 스크롤
-        $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-        const pb = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-        if(pb) pb.classList.add('active');
-        $('#podPreviewInner').style.display = 'flex';
-        $('#podPreviewFm').style.display = 'none';
-        $('#podPreviewCover').classList.remove('active');
-        $('#podPageToggleWrap').style.display = 'flex';
-        // postMessage로 iframe 내부에 스크롤 요청
-        const liveIframe = document.getElementById('podLiveIframe');
-        if (liveIframe?.contentWindow) {
-          liveIframe.contentWindow.postMessage({ type: 'pod-scroll-to-page', page: data.pageNum }, '*');
-        }
-        // 활성 표시
-        grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
-        cell.classList.add('tree-thumb-active');
-      }
-    );
-    cell.appendChild(thumb);
-    grid.appendChild(cell);
+  
+  // 3. Main body
+  html += `<div style="margin-top:16px; margin-bottom:4px; font-size:11px; font-weight:700; color:var(--c-sub); padding-left:4px;">─ 본 문 ─</div>`;
+  
+  const loadedEps = orderedEpisodes().filter(e => cleanText(e.body));
+  let totalBodyPages = 0;
+  
+  loadedEps.forEach(e => {
+    const len = e.body.replace(/<[^>]*>?/gm, '').length;
+    const pgs = Math.max(2, Math.ceil(len / 350));
+    totalBodyPages += pgs;
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--c-bg);">
+      <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%; padding-left:16px;"><span style="display:inline-block; width:20px; font-size:11px; color:var(--c-muted);">📄</span> ${escapeHtml(e.title)}</div>
+      <div style="font-size:11px; color:var(--c-muted); text-align:right;">예상 ${pgs}쪽 <br><span style="font-size:9px; opacity:0.6;">(${len.toLocaleString()}자)</span></div>
+    </div>`;
   });
-
-  innerSec.appendChild(grid);
-  treeEl.appendChild(innerSec);
-
-  // ── [4] 푸터 (쭔수/두글) ──
-  const footer = document.createElement('div');
-  footer.id = 'podTreeFooter';
-  footer.style.cssText = 'margin-top:8px; padding:10px 12px; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:700; color:var(--c-ink);';
-  const totalLabel = document.createElement('div');
-  totalLabel.id = 'podTreeTotalLabel';
-  totalLabel.textContent = podLastRenderedTotalPages > 0 ? `내지 쭜종: ${podLastRenderedTotalPages}쪽` : '렌더링 완료 대기 중...';
-  const spineLabel = document.createElement('div');
-  spineLabel.id = 'podSpineThicknessLabel';
-  spineLabel.style.color = 'var(--c-accent)';
-  spineLabel.textContent = '예상 책등 두께: 계산 중...';
-  footer.appendChild(totalLabel);
-  footer.appendChild(spineLabel);
-  treeEl.appendChild(footer);
-
-  if (podLastRenderedTotalPages > 0) updateSpineThickness(podLastRenderedTotalPages);
+  
+  html += `<div style="margin-top:12px; text-align:right; font-size:12px; font-weight:700; color:var(--c-ink);">본문 예상 총합: ${totalBodyPages}쪽</div>`;
+  
+  treeEl.innerHTML = html;
 }
 
 // 미리보기 탭 전환
@@ -2533,27 +2128,17 @@ $$('.pod-preview-tab').forEach(btn => {
     btn.classList.add('active');
     
     const view = btn.dataset.preview;
-    // 모든 패널 숨김 후 해당 패널만 표시
-    $('#podPreviewInner').style.display = 'none';
-    $('#podPreviewFm').style.display = 'none';
-    $('#podPreviewCover').classList.remove('active');
+    $('#podPreviewInner').style.display = view === 'inner' ? 'flex' : 'none';
+    $('#podPreviewFm').style.display = view === 'fm' ? 'flex' : 'none';
+    $('#podPreviewCover').classList.toggle('active', view === 'cover');
+    $('#podPageToggleWrap').style.display = view === 'inner' ? 'flex' : 'none';
     
-    if (view === 'inner') {
-      $('#podPreviewInner').style.display = 'flex';
-      $('#podPageToggleWrap').style.display = 'flex';
-    } else if (view === 'fm') {
-      $('#podPreviewFm').style.display = 'flex';
-      $('#podPageToggleWrap').style.display = 'none';
-      podUpdateFmPreview();
-    } else if (view === 'cover') {
-      $('#podPreviewCover').classList.add('active');
-      $('#podPageToggleWrap').style.display = 'none';
-      podUpdateCoverPreview();
-    }
+    if (view === 'cover') podUpdateCoverPreview();
+    if (view === 'fm') podUpdateFmPreview();
   });
 });
 
-// 설정 탭 전환 (display 직접 제어 — .click() 이벤트 버블링 제거)
+// 설정 탭 전환 시 미리보기 탭 동기화
 $$('.pod-settings-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     $$('.pod-settings-tab').forEach(b => b.classList.remove('active'));
@@ -2562,20 +2147,17 @@ $$('.pod-settings-tab').forEach(btn => {
     const paneId = btn.dataset.pane;
     const pane = $('#podPane-' + paneId);
     if (pane) pane.classList.add('active');
-
-    // 페이지 구조도 탭 전환 시 트리 렌더링
-    if (paneId === 'tree') {
-      renderPodPageTree();
-      // 페이지 구조도에서는 내지 프리뷰를 도시적으로 유지
-      $('#podPreviewInner').style.display = 'flex';
-      $('#podPreviewFm').style.display = 'none';
-      $('#podPreviewCover').classList.remove('active');
-      $$('.pod-preview-tab').forEach(b => b.classList.remove('active'));
-      const innerTab = document.querySelector('.pod-preview-tab[data-preview="inner"]');
-      if(innerTab) innerTab.classList.add('active');
-      $('#podPageToggleWrap').style.display = 'flex';
+    
+    if (paneId === 'tree') renderPodPageTree();
+    
+    // 미리보기 패널 교체 연동
+    if (paneId === 'inner' || paneId === 'tree') {
+      $$('.pod-preview-tab[data-preview="inner"]')[0].click();
+    } else if (paneId === 'fm') {
+      $$('.pod-preview-tab[data-preview="fm"]')[0].click();
+    } else if (paneId === 'cover' || paneId === 'extra') {
+      $$('.pod-preview-tab[data-preview="cover"]')[0].click();
     }
-    // 다른 탭은 프리뷰를 강제로 바꾼 필요 없음 — 현재 프리뷰 상태 유지
   });
 });
 
@@ -2593,7 +2175,7 @@ function podUpdateFmPreview() {
   
   // 현재 에디팅 중인 블록 찾기 (또는 활성화된 첫 블록)
   const fmBlocks = window.fmBlocks || [];
-  let block = fmBlocks[fmActiveBlockIdx];
+  let block = fmBlocks[window.fmActiveBlockIdx];
   if (!block) block = fmBlocks.find(b => b.active);
   if (!block) {
     iframe.srcdoc = `<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;color:#999;">활성화된 전면부 페이지가 없습니다.</body></html>`;
@@ -2630,23 +2212,19 @@ function podUpdateFmPreview() {
   const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
   const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
-  const hideTxt = s.hideText ? 'display:none !important;' : '';
   const pageBase = `display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;background-color:${bgColor};${rel}`;
-
-  const podLogo = $('#podPublisherLogo')?.value || set.coverOptions?.logo || '';
-  const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
 
   let htmlFm = '';
   if (type === 'half_title') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
   } else if (type === 'title_page') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPub?`<div style="font-size:12pt;font-weight:700;">${pPub}</div>`:''}</div></div>`;
   } else if (type === 'dedication') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
   } else if (type === 'epigraph') {
-    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    htmlFm = `<div style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
   } else if (type === 'copyright') {
-    htmlFm = `<div style="position:relative;height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt;font-family:'KoPub Batang',serif;line-height:1.6;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    htmlFm = `<div style="position:relative;height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt;font-family:'KoPub Batang',serif;line-height:1.6;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPub?`<div style="opacity:0.6;">발행처</div><div>${pPub}</div>`:''}</div><div style="font-size:7.5pt;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
   } else if (type === 'toc') {
     htmlFm = `<div style="height:100vh;background-color:${bgColor};${rel}">${bgImgHtml}<div style="${zi}padding:40px 20px;"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;${fontCss}">목차</h2><div style="text-align:center;font-size:10pt;color:#888;">(목차는 본문 렌더링 시 자동으로 생성됩니다)</div></div></div>`;
   } else if (type === 'blank') {
@@ -2654,10 +2232,11 @@ function podUpdateFmPreview() {
   }
 
   // scale calculation to fit iframe in preview canvas
-  const canvasH = $('#podPreviewFm').clientHeight || window.innerHeight;
+  const canvasH = $('#podPreviewFm').clientHeight - 40;
   const paperH_px = paper.h * (96 / 25.4); // approx px
-  const scale = Math.max(0.2, Math.min(1, (canvasH - 40) / paperH_px));
+  const scale = Math.min(1, canvasH / paperH_px);
   iframe.style.transform = `scale(${scale})`;
+  
   const iframeHtml = `
 <!DOCTYPE html>
 <html>
@@ -2679,19 +2258,19 @@ $('#podToggleOdd').addEventListener('click', () => {
   podIsOddPage = true;
   $('#podToggleOdd').classList.add('active');
   $('#podToggleEven').classList.remove('active');
-  podScheduleLiveRender();
+  podUpdatePreview();
 });
 $('#podToggleEven').addEventListener('click', () => {
   podIsOddPage = false;
   $('#podToggleEven').classList.add('active');
   $('#podToggleOdd').classList.remove('active');
-  podScheduleLiveRender();
+  podUpdatePreview();
 });
 
 // 여백 등 입력 실시간 반영
 ['podPreviewMode','podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
   const el = $('#' + id);
-  if(el) el.addEventListener('input', () => { podScheduleLiveRender(); });
+  if(el) el.addEventListener('input', () => { podUpdatePreview(); });
 });
 
 // 출판사 로고 선택 시 옵션 패널 보이기/숨기기
@@ -2921,15 +2500,6 @@ function openFmBlockEditor(index) {
   // 9-Grid
   renderAlignGrid(s.alignX || 'center', s.alignY || 'center');
 
-  // 여백 (Padding)
-  $('#fmPaddingTop').value    = s.paddingTop ?? 20;
-  $('#fmPaddingBottom').value = s.paddingBottom ?? 20;
-  $('#fmPaddingLeft').value   = s.paddingLeft ?? 20;
-  $('#fmPaddingRight').value  = s.paddingRight ?? 20;
-
-  // 글자 숨기기
-  if($('#fmHideText')) $('#fmHideText').checked = s.hideText || false;
-
   // 폰트
   $('#fmFontFamily').value     = s.fontFamily || "'KoPub Batang', serif";
   $('#fmFontSize').value       = s.fontSize   || 20;
@@ -2965,66 +2535,17 @@ function openFmBlockEditor(index) {
   ed.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
-function applyFmTheme(theme) {
-  if (!window.fmBlocks || window.fmBlocks.length === 0) {
-    showToast('전면부 블록이 없습니다. 블록을 먼저 추가해주세요.');
-    return;
-  }
-  
-  let font, align, pt, pb, bg, color;
-  
-  if (theme === 'essay') {
-    font = "'Noto Serif KR', serif";
-    align = 'center';
-    pt = 40; pb = 40;
-    bg = '#FAFAFA';
-    color = '#4A4A4A';
-  } else if (theme === 'novel') {
-    font = "'KoPub Batang', serif";
-    align = 'center';
-    pt = 30; pb = 30;
-    bg = '#FFFFFF';
-    color = '#1C1813';
-  } else if (theme === 'classic') {
-    font = "'KoPub Batang', serif";
-    align = 'flex-start';
-    pt = 20; pb = 20;
-    bg = '#F4F1EA';
-    color = '#2C2825';
-  }
-  
-  window.fmBlocks.forEach(b => {
-    b.style.fontFamily = font;
-    b.style.alignY = align;
-    b.style.paddingTop = pt;
-    b.style.paddingBottom = pb;
-    b.style.bgColor = bg;
-    b.style.fontColor = color;
-  });
-  
-  saveFmBlocks();
-  renderFmBlockList();
-  if (fmActiveBlockIdx !== null) openFmBlockEditor(fmActiveBlockIdx);
-  podUpdateFmPreview();
-  showToast('디자인 테마가 적용되었습니다.');
-}
-
 // ── 실시간 미리보기 동기화 ────────────────────────────────────
 function syncFmBlockLive() {
   if (fmActiveBlockIdx === null) return;
   const block = window.fmBlocks[fmActiveBlockIdx];
 
-  block.style.hideText       = $('#fmHideText')?.checked || false;
   block.style.bgColor        = $('#fmBgColorHex').value || '#ffffff';
   block.style.fontFamily     = $('#fmFontFamily').value;
   block.style.fontSize       = parseFloat($('#fmFontSize').value) || 20;
   block.style.fontColor      = $('#fmFontColorHex').value || '#1C1813';
   block.style.letterSpacing  = $('#fmLetterSpacing').value;
   block.style.bgImageOpacity = parseFloat($('#fmBgOpacity').value) || 0.8;
-  block.style.paddingTop     = parseFloat($('#fmPaddingTop').value) || 0;
-  block.style.paddingBottom  = parseFloat($('#fmPaddingBottom').value) || 0;
-  block.style.paddingLeft    = parseFloat($('#fmPaddingLeft').value) || 0;
-  block.style.paddingRight   = parseFloat($('#fmPaddingRight').value) || 0;
 
   block.content.title       = $('#fmContentTitle').value;
   block.content.subtitle    = $('#fmContentSubtitle').value;
@@ -3038,7 +2559,7 @@ function syncFmBlockLive() {
 }
 
 [
-  '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity', '#fmHideText',
+  '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity',
   '#fmContentTitle', '#fmContentSubtitle', '#fmContentPublisher', '#fmContentAuthor', '#fmContentDate', '#fmContentCustom', '#fmContentQuoteAuthor'
 ].forEach(sel => {
   const el = $(sel);
@@ -3161,34 +2682,16 @@ function renderFmList() { renderFmBlockList(); }
 // 창 크기 변경 시 미리보기 크기 업데이트
 window.addEventListener('resize', () => {
   if ($('#podStudioView') && $('#podStudioView').classList.contains('active')) {
-    podScheduleLiveRender();
+    podUpdatePreview();
   }
 });
 
 window.addEventListener('message', e => {
   if (e.data?.type === 'PAGES_READY') {
     const count = e.data.count;
-    const isSilent = e.data.isSilent;
-    
-    const p = currentProject();
-    if (p) {
-      p.podExactPages = count;
-    }
-    
-    $('#podEstPages').innerHTML = `${count} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
-    $('#podEstSpine').textContent = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10).toFixed(1);
-    
-    if (isSilent) {
-      const btn = $('#podCalcExactBtn');
-      if (btn) {
-        btn.textContent = '✨ Paged.js 기반 실제 쪽수 정밀 계산';
-        btn.disabled = false;
-      }
-      const iframe = document.getElementById('pod-calc-iframe');
-      if (iframe) iframe.remove();
-    } else {
-      showToast(`📄 조판 완료: 총 ${count}페이지 생성됨`);
-    }
+    $('#podEstPages').textContent = count;
+    $('#podEstSpine').textContent = Math.max(1, Math.round(count * 0.05 * 10) / 10).toFixed(1);
+    showToast(`📄 조판 완료: 총 ${count}페이지 생성됨`);
   }
 });
 
@@ -3205,7 +2708,7 @@ $$('.pod-preset-btn').forEach(btn => {
     $('#podMarginInner').value  = preset.margins.inner;
     $('#podMarginOuter').value  = preset.margins.outer;
     $('#podBleed').value        = preset.margins.bleed;
-    podScheduleLiveRender();
+    podUpdatePreview();
     showToast(`${preset.name} 여백 프리셋이 적용되었습니다.`);
   });
 });
@@ -3502,13 +3005,6 @@ async function generatePODCoverCanvas(p, set, opts) {
   return canvas;
 }
 
-async function generateCoverPreview(p, set) {
-  const opts = set.coverOptions || {};
-  const canvas = await generatePODCoverCanvas(p, set, opts);
-  if (!canvas) return null;
-  return canvas.toDataURL('image/jpeg', 0.8);
-}
-
 async function exportPODCover() {
   const p = currentProject(); if(!p) return;
   const set = getPublishSettings(p);
@@ -3524,148 +3020,23 @@ async function exportPODCover() {
   link.click();
 }
 
-
-function generatePODBodyContent(p, pubSet, loadedEps) {
-  const FM_LABELS = { half_title:'속표지', title_page:'본표지', copyright:'판권지', toc:'목차', dedication:'헌정', epigraph:'제사', blank:'여백' };
-let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
-
-  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
-  
-  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
-  const afterTocEps = loadedEps.slice(firstMainIdx);
-
-  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
-  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
-    ? pubSet.fmBlocks : (window.fmBlocks || []);
-
-  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
-  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
-  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
-  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
-
-  let htmlFm = '';
-  fmBlocksForRender.filter(b => b.active).forEach(block => {
-    const s = block.style || {};
-    const c = block.content || {};
-    const type = block.type;
-
-    const pTitle  = escapeHtml(c.title || p.title || '');
-    const pSub    = escapeHtml(c.subtitle || '');
-    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
-    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
-    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
-    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
-    const pQuote  = escapeHtml(c.quoteAuthor || '');
-
-    const bgColor = s.bgColor || '#ffffff';
-    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
-    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
-
-    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
-    const titleSz = `font-size:${s.fontSize||20}pt;`;
-    const jc = s.alignY || 'center';
-    const ai = s.alignX || 'center';
-    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
-
-    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
-    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
-    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
-
-    const hideTxt = s.hideText ? 'display:none !important;' : '';
-    const podLogo = pubSet.coverOptions?.logo || '';
-    const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
-
-    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100%;${bgPrintCss}${rel}`;
-
-    if (type === 'half_title') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
-    } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPubHtml?`<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>`:''}</div></div>`;
-    } else if (type === 'dedication') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
-    } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
-    } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:90%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPubHtml?`<div style="opacity:0.6;">발행처</div><div>${pPubHtml}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
-    } else if (type === 'toc') {
-      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
-      if (pubSet.autoTOC !== false && tocEps.length > 0) {
-        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
-        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
-        tocHtml += `</ul></div></div>`;
-        htmlFm += tocHtml;
-      }
-    } else if (type === 'blank') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:right;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
-    }
-  });
-
-  let bodyHtml = htmlFm;
-
-
-  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
-  beforeTocEps.forEach(ep => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    bodyHtml += `
-  <div class="chapter matter-page" style="break-before: right;">
-    <div class="chapter-content ql-editor" id="ep-${ep.id}">${processed.body}</div>
-  </div>`;
-  });
-
-  // 5. 본문 (목차 이후의 회차 및 뒷부속)
-  afterTocEps.forEach((ep, i) => {
-    const processed = processEpisodeBody(ep.body, ep.title, true);
-    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
-    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
-    const displayTitle = getEpisodeDisplayTitle(ep, p);
-    
-    bodyHtml += `
-  <div class="chapter ${isMatter ? 'matter-page' : ''}">
-    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
-    <div class="chapter-content ql-editor">${processed.body}</div>
-  </div>`;
-  });
-
-
-  return bodyHtml;
-}
-
-async function exportPODPdf(isSilent = false) {
+async function exportPODPdf() {
   const p = currentProject();
   if(!p) return;
   
   const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  if (eps.length === 0) {
-    if (!isSilent) showToast('출판할 본문이 없습니다.');
+  if (eps.length === 0) return showToast('출판할 본문이 없습니다.');
+  
+  // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('팝업 차단을 해제하고 다시 시도해주세요.');
     return;
   }
-  
-  let win;
-  if (isSilent) {
-    let iframe = document.getElementById('pod-calc-iframe');
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.id = 'pod-calc-iframe';
-      iframe.style.position = 'absolute';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = 'none';
-      iframe.style.visibility = 'hidden';
-      document.body.appendChild(iframe);
-    }
-    win = iframe.contentWindow;
-  } else {
-    // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
-    win = window.open('', '_blank');
-    if (!win) {
-      showToast('팝업 차단을 해제하고 다시 시도해주세요.');
-      return;
-    }
-    win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
-  }
+  win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
 
   if (p.episodes.some(e => e.body === undefined)) {
-    if (!isSilent) showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
+    showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
     await ensureProjectBodiesLoaded(p);
   }
   
@@ -3673,7 +3044,7 @@ async function exportPODPdf(isSilent = false) {
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const pubSet = getPublishSettings(p);
   
-  if (!isSilent) showToast('PDF 변환을 준비 중입니다...');
+  showToast('PDF 변환을 준비 중입니다... 새 창을 허용해주세요.');
   
   let html = `<!DOCTYPE html>
 <html lang="ko">
@@ -3738,7 +3109,7 @@ ${mainStyles}
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100%;
+    height: 100vh;
     width: 100%;
     background-color: ${p.coverColor || '#2c2c2c'};
     color: #fff;
@@ -3750,7 +3121,7 @@ ${mainStyles}
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100%;
+    height: 100vh;
     text-align: center;
   }
   .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
@@ -3901,29 +3272,106 @@ ${mainStyles}
 <body>
 `;
 
-  // ⚠️ 핵심 수정: isSilent(정밀계산용) 또는 coverExcluded(내지 전용 내보내기) 시 표지 완전 배제
-  //    내지 PDF 내보내기 버튼은 exportPODPdf(false, true)로 호출 → 표지 없이 내지만 출력
-  const coverExcluded = arguments[1] === true; // 2번째 인자가 true이면 내지 전용
-  if (!isSilent && !coverExcluded && pubSet.includeCover !== false) {
-    try {
-      const coverB64 = await generateCoverPreview(p, pubSet);
-      if (coverB64) {
-        html += `<div class="cover-page" style="page: cover; break-after: right; margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #2c2c2c;"><img src="${coverB64}" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
-      }
-    } catch (err) { console.warn('Cover rendering skipped:', err); }
-  }
+  let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+  if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
+  
+  const beforeTocEps = loadedEps.slice(0, firstMainIdx);
+  const afterTocEps = loadedEps.slice(firstMainIdx);
 
-    html += generatePODBodyContent(p, pubSet, loadedEps);
+  // ── 책머리(Front Matter) 렌더링 — fmBlocks 기반 ──────────────
+  const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
+    ? pubSet.fmBlocks : (window.fmBlocks || []);
+
+  // 마진 오프셋 (내측 여백과 외측 여백 차이로 인한 시각적 보정)
+  const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
+  const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
+  const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
+
+  let htmlFm = '';
+  fmBlocksForRender.filter(b => b.active).forEach(block => {
+    const s = block.style || {};
+    const c = block.content || {};
+    const type = block.type;
+
+    const pTitle  = escapeHtml(c.title || p.title || '');
+    const pSub    = escapeHtml(c.subtitle || '');
+    const pAuth   = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
+    const pDate   = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
+    const pPub    = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || '');
+    const pCustom = escapeHtml(c.customText || '').replace(/\n/g, '<br>');
+    const pQuote  = escapeHtml(c.quoteAuthor || '');
+
+    const bgColor = s.bgColor || '#ffffff';
+    const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
+    const bgPrintCss  = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
+
+    const fontCss = `font-family:${s.fontFamily||"'KoPub Batang',serif"};color:${s.fontColor||'#1C1813'};letter-spacing:${s.letterSpacing||'0em'};`;
+    const titleSz = `font-size:${s.fontSize||20}pt;`;
+    const jc = s.alignY || 'center';
+    const ai = s.alignX || 'center';
+    const offsetStyle = centerOffsetFm ? `transform:translateX(-${centerOffsetFm}mm);` : '';
+
+    const bgImgHtml = s.bgImage ? `<div style="position:absolute;inset:0;background:url('${s.bgImage}') center/cover no-repeat;opacity:${s.bgImageOpacity??0.8};z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>` : '';
+    const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
+    const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
+
+    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100vh;${bgPrintCss}${rel}`;
+
+    if (type === 'half_title') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+    } else if (type === 'title_page') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;padding:20mm;${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub?`<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>`:''} ${pPub?`<div style="font-size:12pt;font-weight:700;">${pPub}</div>`:''}</div></div>`;
+    } else if (type === 'dedication') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+    } else if (type === 'epigraph') {
+      htmlFm += `<div class="chapter matter-page" style="${pageBase}">${bgImgHtml}<div style="${zi}${offsetStyle}padding:20mm;max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote?`<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>`:''}</blockquote></div></div>`;
+    } else if (type === 'copyright') {
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;position:relative;height:90vh;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}position:absolute;bottom:0;left:0;right:0;padding:10mm;font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor||'#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div>${pPub?`<div style="opacity:0.6;">발행처</div><div>${pPub}</div>`:''}</div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+    } else if (type === 'toc') {
+      const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
+      if (pubSet.autoTOC !== false && tocEps.length > 0) {
+        let tocHtml = `<div class="chapter matter-page toc-page" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;">목차</h2><ul class="toc-list">`;
+        tocEps.forEach(ep => { tocHtml += `<li><span class="toc-title">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots"></span><a href="#ep-${ep.id}" class="toc-page-ref"></a></li>`; });
+        tocHtml += `</ul></div></div>`;
+        htmlFm += tocHtml;
+      }
+    } else if (type === 'blank') {
+      htmlFm += `<div class="chapter matter-page" style="break-before:right;height:100vh;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
+    }
+  });
+
+  html += htmlFm;
+
+
+  // 3. 목차 전 부속 (사용자가 추가한 앞부속)
+  beforeTocEps.forEach(ep => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    html += `
+  <div class="chapter matter-page" id="ep-${ep.id}" style="break-before: right;">
+    <div class="chapter-content ql-editor">${processed.body}</div>
+  </div>`;
+  });
+
+  // 5. 본문 (목차 이후의 회차 및 뒷부속)
+  afterTocEps.forEach((ep, i) => {
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+    const renderTitle = !isMatter && pubSet.showTitle && !processed.hasTitle;
+    const displayTitle = getEpisodeDisplayTitle(ep, p);
+    
+    html += `
+  <div class="chapter ${isMatter ? 'matter-page' : ''}" id="ep-${ep.id}">
+    ${renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : ''}
+    <div class="chapter-content ql-editor">${processed.body}</div>
+  </div>`;
+  });
+
   html += `
   <script>
     class PrintHandler extends window.Paged.Handler {
       afterRendered(pages) {
-        if (window.parent && window.parent !== window) {
-           window.parent.postMessage({ type: 'PAGES_READY', count: pages.length, isSilent: ${isSilent} }, '*');
-        } else {
-           window.opener?.postMessage({ type: 'PAGES_READY', count: pages.length, isSilent: false }, '*');
-        }
-        ${isSilent ? '' : 'setTimeout(() => window.print(), 500);'}
+        window.opener?.postMessage({ type: 'PAGES_READY', count: pages.length }, '*');
+        setTimeout(() => window.print(), 500);
       }
     }
     window.Paged.registerHandlers(PrintHandler);
@@ -3936,13 +3384,6 @@ ${mainStyles}
   win.document.write(html);
   win.document.close();
 }
-
-$('#podCalcExactBtn').onclick = () => {
-  const btn = $('#podCalcExactBtn');
-  btn.textContent = '계산 중... (잠시만 기다려주세요)';
-  btn.disabled = true;
-  exportPODPdf(true); // run silently
-};
 
 // Export/Import
 $('#exportBackupBtn').onclick = exportBackup;
@@ -4503,4 +3944,3 @@ $('#ebookNext').onclick = () => {
 // 코멘트는 Supabase 에피소드에 저장됨 (ep.comments 필드)
 // forceSaveAllSupabase 에서 ep.plan 저장할 때쳀럼 JSON.stringify로 함께 저장
 
-</script>
