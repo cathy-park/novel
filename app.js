@@ -2076,6 +2076,18 @@ async function renderLivePodPreview(forceMode = null) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(bodyHTML, 'text/html');
   
+  // 2.5 모든 코멘트(주석) 노드 완벽 제거
+  const commentWalker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
+  const comments = [];
+  let cNode;
+  while(cNode = commentWalker.nextNode()) comments.push(cNode);
+  comments.forEach(c => c.remove());
+
+  // 2.6 빈 태그(의미 없는 공간 차지) 삭제하되, 빈 문단(<p><br></p>)은 보존
+  doc.querySelectorAll('span, b, i, u, em, strong').forEach(el => {
+    if (!el.textContent.trim() && !el.querySelector('img') && !el.className && !el.style.cssText) el.remove();
+  });
+
   // 3. 래핑되지 않은 고아 텍스트(Naked Text)를 <p>로 안전하게 감싸기
   const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
   const textNodes = [];
@@ -3694,7 +3706,8 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
     const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
-    const hideTxt = s.hideText ? 'display:none !important;' : '';
+    // PagedJS 크래시 방지를 위해 display:none 대신 시각적 숨김 처리
+    const hideTxt = s.hideText ? 'opacity:0 !important; visibility:hidden !important; pointer-events:none !important;' : '';
     const podLogo = pubSet.coverOptions?.logo || '';
     const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
 
@@ -3779,8 +3792,8 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
 
     bodyHtml += `
   <div class="chapter ${isMatter ? 'matter-page' : ''}">
-    ${renderTitle ? `<div class="chapter-title" id="ep-${ep.id}">${escapeHtml(displayTitle)}</div>` : `<div class="chapter-title" id="ep-${ep.id}" style="display:none;"></div>`}
-    <div class="chapter-content ql-editor">${safeBody}</div>
+    ${renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : ''}
+    <div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div>
   </div>`;
   });
 
