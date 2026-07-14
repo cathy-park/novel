@@ -4330,9 +4330,16 @@ async function renderLivePodPreview() {
 <script>
 function runPaged() {
   if (typeof Paged === 'undefined' || typeof PagedPolyfill === 'undefined') {
+    if (!window.pagedWaitCount) window.pagedWaitCount = 0;
+    window.pagedWaitCount++;
+    if (window.pagedWaitCount > 100) {
+      window.parent.postMessage({ type: 'pagedjs-error', error: '스크립트 로드 실패: PagedJS가 5초 이상 로드되지 않았습니다.' }, '*');
+      return;
+    }
     setTimeout(runPaged, 50);
     return;
   }
+  window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: Paged.js 초기화 시작' }, '*');
   class LiveHandler extends Paged.Handler {
     afterRendered(pages) {
       try {
@@ -4365,7 +4372,11 @@ function runPaged() {
       }
     }
   }
-  Paged.registerHandlers(LiveHandler);
+  try {
+    Paged.registerHandlers(LiveHandler);
+  } catch(err) {
+    window.parent.postMessage({ type: 'pagedjs-error', error: 'Handler Error: ' + err.message }, '*');
+  }
   window.addEventListener('message', function(ev) {
     if (!ev.data || ev.data.type !== 'pod-scroll-to-page') return;
     
@@ -4404,8 +4415,11 @@ function runPaged() {
     }
   }, 250);
   try {
-    PagedPolyfill.preview().catch(function(e) {
-      try { window.parent.postMessage({ type: 'pagedjs-error', error: e.message + " | " + (e.stack ? e.stack.substring(0, 100) : "") }, '*'); } catch(e2) {}
+    window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 호출 직전' }, '*');
+    PagedPolyfill.preview().then(function() {
+      window.parent.postMessage({ type: 'pagedjs-error', error: 'Log: preview() 완료' }, '*');
+    }).catch(function(e) {
+      try { window.parent.postMessage({ type: 'pagedjs-error', error: 'preview catch: ' + e.message }, '*'); } catch(e2) {}
     });
   } catch (err) {
     try { window.parent.postMessage({ type: 'pagedjs-error', error: "Sync: " + err.message }, '*'); } catch(e2) {}
