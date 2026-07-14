@@ -2635,18 +2635,32 @@ function podUpdateFmPreview() {
 </html>`;
   iframe.srcdoc = iframeHtml;
 }
-$('#podToggleOdd').addEventListener('click', () => {
-  podIsOddPage = true;
-  $('#podToggleOdd').classList.add('active');
-  $('#podToggleEven').classList.remove('active');
-  podScheduleLiveRender();
-});
-$('#podToggleEven').addEventListener('click', () => {
-  podIsOddPage = false;
-  $('#podToggleEven').classList.add('active');
-  $('#podToggleOdd').classList.remove('active');
-  podScheduleLiveRender();
-});
+let podCurrentPreviewPage = 1;
+if ($('#podPrevPageBtn')) {
+  $('#podPrevPageBtn').addEventListener('click', () => {
+    if (podCurrentPreviewPage > 1) {
+      podCurrentPreviewPage--;
+      const iframe = document.getElementById('podLiveIframe');
+      if (iframe && iframe.contentWindow) {
+         iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: podCurrentPreviewPage, mode: 'single' }, '*');
+      }
+      if ($('#podPageInfo')) $('#podPageInfo').textContent = podCurrentPreviewPage + 'p';
+    }
+  });
+}
+if ($('#podNextPageBtn')) {
+  $('#podNextPageBtn').addEventListener('click', () => {
+    const maxPage = (window.podPageMap && window.podPageMap.length > 0) ? window.podPageMap[window.podPageMap.length - 1].pageNum : 999;
+    if (podCurrentPreviewPage < maxPage) {
+      podCurrentPreviewPage++;
+      const iframe = document.getElementById('podLiveIframe');
+      if (iframe && iframe.contentWindow) {
+         iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: podCurrentPreviewPage, mode: 'single' }, '*');
+      }
+      if ($('#podPageInfo')) $('#podPageInfo').textContent = podCurrentPreviewPage + 'p';
+    }
+  });
+}
 
 // 여백 등 입력 실시간 반영
 ['podPreviewMode','podMarginTop','podMarginBottom','podMarginInner','podMarginOuter','podBleed','podPaperSize', 'podFontSize', 'podLineHeight', 'podFmTitle', 'podFmSubtitle', 'podFmPublisher', 'podFmBgColor', 'podAuthor', 'podPublishDate'].forEach(id => {
