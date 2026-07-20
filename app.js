@@ -4949,18 +4949,6 @@ function runHiddenPagedJsForTree(p) {
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
   let htmlContent = generatePODBodyContent(p, pubSet, loadedEps);
 
-  // 코멘트 제거 (Paged.js 크래시 방지)
-  const parser = new DOMParser();
-  const parsedDoc = parser.parseFromString(htmlContent, 'text/html');
-  const removeComments = (node) => {
-    for (let i = node.childNodes.length - 1; i >= 0; i--) {
-      if (node.childNodes[i].nodeType === 8) node.childNodes[i].remove();
-      else if (node.childNodes[i].nodeType === 1) removeComments(node.childNodes[i]);
-    }
-  };
-  removeComments(parsedDoc.body);
-  htmlContent = parsedDoc.body.innerHTML;
-
   const m = {
     top:    parseFloat(document.getElementById('podMarginTop')?.value)    || pubSet.margins?.top    || 20,
     bottom: parseFloat(document.getElementById('podMarginBottom')?.value) || pubSet.margins?.bottom || 20,
@@ -4993,6 +4981,8 @@ function runHiddenPagedJsForTree(p) {
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
   img { max-width:100% !important; max-height:60vh !important; width:auto !important; height:auto !important; object-fit:contain; display:block; margin:10px auto; break-inside:avoid; }`;
 
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('
+');
   const pagedCode = (window.POD_PAGEDJS_CODE || '').replace(/<\/script>/gi, '<\/script>');
 
   const iframeHtml = `<!DOCTYPE html>
@@ -5000,10 +4990,12 @@ function runHiddenPagedJsForTree(p) {
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
 <script>window.PagedConfig = { auto: false };<\/script>
 <script>${pagedCode}<\/script>
 <style>
   html, body { background:transparent !important; margin:0; padding:0; }
+  ${mainStyles}
   ${pageCSS}
   ${bodyCSS}
 </style>
@@ -5021,12 +5013,13 @@ window.addEventListener('message', function(ev) {
         try {
           var map = pages.map(function(pg) {
             var el = pg.element || pg.pageNode || pg.wrapper;
-            if (!el) return null;
-            var num = parseInt(el.getAttribute('data-page-number'), 10) || 0;
-            var fm = el.querySelector('[data-fm-label]');
-            var ch = el.querySelector('.chapter-title,.chapter-content h1');
-            var cn = el.querySelector('.pagedjs_page_content');
-            return { pageNum:num, label: fm ? fm.getAttribute('data-fm-label') : (ch ? ch.textContent.trim().substring(0,20) : num+'쪽'), epTitle: ch ? ch.textContent.trim() : '', htmlContent: cn ? cn.innerHTML : '' };
+            var num = el ? (parseInt(el.getAttribute('data-page-number'), 10) || 0) : 0;
+            var fm = el ? el.querySelector('[data-fm-label]') : null;
+            var ch = el ? el.querySelector('.chapter-title,.chapter-content h1') : null;
+            var cn = el ? el.querySelector('.pagedjs_page_content') : null;
+            var fmLabel = fm ? fm.getAttribute('data-fm-label') : '';
+            var label = fmLabel || (ch ? ch.textContent.trim().substring(0,20) : (num ? num+'쪽' : '페이지'));
+            return { pageNum:num, label: label, epTitle: ch ? ch.textContent.trim() : '', htmlContent: cn ? cn.innerHTML : '' };
           }).filter(function(m) { return m && m.pageNum > 0; });
           window.parent.postMessage({ type:'pagedjs-rendered', totalPages:map.length, pageMap:map, isTreeMode:true }, '*');
         } catch(err) {
@@ -5038,9 +5031,14 @@ window.addEventListener('message', function(ev) {
   var wrap = document.createElement('div');
   wrap.innerHTML = ev.data.html;
   document.body.appendChild(wrap);
+  
+  // 이미지 로딩 대기
+  var fontWait = document.fonts ? document.fonts.ready : Promise.resolve();
+  var imgWaits = Array.from(wrap.querySelectorAll('img')).filter(img => !img.complete).map(img => new Promise(res => { img.onload = img.onerror = res; }));
+  
   Promise.race([
-    document.fonts ? document.fonts.ready : Promise.resolve(),
-    new Promise(function(r) { setTimeout(r, 1500); })
+    Promise.all([fontWait].concat(imgWaits)),
+    new Promise(function(r) { setTimeout(r, 2000); })
   ]).then(function() {
     return window.PagedPolyfill.preview(wrap, [], document.body);
   }).catch(function(err) {
@@ -5063,7 +5061,6 @@ window.parent.postMessage({ type:'HIDDEN_PAGEDJS_READY' }, '*');
 
   hiddenIframe.srcdoc = iframeHtml;
 }
-
 function podGoToPage(pageNum, isSpread) {
   const iframe = document.getElementById('podLiveIframe');
   if (!iframe || !iframe.contentDocument) return;
