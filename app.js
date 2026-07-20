@@ -4981,8 +4981,7 @@ function runHiddenPagedJsForTree(p) {
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
   img { max-width:100% !important; max-height:60vh !important; width:auto !important; height:auto !important; object-fit:contain; display:block; margin:10px auto; break-inside:avoid; }`;
 
-  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('
-');
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\\n');
   const pagedCode = (window.POD_PAGEDJS_CODE || '').replace(/<\/script>/gi, '<\/script>');
 
   const iframeHtml = `<!DOCTYPE html>
