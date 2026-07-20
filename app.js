@@ -2013,7 +2013,7 @@ async function renderLivePodPreview(forceMode = null) {
   // PagedJS 코드가 캐싱되어 있지 않다면 메인 스레드에서 먼저 다운로드
   if (!window.POD_PAGEDJS_CODE) {
     try {
-      const res = await fetch('https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/paged.polyfill.js');
+      const res = await fetch('/paged.custom.js');
       if (!res.ok) throw new Error('CDN 응답 실패');
       const text = await res.text();
       if (text.includes('<html') || text.trim() === '') throw new Error('잘못된 응답 (HTML 반환됨)');
@@ -2397,7 +2397,7 @@ window.addEventListener('message', function(ev) {
 
             window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:TREE, renderId:rid }, '*');
           } catch(err) {
-            window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+err.message }, '*');
+            window.parent.postMessage({ type:'pagedjs-error', error:'afterRendered:'+(err.stack ? err.stack : err.message) }, '*');
           }
         }
       });
@@ -2409,7 +2409,7 @@ window.addEventListener('message', function(ev) {
     document.body.appendChild(wrap); 
 
     PagedPolyfill.preview(wrap, [], document.body).catch(function(err) {
-      window.parent.postMessage({ type:'pagedjs-error', error:err.message }, '*');
+      window.parent.postMessage({ type:'pagedjs-error', error:(err.stack ? err.stack : err.message) }, '*');
     });
   }
 
