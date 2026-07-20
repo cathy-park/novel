@@ -2997,19 +2997,19 @@ function renderPodPageTree() {
     const rThumb = mkThumb(oddPage, label, 'FM', '#a78bfa', () => {
       showTreeFmBlockPreview(block, pubSet, p);
     }, isBlankFm);
-    const lThumb = oddPage > 1
-      ? mkThumb(evenPage, '', '빈면', null, () => showTreeBlankPagePreview(pubSet), true)
-      : null;
-    innerSec.appendChild(mkSpreadRow(lThumb, rThumb));
+    innerSec.appendChild(mkSpreadRow(null, rThumb));
     pageCounter++;
   });
 
-  // 에피소드: InDesign 스타일 페이지별 썸네일
+  // 에피소드: 연속 배치 (에피소드간 강제 홀수 시작 없음)
+  // FM→첫 에피소드 전환만 홀수 보장
+  if (eps.length > 0 && pageCounter % 2 === 0) pageCounter++;
+
   eps.forEach((ep, i) => {
-    if (pageCounter % 2 === 0) pageCounter++;
     const estPages    = estimateEpisodePages(ep, pubSet);
     const epStartPage = pageCounter;
     const epTitle     = ep.title || ('챕터 ' + (i + 1));
+    const startIsOdd  = epStartPage % 2 !== 0; // 시작이 홀수(우측)인지
 
     // 챕터 헤더
     const secEl = document.createElement('div');
@@ -3017,25 +3017,38 @@ function renderPodPageTree() {
     secEl.textContent = epTitle + ' (약 ' + estPages + 'p)';
     innerSec.appendChild(secEl);
 
-    // 첫 페이지: 홀수(우측) 단독
-    const firstThumb = mkThumb(epStartPage, epTitle, '약 ' + estPages + 'p', '#7c6bf6', () => {
-      showTreeEpisodePreview(ep, pubSet, p, 0);
-    }, false);
-    innerSec.appendChild(mkSpreadRow(null, firstThumb));
-
-    // 이후: 짝수(좌)+홀수(우) 쌍
-    for (let off = 1; off < estPages; off += 2) {
-      const lAbsPage = epStartPage + off;
-      const rAbsPage = epStartPage + off + 1;
-      const hasRight = off + 1 < estPages;
-      const captL = off, captR = off + 1;
-      const lT = mkThumb(lAbsPage, lAbsPage + 'p', epTitle, '#b8b0f5', () => {
-        showTreeEpisodePreview(ep, pubSet, p, captL);
+    // mkEpThumb: startPage 정보 포함해서 parity 계산 가능하도록
+    const mkEpThumb = (absPage, off, label, sub, color) => {
+      const captOff = off, captStart = epStartPage;
+      return mkThumb(absPage, label, sub, color, () => {
+        showTreeEpisodePreview(ep, pubSet, p, captOff, captStart);
       }, false);
-      const rT = hasRight ? mkThumb(rAbsPage, rAbsPage + 'p', epTitle, '#b8b0f5', () => {
-        showTreeEpisodePreview(ep, pubSet, p, captR);
-      }, false) : null;
-      innerSec.appendChild(mkSpreadRow(lT, rT));
+    };
+
+    if (startIsOdd) {
+      // 홀수 시작 → 첫 페이지 우측 단독
+      innerSec.appendChild(mkSpreadRow(null, mkEpThumb(epStartPage, 0, epTitle, '약 ' + estPages + 'p', '#7c6bf6')));
+      for (let off = 1; off < estPages; off += 2) {
+        const lAbs = epStartPage + off, rAbs = epStartPage + off + 1;
+        const hasR = off + 1 < estPages;
+        innerSec.appendChild(mkSpreadRow(
+          mkEpThumb(lAbs, off,     lAbs + 'p', epTitle, '#b8b0f5'),
+          hasR ? mkEpThumb(rAbs, off + 1, rAbs + 'p', epTitle, '#b8b0f5') : null
+        ));
+      }
+    } else {
+      // 짝수 시작 → 첫 페이지 좌측, 다음 페이지 우측
+      const s0 = mkEpThumb(epStartPage, 0, epTitle, '약 ' + estPages + 'p', '#7c6bf6');
+      const s1 = estPages > 1 ? mkEpThumb(epStartPage + 1, 1, (epStartPage + 1) + 'p', epTitle, '#b8b0f5') : null;
+      innerSec.appendChild(mkSpreadRow(s0, s1));
+      for (let off = 2; off < estPages; off += 2) {
+        const lAbs = epStartPage + off, rAbs = epStartPage + off + 1;
+        const hasR = off + 1 < estPages;
+        innerSec.appendChild(mkSpreadRow(
+          mkEpThumb(lAbs, off,     lAbs + 'p', epTitle, '#b8b0f5'),
+          hasR ? mkEpThumb(rAbs, off + 1, rAbs + 'p', epTitle, '#b8b0f5') : null
+        ));
+      }
     }
     pageCounter += estPages;
   });
@@ -3226,8 +3239,9 @@ function showTreeFmBlockPreview(block, pubSet, p) {
 }
 
 /** 에피소드 페이지 미리보기 — CSS multi-column 페이지 분할 (패리티 수정) */
-function showTreeEpisodePreview(ep, pubSet, p, epPageIndex) {
+function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
   if (epPageIndex === undefined) epPageIndex = 0;
+  if (!epStartPage) epStartPage = 1; // 기본값: 홀수(우측) 시작
 
   const processed = processEpisodeBody(ep.body, ep.title, true);
   const tempDiv = document.createElement('div');
@@ -3249,9 +3263,11 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex) {
   const contentW = paper.w - m.inner - m.outer;  // mm
   const contentH = paper.h - m.top   - m.bottom; // mm
 
-  // epPageIndex 0,2,4... = 홀수 abs 페이지 = 우측 페이지
-  // epPageIndex 1,3,5... = 짝수 abs 페이지 = 좌측 페이지
-  const isRightPage = epPageIndex % 2 === 0;
+  // 절대 페이지 번호 기준 패리티 계산
+  // epStartPage가 홀수인 경우: offset 0,2,4... = 홀수 abs = 우측
+  // epStartPage가 짝수인 경우: offset 0,2,4... = 짝수 abs = 좌측
+  const absPageNum = epStartPage + epPageIndex;
+  const isRightPage = absPageNum % 2 !== 0; // 홀수 = 우측
   let leftColIdx, rightColIdx;
   if (isRightPage) {
     rightColIdx = epPageIndex;
@@ -3300,7 +3316,7 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex) {
     '}' +
     '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
     '.chapter-content p + p { margin-top:0; }' +
-    '.chapter-content span { background-color:transparent !important; }' +
+    '/* span background preserved for formatting */' + +
     '.ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }' +
     '.ql-align-center { text-align:center !important; }' +
     '.ql-align-right  { text-align:right  !important; }' +
