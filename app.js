@@ -3193,39 +3193,78 @@ function _showTreePreviewInIframe(html, pubSet, isSpread) {
 function estimateEpisodePages(ep, pubSet) {
   const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
   const m = {
-    top: pubSet.margins?.top || 20,
+    top:    pubSet.margins?.top    || 20,
     bottom: pubSet.margins?.bottom || 20,
-    inner: pubSet.margins?.inner || 25,
-    outer: pubSet.margins?.outer || 18
+    inner:  pubSet.margins?.inner  || 25,
+    outer:  pubSet.margins?.outer  || 18
   };
-  const fontSize = parseFloat(pubSet.fontSize) || 10; // pt
-  const lineHeightVal = parseFloat(pubSet.lineHeight) || 1.75;
+  const fontSize      = parseFloat(pubSet.fontSize)   || 10;
+  const lineHeightVal = parseFloat(pubSet.lineHeight)  || 1.75;
+  const contentW = paper.w - m.inner - m.outer; // mm
+  const contentH = paper.h - m.top   - m.bottom; // mm
 
-  // 본문 영역 크기 (mm)
-  const contentW = paper.w - m.inner - m.outer;
-  const contentH = paper.h - m.top - m.bottom;
+  try {
+    // ── DOM 렌더링 기반 실측 ──
+    // CSS multi-column 레이아웃에 실제로 삽입해서 센티넬 위치로 컬럼 수 측정
+    const PX_MM = 96 / 25.4;
+    const cwPx  = contentW * PX_MM;
+    const chPx  = contentH * PX_MM;
 
-  // 폰트 크기를 mm로 변환 (1pt = 0.3528mm)
-  const fontMm = fontSize * 0.3528;
-  const lineHeightMm = fontMm * lineHeightVal;
+    // 오프스크린 래퍼
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText =
+      'position:fixed; left:-99999px; top:0;' +
+      'width:1px; height:1px; overflow:visible; visibility:hidden; z-index:-1;';
 
-  // 한 페이지 행 수
-  const linesPerPage = Math.floor(contentH / lineHeightMm);
-  // 한 행 글자 수 (한글 기준, 글자 폭 ≈ 글자 크기)
-  const charsPerLine = Math.floor(contentW / fontMm);
-  // 한 페이지 글자 수 (효율 계수 0.72: 줄바꿈, 짧은 줄, 문단 여백 등 반영)
-  const charsPerPage = Math.max(100, linesPerPage * charsPerLine * 0.72);
+    // 컬럼 측정 컨테이너
+    const measurer = document.createElement('div');
+    measurer.style.cssText =
+      'position:absolute; left:0; top:0; overflow:visible;' +
+      'width:' + cwPx + 'px; height:' + chPx + 'px;' +
+      'columns:' + cwPx + 'px; column-gap:0; column-fill:auto;' +
+      'font-family:"KoPub Batang","Noto Serif KR",serif;' +
+      'font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + ';' +
+      'word-break:keep-all; white-space:normal;';
 
-  // 에피소드 텍스트 글자 수 추출 (공백 제외)
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = ep.body || '';
-  const text = tempDiv.textContent || '';
-  const charCount = text.replace(/\s/g, '').length;
+    // 에피소드 본문 삽입
+    const bodyDiv = document.createElement('div');
+    bodyDiv.style.cssText = 'text-indent:1em;';
+    bodyDiv.innerHTML = ep.body || '';
+    // 빈 단락 → 빈 줄 유지
+    bodyDiv.querySelectorAll('p').forEach(pTag => {
+      if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') {
+        pTag.innerHTML = '\u00A0'; // &nbsp;
+      }
+    });
+    measurer.appendChild(bodyDiv);
 
-  // 챕터 제목은 약 4행 차지
-  const totalChars = charCount + (4 * charsPerLine);
+    // 센티넬: 마지막 위치를 측정
+    const sentinel = document.createElement('span');
+    sentinel.style.cssText = 'display:inline-block; width:0; height:0; vertical-align:top;';
+    measurer.appendChild(sentinel);
 
-  return Math.max(1, Math.ceil(totalChars / charsPerPage));
+    wrapper.appendChild(measurer);
+    document.body.appendChild(wrapper);
+
+    // sentinel.offsetLeft = 마지막 컬럼의 x 위치
+    const sentinelLeft = sentinel.offsetLeft;
+    const numPages = Math.floor(sentinelLeft / cwPx) + 1;
+
+    document.body.removeChild(wrapper);
+    return Math.max(1, numPages);
+
+  } catch (e) {
+    // ── 폴백: 문자 수 기반 추정 ──
+    const fontMm = fontSize * 0.3528;
+    const lineHeightMm = fontMm * lineHeightVal;
+    const linesPerPage = Math.floor(contentH / lineHeightMm);
+    const charsPerLine = Math.floor(contentW / fontMm);
+    const charsPerPage = Math.max(100, linesPerPage * charsPerLine * 0.62);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = ep.body || '';
+    const charCount = (tempDiv.textContent || '').length;
+    return Math.max(1, Math.ceil(charCount / charsPerPage));
+  }
 }
 
 /** FM 블록 1개 미리보기 — 실제 책처럼 양면(spread) 표시 */
