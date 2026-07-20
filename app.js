@@ -2966,65 +2966,81 @@ function renderPodPageTree() {
     return;
   }
 
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:16px 0; padding:8px 4px 24px; position:relative;';
-
-  const spine = document.createElement('div');
-  spine.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border-color);opacity:.5;pointer-events:none;z-index:1;';
-  grid.appendChild(spine);
-
   let pageCounter = 1;
 
-  const addCell = (num, label, sublabel, accent, clickFn, isBlank) => {
-    const isOdd = num % 2 !== 0;
-    const cell = document.createElement('div');
-    cell.style.cssText = 'display:flex; justify-content:' + (isOdd ? 'flex-start' : 'flex-end') + '; align-items:flex-start; padding:8px 4px;';
-    if (num === 1) cell.style.gridColumn = '2';
-    const thumbWrap = mkThumb(num, label, sublabel, accent, clickFn, isBlank);
-    cell.appendChild(thumbWrap);
-    grid.appendChild(cell);
+  // mkSpreadRow: 책 펼침면처럼 좌/우 썸네일을 한 행에 배치
+  const mkSpreadRow = (leftThumb, rightThumb) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; justify-content:center; align-items:flex-start; padding:4px 0;';
+    const lCell = document.createElement('div');
+    lCell.style.cssText = 'width:96px; display:flex; justify-content:flex-end; padding-right:6px;';
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:1px; background:var(--border-color); opacity:.4; align-self:stretch; flex-shrink:0;';
+    const rCell = document.createElement('div');
+    rCell.style.cssText = 'width:96px; display:flex; justify-content:flex-start; padding-left:6px;';
+    if (leftThumb)  lCell.appendChild(leftThumb);
+    if (rightThumb) rCell.appendChild(rightThumb);
+    row.appendChild(lCell);
+    row.appendChild(sep);
+    row.appendChild(rCell);
+    return row;
   };
 
-  // FM 블록
+  // FM 블록: 홀수(우측) 시작, 대향 짝수면은 빈면
   activeFmBlocks.forEach(block => {
-    const label = FM_LABELS_MAP[block.type] || block.type;
-    const isBlank = block.type === 'blank';
-    if (pageCounter % 2 === 0) pageCounter++;  // 홀수 페이지(우측)에서 시작
-    addCell(pageCounter, label, 'FM', '#a78bfa', () => {
+    if (pageCounter % 2 === 0) pageCounter++;
+    const oddPage   = pageCounter;
+    const evenPage  = oddPage - 1;
+    const label     = FM_LABELS_MAP[block.type] || block.type;
+    const isBlankFm = block.type === 'blank';
+
+    const rThumb = mkThumb(oddPage, label, 'FM', '#a78bfa', () => {
       showTreeFmBlockPreview(block, pubSet, p);
-    }, isBlank);
+    }, isBlankFm);
+    const lThumb = oddPage > 1
+      ? mkThumb(evenPage, '', '빈면', null, () => showTreeBlankPagePreview(pubSet), true)
+      : null;
+    innerSec.appendChild(mkSpreadRow(lThumb, rThumb));
     pageCounter++;
   });
 
-  // 에피소드 — 추정 페이지 수만큼 개별 썸네일 생성 (InDesign 페이지 패널 스타일)
+  // 에피소드: InDesign 스타일 페이지별 썸네일
   eps.forEach((ep, i) => {
-    if (pageCounter % 2 === 0) pageCounter++;  // 챕터는 항상 홀수(우측)에서 시작
-    const estPages = estimateEpisodePages(ep, pubSet);
+    if (pageCounter % 2 === 0) pageCounter++;
+    const estPages    = estimateEpisodePages(ep, pubSet);
     const epStartPage = pageCounter;
-    const epTitle = ep.title || ('챕터 ' + (i + 1));
+    const epTitle     = ep.title || ('챕터 ' + (i + 1));
 
-    // 챕터 구분 헤더 (grid 전체 너비 차지)
+    // 챕터 헤더
     const secEl = document.createElement('div');
-    secEl.style.cssText = 'grid-column:1/-1; padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+    secEl.style.cssText = 'padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
     secEl.textContent = epTitle + ' (약 ' + estPages + 'p)';
-    grid.appendChild(secEl);
+    innerSec.appendChild(secEl);
 
-    for (let pgOffset = 0; pgOffset < estPages; pgOffset++) {
-      const absPage = epStartPage + pgOffset;
-      const isFirst = pgOffset === 0;
-      const pgLabel = isFirst ? epTitle : (absPage + 'p');
-      const pgSub   = isFirst ? ('약 ' + estPages + 'p') : epTitle;
-      const pgColor = isFirst ? '#7c6bf6' : '#b8b0f5';
-      const capturedOffset = pgOffset;
-      addCell(absPage, pgLabel, pgSub, pgColor, () => {
-        showTreeEpisodePreview(ep, pubSet, p, capturedOffset);
+    // 첫 페이지: 홀수(우측) 단독
+    const firstThumb = mkThumb(epStartPage, epTitle, '약 ' + estPages + 'p', '#7c6bf6', () => {
+      showTreeEpisodePreview(ep, pubSet, p, 0);
+    }, false);
+    innerSec.appendChild(mkSpreadRow(null, firstThumb));
+
+    // 이후: 짝수(좌)+홀수(우) 쌍
+    for (let off = 1; off < estPages; off += 2) {
+      const lAbsPage = epStartPage + off;
+      const rAbsPage = epStartPage + off + 1;
+      const hasRight = off + 1 < estPages;
+      const captL = off, captR = off + 1;
+      const lT = mkThumb(lAbsPage, lAbsPage + 'p', epTitle, '#b8b0f5', () => {
+        showTreeEpisodePreview(ep, pubSet, p, captL);
       }, false);
+      const rT = hasRight ? mkThumb(rAbsPage, rAbsPage + 'p', epTitle, '#b8b0f5', () => {
+        showTreeEpisodePreview(ep, pubSet, p, captR);
+      }, false) : null;
+      innerSec.appendChild(mkSpreadRow(lT, rT));
     }
-
     pageCounter += estPages;
   });
 
-  innerSec.appendChild(grid);
+
   treeEl.appendChild(innerSec);
 
   // ── [4] 푸터 ──
@@ -3209,7 +3225,7 @@ function showTreeFmBlockPreview(block, pubSet, p) {
   _showTreePreviewInIframe(html, pubSet, true);
 }
 
-/** 에피소드 페이지 미리보기 — CSS multi-column으로 실제 페이지 분할 표시 */
+/** 에피소드 페이지 미리보기 — CSS multi-column 페이지 분할 (패리티 수정) */
 function showTreeEpisodePreview(ep, pubSet, p, epPageIndex) {
   if (epPageIndex === undefined) epPageIndex = 0;
 
@@ -3228,74 +3244,101 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex) {
     inner:  pubSet.margins?.inner  || 25,
     outer:  pubSet.margins?.outer  || 18
   };
-  const fontSize      = parseFloat(pubSet.fontSize)    || 10;
-  const lineHeightVal = parseFloat(pubSet.lineHeight)   || 1.75;
+  const fontSize      = parseFloat(pubSet.fontSize)   || 10;
+  const lineHeightVal = parseFloat(pubSet.lineHeight)  || 1.75;
   const contentW = paper.w - m.inner - m.outer;  // mm
   const contentH = paper.h - m.top   - m.bottom; // mm
 
-  const titleHtml = ep.title
-    ? '<div class="chap-title">' + escapeHtml(ep.title) + '</div>'
-    : '';
+  // epPageIndex 0,2,4... = 홀수 abs 페이지 = 우측 페이지
+  // epPageIndex 1,3,5... = 짝수 abs 페이지 = 좌측 페이지
+  const isRightPage = epPageIndex % 2 === 0;
+  let leftColIdx, rightColIdx;
+  if (isRightPage) {
+    rightColIdx = epPageIndex;
+    leftColIdx  = epPageIndex > 0 ? epPageIndex - 1 : -1;
+  } else {
+    leftColIdx  = epPageIndex;
+    rightColIdx = epPageIndex + 1;
+  }
 
-  // CSS multi-column: 각 컬럼 = 1페이지. translateX로 해당 페이지 위치로 이동
-  // 우측 페이지 = epPageIndex, 좌측 페이지 = epPageIndex-1 (0이면 빈 페이지)
-  const rightTranslate = epPageIndex;
-  const leftTranslate  = epPageIndex > 0 ? (epPageIndex - 1) : -1; // -1 = blank
+  // CSS translateX 값 (mm) for each column
+  const leftTx  = leftColIdx  >= 0 ? (-leftColIdx  * contentW) : 0;
+  const rightTx = -rightColIdx * contentW;
 
-  const html = '<!DOCTYPE html>\n' +
-  '<html lang="ko"><head><meta charset="utf-8">\n' +
-  '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">\n' +
-  '<style>\n' +
-  '* { box-sizing:border-box; margin:0; padding:0; }\n' +
-  'html,body { background:transparent; width:' + (paper.w*2) + 'mm; height:' + paper.h + 'mm; display:flex; overflow:hidden; }\n' +
-  '.page { width:' + paper.w + 'mm; height:' + paper.h + 'mm; background:#fff; flex-shrink:0; overflow:hidden; position:relative; }\n' +
-  '.page.left  { box-shadow:-3px 4px 20px rgba(0,0,0,.10); }\n' +
-  '.page.right { box-shadow: 3px 4px 20px rgba(0,0,0,.10); }\n' +
-  '.viewport { overflow:hidden; position:absolute; width:' + contentW + 'mm; height:' + contentH + 'mm; }\n' +
-  '.page.left  .viewport { top:' + m.top + 'mm; left:' + m.outer + 'mm; }\n' +
-  '.page.right .viewport { top:' + m.top + 'mm; left:' + m.inner + 'mm; }\n' +
-  '.flow {\n' +
-  '  position:absolute; top:0; left:0;\n' +
-  '  height:' + contentH + 'mm;\n' +
-  '  width:' + (contentW * 300) + 'mm;\n' +  /* 충분히 넓게 */
-  '  columns:' + contentW + 'mm;\n' +
-  '  column-gap:0;\n' +
-  '  column-fill:auto;\n' +
-  '  font-family:"KoPub Batang","Noto Serif KR",serif;\n' +
-  '  font-size:' + fontSize + 'pt;\n' +
-  '  line-height:' + lineHeightVal + ';\n' +
-  '  color:#111; text-align:justify; word-break:keep-all;\n' +
-  '}\n' +
-  '.chap-title { font-size:14pt; font-weight:700; text-align:center; margin-top:20mm; margin-bottom:12mm; break-after:avoid; }\n' +
-  '.chapter-content p { text-indent:10pt; margin:0; }\n' +
-  '.chapter-content span { background-color:transparent !important; }\n' +
-  '.ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }\n' +
-  '.ql-align-center { text-align:center !important; }\n' +
-  '.ql-align-right  { text-align:right  !important; }\n' +
-  'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }\n' +
-  '.pnum { position:absolute; bottom:' + (m.bottom*0.5) + 'mm; font-size:8pt; color:#aaa; font-family:serif; }\n' +
-  '.page.left  .pnum { left:' + m.outer + 'mm; }\n' +
-  '.page.right .pnum { right:' + m.outer + 'mm; }\n' +
-  '.page.left::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:18px; background:linear-gradient(to left,rgba(0,0,0,.07),transparent); pointer-events:none; z-index:10; }\n' +
-  '.page.right::before{ content:""; position:absolute; top:0; left:0; bottom:0; width:18px; background:linear-gradient(to right,rgba(0,0,0,.07),transparent); pointer-events:none; z-index:10; }\n' +
-  '</style></head><body>\n' +
-  /* 좌측 페이지 */
-  '<div class="page left">' +
-    '<div class="viewport">' +
-      (leftTranslate >= 0
-        ? '<div class="flow" style="transform:translateX(calc(-' + leftTranslate + ' * ' + contentW + 'mm))">' + titleHtml + '<div class="chapter-content ql-editor">' + safeBody + '</div></div>'
-        : '') +  /* 첫 번째 spread: 좌측 빈 페이지 */
+  // 페이지 번호 표시 (1-indexed within episode)
+  const leftPnum  = leftColIdx  >= 0 ? (leftColIdx  + 1) : -1;
+  const rightPnum = rightColIdx + 1;
+
+  // 공통 flow HTML (에피소드 본문만, 제목 없음)
+  const flowContent = '<div class="chapter-content ql-editor">' + safeBody + '</div>';
+
+  const html =
+    '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">' +
+    '<style>' +
+    '* { box-sizing:border-box; margin:0; padding:0; }' +
+    'html,body { background:transparent; width:' + (paper.w*2) + 'mm; height:' + paper.h + 'mm; display:flex; overflow:hidden; }' +
+    '.page { width:' + paper.w + 'mm; height:' + paper.h + 'mm; background:#fff; flex-shrink:0; overflow:hidden; position:relative; }' +
+    '.page.left  { box-shadow:-3px 4px 20px rgba(0,0,0,.10); }' +
+    '.page.right { box-shadow: 3px 4px 20px rgba(0,0,0,.10); }' +
+    '.viewport { overflow:hidden; position:absolute; width:' + contentW + 'mm; height:' + contentH + 'mm; }' +
+    '.page.left  .viewport { top:' + m.top + 'mm; left:' + m.outer + 'mm; }' +
+    '.page.right .viewport { top:' + m.top + 'mm; left:' + m.inner + 'mm; }' +
+    '.flow {' +
+      'position:absolute; top:0; left:0;' +
+      'height:' + contentH + 'mm;' +
+      'width:' + (contentW * 80) + 'mm;' +
+      'columns:' + contentW + 'mm;' +
+      'column-gap:0;' +
+      'column-fill:auto;' +
+    '}' +
+    'body,.flow,.chapter-content {' +
+      'font-family:"KoPub Batang","Noto Serif KR",serif;' +
+      'font-size:' + fontSize + 'pt;' +
+      'line-height:' + lineHeightVal + ';' +
+      'color:#111;' +
+    '}' +
+    '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
+    '.chapter-content p + p { margin-top:0; }' +
+    '.chapter-content span { background-color:transparent !important; }' +
+    '.ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }' +
+    '.ql-align-center { text-align:center !important; }' +
+    '.ql-align-right  { text-align:right  !important; }' +
+    '.ql-align-justify{ text-align:justify !important; }' +
+    '.ql-indent-1 { padding-left:2.5em; }' +
+    '.ql-indent-2 { padding-left:5em; }' +
+    '.ql-indent-3 { padding-left:7.5em; }' +
+    '.ql-indent-4 { padding-left:10em; }' +
+    '.ql-size-small { font-size:0.75em; }' +
+    '.ql-size-large { font-size:1.5em; }' +
+    '.ql-size-huge  { font-size:2.5em; }' +
+    'strong,b { font-weight:700; } em,i { font-style:italic; }' +
+    's { text-decoration:line-through; } u { text-decoration:underline; }' +
+    'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; color:#555; }' +
+    'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
+    '.pnum { position:absolute; bottom:' + (m.bottom*0.5) + 'mm; font-size:8pt; color:#aaa; font-family:serif; }' +
+    '.page.left  .pnum { left:' + m.outer + 'mm; }' +
+    '.page.right .pnum { right:' + m.outer + 'mm; }' +
+    '.page.left::after   { content:""; position:absolute; top:0; right:0; bottom:0; width:16px; background:linear-gradient(to left,rgba(0,0,0,.07),transparent); z-index:10; }' +
+    '.page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:16px; background:linear-gradient(to right,rgba(0,0,0,.07),transparent); z-index:10; }' +
+    '</style></head><body>' +
+    // 좌측 페이지
+    '<div class="page left">' +
+      '<div class="viewport">' +
+        (leftColIdx >= 0
+          ? '<div class="flow" style="transform:translateX(' + leftTx + 'mm)">' + flowContent + '</div>'
+          : '') +
+      '</div>' +
+      (leftPnum >= 0 ? '<div class="pnum">' + leftPnum + '</div>' : '') +
     '</div>' +
-    (leftTranslate >= 0 ? '<div class="pnum">' + (epPageIndex) + '</div>' : '') +
-  '</div>' +
-  /* 우측 페이지 */
-  '<div class="page right">' +
-    '<div class="viewport">' +
-      '<div class="flow" style="transform:translateX(calc(-' + rightTranslate + ' * ' + contentW + 'mm))">' + titleHtml + '<div class="chapter-content ql-editor">' + safeBody + '</div></div>' +
+    // 우측 페이지
+    '<div class="page right">' +
+      '<div class="viewport">' +
+        '<div class="flow" style="transform:translateX(' + rightTx + 'mm)">' + flowContent + '</div>' +
+      '</div>' +
+      '<div class="pnum">' + rightPnum + '</div>' +
     '</div>' +
-    '<div class="pnum">' + (epPageIndex + 1) + '</div>' +
-  '</div>' +
-  '</body></html>';
+    '</body></html>';
 
   _showTreePreviewInIframe(html, pubSet, true);
 }
