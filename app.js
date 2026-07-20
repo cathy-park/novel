@@ -2041,8 +2041,8 @@ async function renderLivePodPreview(forceMode = null) {
       await ensureProjectBodiesLoaded(p);
     }
     renderPodPageTree();
-    showTreeFirstPage(); // 첫 항목 기본 미리보기
     if (st) st.textContent = '페이지 구조 준비 완료';
+    setTimeout(() => showTreeFirstPage(), 200); // DOM 레이아웃 완료 후 첫 항목 미리보기
     return;
   }
 
@@ -2996,14 +2996,16 @@ function renderPodPageTree() {
     pageCounter++;
   });
 
-  // 에피소드
+  // 에피소드 — estimateEpisodePages로 실제 예상 페이지 수 계산
   eps.forEach((ep, i) => {
     if (pageCounter % 2 === 0) pageCounter++;  // 챕터는 홀수 시작
     const label = ep.title || ('챕터 ' + (i + 1));
-    addCell(pageCounter, label, '본문', '#7c6bf6', () => {
+    const estimatedPages = estimateEpisodePages(ep, pubSet);
+    const sublabel = '약 ' + estimatedPages + 'p · 본문';
+    addCell(pageCounter, label, sublabel, '#7c6bf6', () => {
       showTreeEpisodePreview(ep, pubSet, p);
     }, false);
-    pageCounter++;
+    pageCounter += estimatedPages; // 예상 페이지 수만큼 진행
   });
 
   innerSec.appendChild(grid);
@@ -3069,7 +3071,7 @@ function _buildTreePreviewHtml(bodyHtml, pubSet, isSpread) {
 </head>
 <body>
 <div class="spread">
-  <div class="page left"><div style="height:100%;display:flex;align-items:center;justify-content:center;opacity:.15;font-size:9pt;color:#999;">← 짝수 페이지</div></div>
+  <div class="page left"></div>
   <div class="page right">${bodyHtml}</div>
 </div>
 </body>
@@ -3112,20 +3114,25 @@ function _showTreePreviewInIframe(html, pubSet, isSpread) {
   const iframe = document.getElementById('podLiveIframe');
   if (!iframe) return;
   const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-  const canvas = $('#podPreviewInner');
-  const cW = canvas ? canvas.clientWidth : window.innerWidth;
-  const cH = canvas ? canvas.clientHeight : window.innerHeight;
-  const tw = isSpread ? paper.w * 2 : paper.w;
-  const sc = Math.max(0.15, Math.min(1,
-    (cW - 40) / (tw * (96 / 25.4)),
-    (cH - 40) / (paper.h * (96 / 25.4))
-  ));
 
-  // 우측 미리보기 영역 표시 확인
+  // 우측 미리보기 영역 표시 확인 (먼저 보여줘야 크기를 정확히 잴 수 있음)
   const pInner = document.getElementById('podPreviewInner');
   const pCover = document.getElementById('podPreviewCover');
   if (pInner) pInner.style.display = 'flex';
   if (pCover) pCover.style.display = 'none';
+
+  // getBoundingClientRect()로 실제 레이아웃 크기 정확히 읽기
+  const canvas = document.getElementById('podPreviewInner');
+  const rect = canvas ? canvas.getBoundingClientRect() : null;
+  const cW = rect && rect.width > 50 ? rect.width : (canvas ? canvas.clientWidth : window.innerWidth * 0.65);
+  const cH = rect && rect.height > 50 ? rect.height : (canvas ? canvas.clientHeight : window.innerHeight * 0.75);
+
+  const tw = isSpread ? paper.w * 2 : paper.w;
+  const pxPerMm = 96 / 25.4;
+  const sc = Math.max(0.15, Math.min(1,
+    (cW - 60) / (tw * pxPerMm),
+    (cH - 60) / (paper.h * pxPerMm)
+  ));
 
   iframe.style.width = tw + 'mm';
   iframe.style.height = paper.h + 'mm';
@@ -3137,14 +3144,53 @@ function _showTreePreviewInIframe(html, pubSet, isSpread) {
   iframe.srcdoc = html;
 }
 
-/** FM 블록 1개 미리보기 */
+/** 에피소드 예상 페이지 수 계산 (글자수 기반 추정) */
+function estimateEpisodePages(ep, pubSet) {
+  const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+  const m = {
+    top: pubSet.margins?.top || 20,
+    bottom: pubSet.margins?.bottom || 20,
+    inner: pubSet.margins?.inner || 25,
+    outer: pubSet.margins?.outer || 18
+  };
+  const fontSize = parseFloat(pubSet.fontSize) || 10; // pt
+  const lineHeightVal = parseFloat(pubSet.lineHeight) || 1.75;
+
+  // 본문 영역 크기 (mm)
+  const contentW = paper.w - m.inner - m.outer;
+  const contentH = paper.h - m.top - m.bottom;
+
+  // 폰트 크기를 mm로 변환 (1pt = 0.3528mm)
+  const fontMm = fontSize * 0.3528;
+  const lineHeightMm = fontMm * lineHeightVal;
+
+  // 한 페이지 행 수
+  const linesPerPage = Math.floor(contentH / lineHeightMm);
+  // 한 행 글자 수 (한글 기준, 글자 폭 ≈ 글자 크기)
+  const charsPerLine = Math.floor(contentW / fontMm);
+  // 한 페이지 글자 수 (효율 계수 0.72: 줄바꿈, 짧은 줄, 문단 여백 등 반영)
+  const charsPerPage = Math.max(100, linesPerPage * charsPerLine * 0.72);
+
+  // 에피소드 텍스트 글자 수 추출 (공백 제외)
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = ep.body || '';
+  const text = tempDiv.textContent || '';
+  const charCount = text.replace(/\s/g, '').length;
+
+  // 챕터 제목은 약 4행 차지
+  const totalChars = charCount + (4 * charsPerLine);
+
+  return Math.max(1, Math.ceil(totalChars / charsPerPage));
+}
+
+/** FM 블록 1개 미리보기 — 실제 책처럼 양면(spread) 표시 */
 function showTreeFmBlockPreview(block, pubSet, p) {
   const tempPubSet = JSON.parse(JSON.stringify(pubSet));
   tempPubSet.fmBlocks = [block];
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
   const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm');
-  const html = _buildTreePreviewHtml(bodyHtml, pubSet, false);
-  _showTreePreviewInIframe(html, pubSet, false);
+  const html = _buildTreePreviewHtml(bodyHtml, pubSet, true); // spread: 좌(빈면) + 우(FM)
+  _showTreePreviewInIframe(html, pubSet, true);
 }
 
 /** 에피소드 첫 페이지 미리보기 */
