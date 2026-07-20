@@ -2121,10 +2121,89 @@ async function renderLivePodPreview(forceMode = null) {
     return;
   }
 
-  // ── tree 탭: 실제 책 내용을 Paged.js로 메인 iframe에 직접 렌더링 ──
+  // ── tree 탭: 정적 좌/우 템플릿 + 숨겨진 Paged.js로 페이지 맵 생성 ──
   if (activePane === 'tree') {
-    // tree 탭은 아래 공통 Paged.js 렌더링 경로로 진입 (isTreeMode=true)
-    // 별도 처리 없음 — 공통 코드로 fall-through
+    const iframe = document.getElementById('podLiveIframe');
+    if (!iframe) return;
+
+    const pubSet = getPublishSettings(p);
+    const paper = PAPER_SIZES[$('#podPaperSize') ? $('#podPaperSize').value : (pubSet.paperSize || 'A5')] || PAPER_SIZES.A5;
+    const m = {
+      top: parseFloat($('#podMarginTop')?.value) || pubSet.margins?.top || 20,
+      bottom: parseFloat($('#podMarginBottom')?.value) || pubSet.margins?.bottom || 20,
+      inner: parseFloat($('#podMarginInner')?.value) || pubSet.margins?.inner || 25,
+      outer: parseFloat($('#podMarginOuter')?.value) || pubSet.margins?.outer || 18
+    };
+    const canvasEl = $('#podPreviewInner');
+    const cW = canvasEl ? canvasEl.clientWidth : window.innerWidth;
+    const cH = canvasEl ? canvasEl.clientHeight : window.innerHeight;
+    const tw = paper.w * 2;
+    const sc = Math.max(0.2, Math.min(1, (cW - 40) / (tw * (96 / 25.4)), (cH - 40) / (paper.h * (96 / 25.4))));
+
+    iframe.style.width = tw + 'mm';
+    iframe.style.height = paper.h + 'mm';
+    iframe.style.transform = `scale(${sc})`;
+    iframe.style.transformOrigin = 'top center';
+    iframe.style.border = 'none';
+    iframe.style.background = 'transparent';
+
+    const fs = parseFloat($('#podFontSize')?.value) || pubSet.fontSize || 10;
+    const lh = $('#podLineHeight')?.value || pubSet.lineHeight || 1.75;
+    const indent = pubSet.paragraphIndent ? pubSet.paragraphIndent + 'em' : '0';
+    const spacing = pubSet.paragraphSpacing ? pubSet.paragraphSpacing + 'em' : '0';
+    const align = pubSet.align || 'justify';
+
+    const treeStaticHtml = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:transparent; height:100%; display:flex; overflow:hidden; }
+  .page { width:${paper.w}mm; height:${paper.h}mm; background:#fff; box-sizing:border-box; position:relative; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.12); flex-shrink:0; }
+  .page-left  { padding:${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
+  .page-right { padding:${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
+  .page-left::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  .page-right::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  .page-content { height:100%; overflow:hidden; position:relative; font-family:'KoPub Batang','Noto Serif KR',serif; font-size:${fs}pt; line-height:${lh}; color:#111; }
+  .page-num { position:absolute; bottom:${m.bottom/2}mm; left:0; right:0; text-align:center; font-size:9pt; color:#666; }
+  .page-placeholder { display:flex; height:100%; align-items:center; justify-content:center; opacity:0.2; font-size:12pt; }
+  /* 주입되는 콘텐츠 스타일 */
+  .page-content p { text-indent:${indent}; margin:0 0 ${spacing} 0; text-align:${align}; word-break:break-all; }
+  .page-content h1, .page-content h2, .page-content h3, .page-content h4 { page-break-after:avoid; }
+  .page-content .ql-editor { padding:0 !important; overflow:hidden !important; height:auto !important; }
+  .page-content .chapter { margin-top:0 !important; }
+  .page-content img { max-width:100%; height:auto; display:block; margin:10px auto; }
+  .page-content ul.toc-list { list-style:none; padding:0; margin:0; }
+  .page-content ul.toc-list li { display:flex; margin-bottom:12px; font-size:${fs}pt; line-height:1.5; }
+  .page-content .toc-title { background:#fff; padding-right:8px; }
+  .page-content .toc-dots { flex:1; border-bottom:1px dotted #ccc; margin:0 4px; position:relative; top:-6px; }
+  .page-content .toc-manual-page, .page-content .toc-page-ref::after { background:#fff; padding-left:8px; }
+  .page-content .matter-page { height:100%; }
+  .page-content span { background-color:transparent !important; }
+</style>
+</head>
+<body>
+  <div class="page page-left">
+    <div class="page-content" id="tree-page-left-content"><div class="page-placeholder">◁</div></div>
+    <div class="page-num" id="tree-page-left-num"></div>
+  </div>
+  <div class="page page-right">
+    <div class="page-content" id="tree-page-right-content"><div class="page-placeholder">좌측에서 페이지를 선택하세요</div></div>
+    <div class="page-num" id="tree-page-right-num"></div>
+  </div>
+</body>
+</html>`;
+
+    iframe.removeAttribute('srcdoc');
+    iframe.srcdoc = treeStaticHtml;
+
+    if (st) { st.style.display = 'block'; st.textContent = '페이지 구조 분석 중... (조판 렌더링)'; }
+
+    // 숫겨진 iframe에서 Paged.js 실행 → podPageMap 생성
+    if (p.episodes.some(e => e.body === undefined)) await ensureProjectBodiesLoaded(p);
+    runHiddenPagedJsForTree(p);
+    return;
   }
 
   // [새로운 요구사항 반영] 전면부 디자인 탭일 경우 현재 선택된 템플릿 1장만 단면(Single)으로 하드코딩 렌더링
@@ -2495,24 +2574,30 @@ window.addEventListener('message', (e) => {
     if (iframe) {
       window.podLastRenderedTotalPages = e.data.totalPages;
       window.podPageMap = e.data.pageMap;
-      
-      // 조판 완료 후 트리 그리기 호출
+
+      // 조판 완료 후 트리 그리기 호요
       if (typeof renderPodPageTree === 'function') renderPodPageTree();
+
+      // isTreeMode:true 이면 숨겨진 iframe이 보낸 신호 → visible iframe에 SHOW_PAGES 불필요
+      if (e.data.isTreeMode) {
+        const st = $('#podLiveRenderStatus');
+        if (st) { st.style.display = 'block'; st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽, 트리에서 페이지를 선택하세요)`; }
+        return;
+      }
 
       const pubSet = getPublishSettings(currentProject());
       const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-      
-      const activeTab = document.querySelector('.pod-settings-tab.active');
-      const tabId = activeTab ? activeTab.dataset.pane : 'tree';
 
-      let mode = (tabId === 'inner' || tabId === 'tree') ? 'spread' : 'single';
-      let pageNum = (tabId === 'inner' || tabId === 'tree') ? 2 : 1;
+      const activeTab = document.querySelector('.pod-settings-tab.active');
+      const tabId = activeTab ? activeTab.dataset.pane : 'inner';
+
+      let mode = 'single';
+      let pageNum = 1;
 
       if (tabId === 'fm') {
-        // 전면부 디자인: 저장/렌더링 직후 현재 편집 중인 페이지만 단면(single) 노출
         const block = window.fmBlocks && fmActiveBlockIdx !== null ? window.fmBlocks[fmActiveBlockIdx] : null;
         if (block && window.podPageMap) {
-          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
+          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', blank: '여백' };
           const label = FM_LABELS[block.type] || block.type;
           const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
           if (pm) pageNum = pm.pageNum;
@@ -2530,8 +2615,8 @@ window.addEventListener('message', (e) => {
       iframe.style.transform = `scale(${sc})`;
 
       iframe.contentWindow?.postMessage({ type: 'SHOW_PAGES', pageNum: pageNum, mode: mode }, '*');
-      
-      const showGuides = (tabId === 'inner' || tabId === 'tree') && $('#podShowGuides') && $('#podShowGuides').checked;
+
+      const showGuides = tabId === 'inner' && $('#podShowGuides') && $('#podShowGuides').checked;
       iframe.contentWindow?.postMessage({ type: 'TOGGLE_GUIDES', show: showGuides }, '*');
     }
     const st = $('#podLiveRenderStatus');
@@ -2978,11 +3063,7 @@ function renderPodPageTree() {
       () => {
         if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
         if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-        // Paged.js 렌더링된 iframe에 해당 페이지 쌍을 표시하도록 postMessage
-        const iframe = document.getElementById('podLiveIframe');
-        if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: pageData.pageNum, mode: 'spread' }, '*');
-        }
+        podGoToPage(pageData.pageNum, true);
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
         cell.classList.add('tree-thumb-active');
         if (thumb && thumb.firstElementChild) thumb.firstElementChild.classList.add('tree-thumb-active');
@@ -5005,53 +5086,35 @@ function runHiddenPagedJsForTree(p) {
 function podGoToPage(pageNum, isSpread) {
   const iframe = document.getElementById('podLiveIframe');
   if (!iframe || !iframe.contentDocument) return;
-
   const doc = iframe.contentDocument;
-  const rightTitle = doc.querySelector('.page-right h2');
-  const rightBody = doc.querySelector('.page-right > div > div:nth-child(2)');
-  const leftTitle = doc.querySelector('.page-left h2');
-  const leftBody = doc.querySelector('.page-left > div > div:nth-child(2)');
   const pageNumber = Number(pageNum) || 1;
-  const showSpread = isSpread !== false;
 
-  const renderSinglePage = (pData, titleEl, bodyEl) => {
-    if (!pData) {
-      if (titleEl) {
-        titleEl.textContent = '';
-        titleEl.style.display = 'none';
-      }
-      if (bodyEl) {
-        bodyEl.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">빈 면지</div>';
-        bodyEl.style.display = 'block';
-      }
-      return;
-    }
-    if (titleEl) {
-      titleEl.textContent = pData.label || `${pData.pageNum || pageNumber}쪽`;
-      titleEl.style.display = 'block';
-    }
-    if (bodyEl) {
-      if (pData.htmlContent) {
-        bodyEl.innerHTML = pData.htmlContent;
+  const injectPage = (contentId, numId, data, fallbackNum) => {
+    const contentEl = doc.getElementById(contentId);
+    const numEl = doc.getElementById(numId);
+    if (contentEl) {
+      if (data && data.htmlContent) {
+        contentEl.innerHTML = data.htmlContent;
+      } else if (fallbackNum > 0) {
+        contentEl.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;opacity:0.2;font-size:12pt;">빈 면</div>';
       } else {
-        bodyEl.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">빈 면지</div>';
+        contentEl.innerHTML = '<div class="page-placeholder">◁</div>';
       }
-      bodyEl.style.display = 'block';
     }
+    if (numEl) numEl.textContent = (fallbackNum > 0) ? fallbackNum : '';
   };
 
-  if (showSpread) {
+  if (isSpread) {
     const isOddPage = pageNumber % 2 !== 0;
-    const leftPageNum = isOddPage ? pageNumber - 1 : pageNumber;
-    const rightPageNum = isOddPage ? pageNumber : pageNumber + 1;
-    const leftPageData = window.podPageMap ? window.podPageMap.find(d => d.pageNum === leftPageNum) : null;
+    const leftPageNum  = isOddPage ? pageNumber - 1 : pageNumber;
+    const rightPageNum = isOddPage ? pageNumber     : pageNumber + 1;
+    const leftPageData  = window.podPageMap ? window.podPageMap.find(d => d.pageNum === leftPageNum)  : null;
     const rightPageData = window.podPageMap ? window.podPageMap.find(d => d.pageNum === rightPageNum) : null;
-    renderSinglePage(leftPageData, leftTitle, leftBody);
-    renderSinglePage(rightPageData, rightTitle, rightBody);
+    injectPage('tree-page-left-content',  'tree-page-left-num',  leftPageData,  leftPageNum);
+    injectPage('tree-page-right-content', 'tree-page-right-num', rightPageData, rightPageNum);
   } else {
     const pageData = window.podPageMap ? window.podPageMap.find(d => d.pageNum === pageNumber) : null;
-    renderSinglePage(pageData, rightTitle, rightBody);
-    if (leftTitle) leftTitle.textContent = '';
-    if (leftBody) leftBody.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">빈 면지</div>';
+    injectPage('tree-page-left-content',  'tree-page-left-num',  null, 0);
+    injectPage('tree-page-right-content', 'tree-page-right-num', pageData, pageNumber);
   }
 }
