@@ -2334,9 +2334,10 @@ async function renderLivePodPreview(forceMode = null) {
 <script>${window.POD_PAGEDJS_CODE}<\/script>
 <script>window.parent.postMessage({ type: 'PAGEDJS_READY', renderId: ${currentRenderSessionId} }, '*');<\/script>
 <style>
-  html,body { margin:0; padding:0; background:transparent !important; }
-  .pagedjs_pages { position:relative; display:flex; flex-wrap:wrap; }
+  html,body { margin:0; padding:0; background:transparent !important; overflow:hidden; }
+  .pagedjs_pages { display:flex; flex-wrap:nowrap; overflow:hidden; }
   .pagedjs_page  { margin:0 !important; box-shadow:0 4px 16px rgba(0,0,0,.12) !important; flex:0 0 auto; background:#fff; position: relative; }
+  .pagedjs_page[style*="display: none"], .pagedjs_page[style*="display:none"] { display:none !important; width:0 !important; overflow:hidden !important; }
   .pagedjs_left_page::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
   .pagedjs_right_page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
 </style>
@@ -2390,8 +2391,15 @@ window.addEventListener('message', function(ev) {
               };
             });
             
-            if (pages[0] && pages[0].wrapper) pages[0].wrapper.style.display = 'block';
-            if (pages[1] && pages[1].wrapper) pages[1].wrapper.style.display = 'block';
+            // 모든 pagedjs_page를 즉시 숨김 (깜박임 방지)
+            var allPages = Array.from(document.querySelectorAll('.pagedjs_page'));
+            allPages.forEach(function(el) { el.style.display = 'none'; });
+            // 초기 spread: 1쪽이 없을 경우(홀수 시작) 2,3 표시, 아니면 2,3
+            var initL = 2, initR = 3;
+            allPages.forEach(function(el) {
+              var n = parseInt(el.getAttribute('data-page-number'), 10);
+              if (n === initL || n === initR) el.style.display = 'block';
+            });
 
             window.parent.postMessage({ type:'pagedjs-rendered', totalPages:pages.length, pageMap:map, isTreeMode:TREE, renderId:rid }, '*');
           } catch(err) {
@@ -2970,7 +2978,11 @@ function renderPodPageTree() {
       () => {
         if ($('#podPreviewInner')) $('#podPreviewInner').style.display = 'flex';
         if ($('#podPreviewCover')) $('#podPreviewCover').style.display = 'none';
-        podGoToPage(pageData.pageNum, true);
+        // Paged.js 렌더링된 iframe에 해당 페이지 쌍을 표시하도록 postMessage
+        const iframe = document.getElementById('podLiveIframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'SHOW_PAGES', pageNum: pageData.pageNum, mode: 'spread' }, '*');
+        }
         grid.querySelectorAll('.tree-thumb-active').forEach(el => el.classList.remove('tree-thumb-active'));
         cell.classList.add('tree-thumb-active');
         if (thumb && thumb.firstElementChild) thumb.firstElementChild.classList.add('tree-thumb-active');
