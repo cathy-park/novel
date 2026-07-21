@@ -2967,6 +2967,8 @@ function renderPodPageTree() {
   }
 
   let pageCounter = 1;
+  // 절대 페이지 번호(1-based) → {kind:'fm'|'episode', ...} 서술자. 펼침면(좌/우 짝) 계산에 사용.
+  const pageDescriptors = [];
 
   // mkSpreadRow: 책 펼침면처럼 좌/우 썸네일을 한 행에 배치
   const mkSpreadRow = (leftThumb, rightThumb) => {
@@ -3010,8 +3012,9 @@ function renderPodPageTree() {
     const label     = FM_LABELS_MAP[block.type] || block.type;
     const isBlankFm = block.type === 'blank';
     const captPage  = fmPage;
+    pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage };
     const thumb = mkThumb(fmPage, label, 'FM', '#a78bfa', () => {
-      showTreeFmBlockPreview(block, pubSet, p, captPage);
+      showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
     }, isBlankFm);
     addToSpread(fmPage, thumb);
     pageCounter++;
@@ -3034,13 +3037,14 @@ function renderPodPageTree() {
     for (let off = 0; off < estPages; off++) {
       const absPage = epStartPage + off;
       const isFirst = off === 0;
-      const captOff = off, captStart = epStartPage;
+      const captPage = absPage;
+      pageDescriptors[absPage - 1] = { kind: 'episode', ep, epPageIndex: off, epStartPage, absPage };
       const thumb = mkThumb(
         absPage,
         isFirst ? epTitle : (absPage + 'p'),
         isFirst ? ('약 ' + estPages + 'p') : epTitle,
         isFirst ? '#7c6bf6' : '#b8b0f5',
-        () => { showTreeEpisodePreview(ep, pubSet, p, captOff, captStart); },
+        () => { showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p); },
         false
       );
       addToSpread(absPage, thumb);
@@ -3066,136 +3070,6 @@ function renderPodPageTree() {
 // ─────────────────────────────────────────────────────
 // 페이지 구조 탭 미리보기 헬퍼 함수 (Paged.js 완전 배제)
 // ─────────────────────────────────────────────────────
-
-/**
- * 공통 CSS 미리보기 iframe srcdoc 빌더
- * fm 탭과 동일한 방식의 CSS 기반 단면(A5) 렌더링
- */
-function _buildTreePreviewHtml(bodyHtml, pubSet, isSpread) {
-  const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-  const m = {
-    top: pubSet.margins?.top || 20,
-    bottom: pubSet.margins?.bottom || 20,
-    inner: pubSet.margins?.inner || 25,
-    outer: pubSet.margins?.outer || 18
-  };
-  const fontSize = pubSet.fontSize || 10;
-  const lineHeight = pubSet.lineHeight || 1.75;
-
-  if (isSpread) {
-    return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<style>
-  html, body { margin:0; padding:0; background:transparent; height:100%; display:flex; align-items:center; justify-content:center; }
-  .spread { display:flex; flex-direction:row; }
-  .page {
-    width:${paper.w}mm; height:${paper.h}mm;
-    background:#fff; box-sizing:border-box; position:relative;
-    box-shadow:0 4px 16px rgba(0,0,0,.12); overflow:hidden;
-    font-family:'KoPub Batang','Noto Serif KR',serif;
-    font-size:${fontSize}pt; line-height:${lineHeight}; color:#111;
-  }
-  .page.left  { padding:${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
-  .page.right { padding:${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
-  .page.left::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  .page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  .chapter { height:100%; position:relative; }
-  ul.toc-list { list-style:none; padding:0; margin:0; }
-  ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; }
-  .toc-page-ref::after { content:""; }
-  .chapter-content p { text-indent:10pt; margin:0; }
-  .chapter-content span { background-color:transparent !important; }
-  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width:100%; max-height:80%; object-fit:contain; display:block; margin:8px auto; }
-</style>
-</head>
-<body>
-<div class="spread">
-  <div class="page left"></div>
-  <div class="page right">${bodyHtml}</div>
-</div>
-</body>
-</html>`;
-  }
-
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<style>
-  html, body { margin:0; padding:0; background:transparent; height:100%; display:flex; align-items:center; justify-content:center; }
-  .page {
-    width:${paper.w}mm; height:${paper.h}mm;
-    background:#fff; box-sizing:border-box; position:relative;
-    box-shadow:0 4px 16px rgba(0,0,0,.12); overflow:hidden;
-    padding:${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm;
-    font-family:'KoPub Batang','Noto Serif KR',serif;
-    font-size:${fontSize}pt; line-height:${lineHeight}; color:#111;
-  }
-  .page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  .chapter { height:100%; position:relative; }
-  ul.toc-list { list-style:none; padding:0; margin:0; }
-  ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; }
-  .toc-page-ref::after { content:""; }
-  .chapter-content p { text-indent:10pt; margin:0; }
-  .chapter-content span { background-color:transparent !important; }
-  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width:100%; max-height:80%; object-fit:contain; display:block; margin:8px auto; }
-</style>
-</head>
-<body>
-<div class="page">${bodyHtml}</div>
-</body>
-</html>`;
-}
-
-/** FM이 좌측(짝수) 페이지일 때 spread 빌더 */
-function _buildTreePreviewHtmlLeft(bodyHtml, pubSet) {
-  const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
-  const m = {
-    top: pubSet.margins?.top || 20,
-    bottom: pubSet.margins?.bottom || 20,
-    inner: pubSet.margins?.inner || 25,
-    outer: pubSet.margins?.outer || 18
-  };
-  const fontSize = pubSet.fontSize || 10;
-  const lineHeight = pubSet.lineHeight || 1.75;
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<style>
-  html, body { margin:0; padding:0; background:transparent; height:100%; display:flex; align-items:center; justify-content:center; }
-  .spread { display:flex; flex-direction:row; }
-  .page {
-    width:${paper.w}mm; height:${paper.h}mm;
-    background:#fff; box-sizing:border-box; position:relative;
-    box-shadow:0 4px 16px rgba(0,0,0,.12); overflow:hidden;
-    font-family:'KoPub Batang','Noto Serif KR',serif;
-    font-size:${fontSize}pt; line-height:${lineHeight}; color:#111;
-  }
-  .page.left  { padding:${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
-  .page.right { padding:${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
-  .page.left::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  .page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  .chapter { height:100%; position:relative; }
-  ul.toc-list { list-style:none; padding:0; margin:0; }
-  ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; }
-  .chapter-content p { text-indent:10pt; margin:0; }
-  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
-  img { max-width:100%; max-height:80%; object-fit:contain; display:block; margin:8px auto; }
-</style>
-</head>
-<body>
-<div class="spread">
-  <div class="page left">${bodyHtml}</div>
-  <div class="page right"></div>
-</div>
-</body>
-</html>`;
-}
 
 /** 트리 탭 공통: iframe 크기 조정 후 srcdoc 주입 */
 function _showTreePreviewInIframe(html, pubSet, isSpread) {
@@ -3293,33 +3167,22 @@ function estimateEpisodePages(ep, pubSet) {
   }
 }
 
-/** FM 블록 1개 미리보기 — 실제 책처럼 양면(spread) 표시 */
-function showTreeFmBlockPreview(block, pubSet, p, fmPage) {
-  const tempPubSet = JSON.parse(JSON.stringify(pubSet));
-  tempPubSet.fmBlocks = [block];
-  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
-  const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm');
-  // fmPage가 짝수(좌측)면 우측을 빈면으로, 홀수(우측)면 좌측을 빈면으로
-  const fmIsRight = !fmPage || fmPage % 2 !== 0;
-  const html = fmIsRight
-    ? _buildTreePreviewHtml(bodyHtml, pubSet, true)  // 기존: 좌빈 + 우FM
-    : _buildTreePreviewHtmlLeft(bodyHtml, pubSet);    // 신규: 좌FM + 우빈
+/**
+ * 페이지 구조 트리: 절대 페이지 번호로 펼침면(spread) 전체를 렌더링
+ * FM/에피소드 어느 쪽을 클릭해도 항상 실제 짝(좌/우 두 페이지)을 함께 보여준다.
+ */
+function showTreeSpreadForPage(pageDescriptors, absPage, pubSet, p) {
+  const totalPages = pageDescriptors.length;
+  const leftPage  = (absPage % 2 === 0) ? absPage : (absPage > 1 ? absPage - 1 : null);
+  const rightPage = (absPage % 2 === 0) ? absPage + 1 : absPage;
+  const leftDesc  = (leftPage  && leftPage  <= totalPages) ? pageDescriptors[leftPage  - 1] : null;
+  const rightDesc = (rightPage && rightPage <= totalPages) ? pageDescriptors[rightPage - 1] : null;
+  const html = _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p);
   _showTreePreviewInIframe(html, pubSet, true);
 }
 
-/** 에피소드 페이지 미리보기 — CSS multi-column 페이지 분할 (패리티 수정) */
-function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
-  if (epPageIndex === undefined) epPageIndex = 0;
-  if (!epStartPage) epStartPage = 1; // 기본값: 홀수(우측) 시작
-
-  const processed = processEpisodeBody(ep.body, ep.title, true);
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = processed.body;
-  tempDiv.querySelectorAll('p').forEach(pTag => {
-    if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
-  });
-  const safeBody = tempDiv.innerHTML || '<p>&nbsp;</p>';
-
+/** 좌/우 페이지 서술자(fm 블록 또는 에피소드 페이지)로부터 펼침면 전체 HTML 생성 */
+function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
   const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
   const m = {
     top:    pubSet.margins?.top    || 20,
@@ -3331,33 +3194,46 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
   const lineHeightVal = parseFloat(pubSet.lineHeight)  || 1.75;
   const contentW = paper.w - m.inner - m.outer;  // mm
   const contentH = paper.h - m.top   - m.bottom; // mm
+  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
 
-  // 절대 페이지 번호 기준 패리티 계산
-  // epStartPage가 홀수인 경우: offset 0,2,4... = 홀수 abs = 우측
-  // epStartPage가 짝수인 경우: offset 0,2,4... = 짝수 abs = 좌측
-  const absPageNum = epStartPage + epPageIndex;
-  const isRightPage = absPageNum % 2 !== 0; // 홀수 = 우측
-  let leftColIdx, rightColIdx;
-  if (isRightPage) {
-    rightColIdx = epPageIndex;
-    leftColIdx  = epPageIndex > 0 ? epPageIndex - 1 : -1;
-  } else {
-    leftColIdx  = epPageIndex;
-    rightColIdx = epPageIndex + 1;
-  }
+  // 같은 에피소드가 좌/우 양쪽에 걸쳐 있어도 본문 가공은 한 번만 수행
+  const flowCache = new Map();
+  const getEpisodeFlowContent = (ep) => {
+    if (flowCache.has(ep)) return flowCache.get(ep);
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = processed.body;
+    tempDiv.querySelectorAll('p').forEach(pTag => {
+      if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+    });
+    const safeBody = tempDiv.innerHTML || '<p>&nbsp;</p>';
+    const flowContent = '<div class="chapter-content ql-editor">' + safeBody + '</div>';
+    flowCache.set(ep, flowContent);
+    return flowContent;
+  };
 
-  // CSS translateX 값 (mm) for each column
-  const leftTx  = leftColIdx  >= 0 ? (-leftColIdx  * contentW) : 0;
-  const rightTx = -rightColIdx * contentW;
+  const renderSideHtml = (desc) => {
+    if (!desc) return '';
+    if (desc.kind === 'fm') {
+      const tempPubSet = JSON.parse(JSON.stringify(pubSet));
+      tempPubSet.fmBlocks = [desc.block];
+      const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm');
+      return '<div class="fm-static">' + bodyHtml + '</div>';
+    }
+    if (desc.kind === 'episode') {
+      const flowContent = getEpisodeFlowContent(desc.ep);
+      const tx = -(desc.epPageIndex) * contentW;
+      return '<div class="flow" style="transform:translateX(' + tx + 'mm)">' + flowContent + '</div>';
+    }
+    return '';
+  };
 
-  // 절대 페이지 번호 표시 (책 전체 기준)
-  const leftPnum  = leftColIdx  >= 0 ? (epStartPage + leftColIdx) : -1;
-  const rightPnum = epStartPage + rightColIdx;
+  const leftHtml  = renderSideHtml(leftDesc);
+  const rightHtml = renderSideHtml(rightDesc);
+  const leftPnum  = leftDesc  ? leftDesc.absPage  : -1;
+  const rightPnum = rightDesc ? rightDesc.absPage : -1;
 
-  // 공통 flow HTML (에피소드 본문만, 제목 없음)
-  const flowContent = '<div class="chapter-content ql-editor">' + safeBody + '</div>';
-
-  const html =
+  return (
     '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
     '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">' +
     '<link rel="stylesheet" href="' + window.location.origin + '/style.css">' +
@@ -3370,6 +3246,7 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
     '.viewport { overflow:hidden; position:absolute; width:' + contentW + 'mm; height:' + contentH + 'mm; }' +
     '.page.left  .viewport { top:' + m.top + 'mm; left:' + m.outer + 'mm; }' +
     '.page.right .viewport { top:' + m.top + 'mm; left:' + m.inner + 'mm; }' +
+    '.fm-static { position:absolute; top:0; left:0; width:100%; height:100%; }' +
     '.flow {' +
       'position:absolute; top:0; left:0;' +
       'height:' + contentH + 'mm;' +
@@ -3378,12 +3255,13 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
       'column-gap:0;' +
       'column-fill:auto;' +
     '}' +
-    'body,.flow,.chapter-content {' +
+    'body,.flow,.chapter-content,.fm-static {' +
       'font-family:"KoPub Batang","Noto Serif KR",serif;' +
       'font-size:' + fontSize + 'pt;' +
       'line-height:' + lineHeightVal + ';' +
       'color:#111;' +
     '}' +
+    '.chapter { height:100%; position:relative; }' +
     '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
     '.chapter-content p + p { margin-top:0; }' +
     '/* span inline styles preserved */ ' +
@@ -3402,6 +3280,8 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
     's { text-decoration:line-through; } u { text-decoration:underline; }' +
     'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; color:#555; }' +
     'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
+    'ul.toc-list { list-style:none; padding:0; margin:0; }' +
+    'ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; }' +
     '.pnum { position:absolute; bottom:' + (m.bottom*0.5) + 'mm; font-size:8pt; color:#aaa; font-family:serif; }' +
     '.page.left  .pnum { left:' + m.outer + 'mm; }' +
     '.page.right .pnum { right:' + m.outer + 'mm; }' +
@@ -3425,51 +3305,22 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
     '.n-ui, .n-msg::before, .n-msg-y::before, .n-noti::before, .n-sys::before, .n-log::before, .n-alert::before, .n-record::before, .n-status::before, .n-email::before { display:none; }' +
     'hr { display:block; border:none; border-top:1px solid #CCC; margin:1.5em auto; width:35%; }' +
     '</style></head><body>' +
-    // 좌측 페이지
     '<div class="page left">' +
-      '<div class="viewport">' +
-        (leftColIdx >= 0
-          ? '<div class="flow" style="transform:translateX(' + leftTx + 'mm)">' + flowContent + '</div>'
-          : '') +
-      '</div>' +
+      '<div class="viewport">' + leftHtml + '</div>' +
       (leftPnum >= 0 ? '<div class="pnum">' + leftPnum + '</div>' : '') +
     '</div>' +
-    // 우측 페이지
     '<div class="page right">' +
-      '<div class="viewport">' +
-        '<div class="flow" style="transform:translateX(' + rightTx + 'mm)">' + flowContent + '</div>' +
-      '</div>' +
-      '<div class="pnum">' + rightPnum + '</div>' +
+      '<div class="viewport">' + rightHtml + '</div>' +
+      (rightPnum >= 0 ? '<div class="pnum">' + rightPnum + '</div>' : '') +
     '</div>' +
-    '</body></html>';
-
-  _showTreePreviewInIframe(html, pubSet, true);
+    '</body></html>'
+  );
 }
 
-/** 빈면 미리보기 */
-function showTreeBlankPagePreview(pubSet) {
-  const html = _buildTreePreviewHtml('<div style="height:100%;display:flex;align-items:center;justify-content:center;opacity:.2;font-size:10pt;color:#999;">빈 면지</div>', pubSet, false);
-  _showTreePreviewInIframe(html, pubSet, false);
-}
-
-/** 트리 탭 진입 시 첫 번째 항목 자동 미리보기 */
+/** 트리 탭 진입 시 첫 번째 항목 자동 미리보기 (실제 첫 썸네일 클릭 → 클릭 핸들러가 펼침면 렌더링) */
 function showTreeFirstPage() {
-  const p = currentProject(); if (!p) return;
-  const pubSet = getPublishSettings(p);
-  const activeFmBlocks = ((pubSet.fmBlocks && pubSet.fmBlocks.length > 0) ? pubSet.fmBlocks : (window.fmBlocks || []))
-    .filter(b => b.active && b.type !== 'main_body');
-
-  if (activeFmBlocks.length > 0) {
-    showTreeFmBlockPreview(activeFmBlocks[0], pubSet, p);
-    // 첫 번째 썸네일 자동 선택
-    setTimeout(() => {
-      const firstThumb = document.querySelector('#podPageTree .pod-tree-thumb');
-      if (firstThumb) firstThumb.click();
-    }, 100);
-  } else {
-    const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
-    if (eps.length > 0) showTreeEpisodePreview(eps[0], pubSet, p);
-  }
+  const firstThumb = document.querySelector('#podPageTree .pod-tree-thumb');
+  if (firstThumb) firstThumb.click();
 }
 
 
