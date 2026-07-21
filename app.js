@@ -4727,7 +4727,32 @@ ${mainStyles}
     margin-bottom: 1em !important;
     line-height: 1.4;
   }
-  
+  /* 실제 글자 크기 자체가 빠져 있었다(마진만 있고 font-size가 없어서 "크게/
+     아주 크게" 서식을 줘도 본문과 같은 크기로 찍혔다) + 들여쓰기 단계
+     (ql-indent-*)도 통째로 빠져 있어 들여쓴 문단이 들여쓰기 없이 찍히고,
+     사용 가능 폭이 달라져 줄바꿈 위치도 트리 미리보기와 어긋났다. */
+  .chapter-content .ql-size-small { font-size: 0.75em; }
+  .chapter-content .ql-size-large { font-size: 1.5em; }
+  .chapter-content .ql-size-huge  { font-size: 2.5em; }
+  .chapter-content .ql-indent-1 { padding-left: 2.5em; }
+  .chapter-content .ql-indent-2 { padding-left: 5em; }
+  .chapter-content .ql-indent-3 { padding-left: 7.5em; }
+  .chapter-content .ql-indent-4 { padding-left: 10em; }
+
+  /* 이미지 크기 제한 — 이 규칙이 통째로 빠져 있어서 본문에 이미지가 있으면
+     아무 제약 없이 원본 픽셀 크기 그대로 찍혀(페이지를 넘어갈 정도로 커질
+     수 있음) 트리 미리보기(최대 세로 50mm 가정)와 실제 쪽수가 어긋나는
+     원인이었다. 미리보기와 동일하게 맞춘다. */
+  .chapter-content img {
+    max-width: 100% !important;
+    max-height: 50mm !important;
+    object-fit: contain;
+    display: block;
+    margin: 4mm auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   /* ── Narrative Block 기본 서식 (원고 편집기 style.css와 동일) ──
      style.css는 <link>로 불러오므로 위 mainStyles(document.querySelectorAll('style')만
      수집)에는 잡히지 않는다. 그래서 아래 pdf-group-* 그룹핑 보정 규칙만 있고
