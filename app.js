@@ -4395,7 +4395,13 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     const podLogo = pubSet.coverOptions?.logo || '';
     const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
 
-    const pageBase = `break-before:right;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100%;${bgPrintCss}${rel}`;
+    // break-before:page(연속 배치) — right(무조건 우측면 시작)를 쓰면 직전 내용이
+    // 홀수 쪽에서 끝났을 때 짝수 쪽 빈 페이지가 자동으로 끼워 넣어진다. 트리
+    // 구조 미리보기는 처음부터 "강제 홀수/빈면 없음"으로 연속 배치를 가정하고
+    // 페이지 수를 세는데, 실제 PDF만 break-before:right를 써서 FM 블록이
+    // 이어질 때마다 빈 페이지가 생겨 미리보기(93p)와 실제 PDF(96p) 쪽수가
+    // 어긋났다 — 실제 PDF도 트리와 동일하게 연속 배치로 맞춘다.
+    const pageBase = `break-before:page;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100%;${bgPrintCss}${rel}`;
 
     const padCss = `padding:${s.paddingTop ?? 20}mm ${s.paddingRight ?? 20}mm ${s.paddingBottom ?? 20}mm ${s.paddingLeft ?? 20}mm;`;
 
@@ -4408,18 +4414,18 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     } else if (type === 'epigraph') {
       htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
     } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:right;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:page;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
         const manualNumbers = (c.tocManual || '').split(/[\n,]+/).map(s => s.trim());
         const tocFont = s.fontFamily || "'KoPub Batang',serif";
         const tocColor = s.fontColor || '#1C1813';
-        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:right;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
-        tocEps.forEach((ep, i) => { 
+        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:page;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
+        tocEps.forEach((ep, i) => {
           let manualNum = manualNumbers[i] !== undefined && manualNumbers[i] !== '' ? manualNumbers[i] : '';
           let pageRefHTML = manualNum ? `<span class="toc-manual-page" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};">${escapeHtml(manualNum)}</span>` : `<a href="#ep-${ep.id}" class="toc-page-ref" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};"></a>`;
-          tocHtml += `<li style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="toc-title" style="font-family:${tocFont};color:${tocColor};">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots" style="flex:1 1 auto;border-bottom:1px dotted currentColor;opacity:0.6;margin:0 8px;position:relative;top:-4px;"></span>${pageRefHTML}</li>`; 
+          tocHtml += `<li style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="toc-title" style="font-family:${tocFont};color:${tocColor};">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots" style="flex:1 1 auto;border-bottom:1px dotted currentColor;opacity:0.6;margin:0 8px;position:relative;top:-4px;"></span>${pageRefHTML}</li>`;
         });
         tocHtml += `</ul></div></div>`;
         htmlFm += tocHtml;
@@ -4427,7 +4433,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     } else if (type === 'main_body') {
       htmlFm += `<!--MAIN_BODY_PLACEHOLDER-->`;
     } else if (type === 'blank') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:right;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
+      htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:page;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
     }
   });
 
@@ -4453,7 +4459,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
     let safeBody = tempDiv.innerHTML;
     if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
-    epsHtml += `<div class="chapter matter-page" style="break-before: right;"><div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
+    epsHtml += `<div class="chapter matter-page" style="break-before: page;"><div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
   });
 
   // 5. 본문 (목차 이후의 회차 및 뒷부속)
@@ -4619,7 +4625,7 @@ ${mainStyles}
   }
   .title-page h1 { font-size: 24pt; margin-bottom: 20px; font-weight: 700; }
   .toc-page {
-    break-before: right;
+    break-before: page;
     break-after: page;
     padding-top: 40px;
   }
@@ -4668,7 +4674,12 @@ ${mainStyles}
     margin-top: 40px;
   }
   .chapter.matter-page {
-    break-before: right;
+    /* right(무조건 우측 페이지 시작)를 쓰면 직전 내용이 홀수 쪽에서 끝났을 때
+       짝수 쪽 빈 페이지가 자동 삽입된다. 트리 구조 미리보기는 FM 블록을
+       처음부터 연속 배치(강제 홀수/빈면 없음)로 가정하고 쪽수를 세므로,
+       실제 PDF도 동일하게 맞춰야 미리보기 쪽수(예: 93p)와 실제 PDF 쪽수
+       (예: 96p)가 어긋나지 않는다. */
+    break-before: page;
   }
   .chapter-title {
     font-size: 14pt;

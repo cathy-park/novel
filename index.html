@@ -493,8 +493,10 @@ window.addEventListener('unhandledrejection', function(e) {
           <div class="pod-section">
             <div class="pod-section-title">페이지 구조도</div>
             <div style="font-size:11px;color:var(--c-muted);margin-bottom:12px;">이 책의 전체 페이지 흐름과 구조를 확인합니다. 클릭 시 해당 영역으로 이동합니다.</div>
-            <div id="podPageTree" style="font-size:13px; line-height:1.6; display:flex; flex-direction:column; gap:4px; max-height: 60vh; overflow-y:auto; padding-right:8px; border-left:2px solid var(--border-color); padding-left:12px; margin-left:6px;">
-              <!-- JS 렌더링 영역 -->
+            <div id="podPageTree" style="font-size:13px; line-height:1.6; display:flex; flex-direction:column; gap:4px; padding-right:8px; border-left:2px solid var(--border-color); padding-left:12px; margin-left:6px;">
+              <!-- JS 렌더링 영역: 부모 pane(.pod-settings-pane.active)이 남는 세로 공간을
+                   전부 차지하고 자체 스크롤을 담당하므로, 여기서 별도 max-height로
+                   다시 제한하지 않는다 (예전엔 60vh로 잘라서 화면을 다 못 썼다). -->
             </div>
           </div>
         </div>

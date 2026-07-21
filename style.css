@@ -1093,7 +1093,10 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   gap: 0;
   padding: 20px 18px;
 }
-.pod-settings-pane.active { display: flex; }
+/* flex:1로 남는 세로 공간을 전부 채워야 하단 저장 버튼이 항상 화면 맨
+   아래에 붙는다(짧은 탭 내용 뒤에 무의미한 여백이 남는 대신). 내용이
+   넘치면 패널 전체가 아니라 이 pane 혼자 스크롤되도록 overflow-y:auto. */
+.pod-settings-pane.active { display: flex; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* 설정 섹션 */
 .pod-section {
