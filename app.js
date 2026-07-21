@@ -2986,72 +2986,69 @@ function renderPodPageTree() {
     return row;
   };
 
-  // FM 블록: 홀수(우측) 시작, 대향 짝수면은 빈면
+  // ── 버퍼 기반 펼침면 배치 ──
+  // 짝수(좌)는 버퍼에 보관, 홀수(우)가 오면 쌍으로 row 생성
+  let spreadBuf = null;
+  const addToSpread = (absPage, thumb) => {
+    if (absPage % 2 !== 0) {
+      // 홀수(우측): 버퍼(좌측)와 결합 후 row 생성
+      innerSec.appendChild(mkSpreadRow(spreadBuf, thumb));
+      spreadBuf = null;
+    } else {
+      // 짝수(좌측): 버퍼에 보관 (이전 버퍼가 남아있으면 먼저 flush)
+      if (spreadBuf) innerSec.appendChild(mkSpreadRow(spreadBuf, null));
+      spreadBuf = thumb;
+    }
+  };
+  const flushBuf = () => {
+    if (spreadBuf) { innerSec.appendChild(mkSpreadRow(spreadBuf, null)); spreadBuf = null; }
+  };
+
+  // FM 블록: 연속 배치 (1,2,3,4,5 순서 — 강제 홀수/빈면 없음)
   activeFmBlocks.forEach(block => {
-    if (pageCounter % 2 === 0) pageCounter++;
-    const oddPage   = pageCounter;
-    const evenPage  = oddPage - 1;
+    const fmPage    = pageCounter;
     const label     = FM_LABELS_MAP[block.type] || block.type;
     const isBlankFm = block.type === 'blank';
-
-    const rThumb = mkThumb(oddPage, label, 'FM', '#a78bfa', () => {
-      showTreeFmBlockPreview(block, pubSet, p);
+    const captPage  = fmPage;
+    const thumb = mkThumb(fmPage, label, 'FM', '#a78bfa', () => {
+      showTreeFmBlockPreview(block, pubSet, p, captPage);
     }, isBlankFm);
-    innerSec.appendChild(mkSpreadRow(null, rThumb));
+    addToSpread(fmPage, thumb);
     pageCounter++;
   });
+  // FM→에피소드: 연속 배치 (빈면 없음, 강제 홀수 없음)
 
-  // 에피소드: 연속 배치 (에피소드간 강제 홀수 시작 없음)
-  // FM→첫 에피소드 전환만 홀수 보장
-  if (eps.length > 0 && pageCounter % 2 === 0) pageCounter++;
-
+  // 에피소드: 각 페이지를 버퍼 기반으로 연속 배치
   eps.forEach((ep, i) => {
     const estPages    = estimateEpisodePages(ep, pubSet);
     const epStartPage = pageCounter;
     const epTitle     = ep.title || ('챕터 ' + (i + 1));
-    const startIsOdd  = epStartPage % 2 !== 0; // 시작이 홀수(우측)인지
 
-    // 챕터 헤더
+    // 챕터 헤더 (버퍼 유지: 다음 페이지가 홀수면 자연스럽게 페어)
     const secEl = document.createElement('div');
     secEl.style.cssText = 'padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
     secEl.textContent = epTitle + ' (약 ' + estPages + 'p)';
     innerSec.appendChild(secEl);
 
-    // mkEpThumb: startPage 정보 포함해서 parity 계산 가능하도록
-    const mkEpThumb = (absPage, off, label, sub, color) => {
+    // 에피소드 각 페이지: 1페이지씩 버퍼에 추가 (홀짝 자동 배치)
+    for (let off = 0; off < estPages; off++) {
+      const absPage = epStartPage + off;
+      const isFirst = off === 0;
       const captOff = off, captStart = epStartPage;
-      return mkThumb(absPage, label, sub, color, () => {
-        showTreeEpisodePreview(ep, pubSet, p, captOff, captStart);
-      }, false);
-    };
-
-    if (startIsOdd) {
-      // 홀수 시작 → 첫 페이지 우측 단독
-      innerSec.appendChild(mkSpreadRow(null, mkEpThumb(epStartPage, 0, epTitle, '약 ' + estPages + 'p', '#7c6bf6')));
-      for (let off = 1; off < estPages; off += 2) {
-        const lAbs = epStartPage + off, rAbs = epStartPage + off + 1;
-        const hasR = off + 1 < estPages;
-        innerSec.appendChild(mkSpreadRow(
-          mkEpThumb(lAbs, off,     lAbs + 'p', epTitle, '#b8b0f5'),
-          hasR ? mkEpThumb(rAbs, off + 1, rAbs + 'p', epTitle, '#b8b0f5') : null
-        ));
-      }
-    } else {
-      // 짝수 시작 → 첫 페이지 좌측, 다음 페이지 우측
-      const s0 = mkEpThumb(epStartPage, 0, epTitle, '약 ' + estPages + 'p', '#7c6bf6');
-      const s1 = estPages > 1 ? mkEpThumb(epStartPage + 1, 1, (epStartPage + 1) + 'p', epTitle, '#b8b0f5') : null;
-      innerSec.appendChild(mkSpreadRow(s0, s1));
-      for (let off = 2; off < estPages; off += 2) {
-        const lAbs = epStartPage + off, rAbs = epStartPage + off + 1;
-        const hasR = off + 1 < estPages;
-        innerSec.appendChild(mkSpreadRow(
-          mkEpThumb(lAbs, off,     lAbs + 'p', epTitle, '#b8b0f5'),
-          hasR ? mkEpThumb(rAbs, off + 1, rAbs + 'p', epTitle, '#b8b0f5') : null
-        ));
-      }
+      const thumb = mkThumb(
+        absPage,
+        isFirst ? epTitle : (absPage + 'p'),
+        isFirst ? ('약 ' + estPages + 'p') : epTitle,
+        isFirst ? '#7c6bf6' : '#b8b0f5',
+        () => { showTreeEpisodePreview(ep, pubSet, p, captOff, captStart); },
+        false
+      );
+      addToSpread(absPage, thumb);
     }
     pageCounter += estPages;
   });
+
+  flushBuf(); // 마지막 짝수 페이지 처리
 
 
   treeEl.appendChild(innerSec);
@@ -3154,6 +3151,52 @@ function _buildTreePreviewHtml(bodyHtml, pubSet, isSpread) {
 </html>`;
 }
 
+/** FM이 좌측(짝수) 페이지일 때 spread 빌더 */
+function _buildTreePreviewHtmlLeft(bodyHtml, pubSet) {
+  const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+  const m = {
+    top: pubSet.margins?.top || 20,
+    bottom: pubSet.margins?.bottom || 20,
+    inner: pubSet.margins?.inner || 25,
+    outer: pubSet.margins?.outer || 18
+  };
+  const fontSize = pubSet.fontSize || 10;
+  const lineHeight = pubSet.lineHeight || 1.75;
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin:0; padding:0; background:transparent; height:100%; display:flex; align-items:center; justify-content:center; }
+  .spread { display:flex; flex-direction:row; }
+  .page {
+    width:${paper.w}mm; height:${paper.h}mm;
+    background:#fff; box-sizing:border-box; position:relative;
+    box-shadow:0 4px 16px rgba(0,0,0,.12); overflow:hidden;
+    font-family:'KoPub Batang','Noto Serif KR',serif;
+    font-size:${fontSize}pt; line-height:${lineHeight}; color:#111;
+  }
+  .page.left  { padding:${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
+  .page.right { padding:${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
+  .page.left::after  { content:""; position:absolute; top:0; right:0; bottom:0; width:20px; background:linear-gradient(to left,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  .page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+  .chapter { height:100%; position:relative; }
+  ul.toc-list { list-style:none; padding:0; margin:0; }
+  ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; }
+  .chapter-content p { text-indent:10pt; margin:0; }
+  .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
+  img { max-width:100%; max-height:80%; object-fit:contain; display:block; margin:8px auto; }
+</style>
+</head>
+<body>
+<div class="spread">
+  <div class="page left">${bodyHtml}</div>
+  <div class="page right"></div>
+</div>
+</body>
+</html>`;
+}
+
 /** 트리 탭 공통: iframe 크기 조정 후 srcdoc 주입 */
 function _showTreePreviewInIframe(html, pubSet, isSpread) {
   const iframe = document.getElementById('podLiveIframe');
@@ -3200,80 +3243,67 @@ function estimateEpisodePages(ep, pubSet) {
   };
   const fontSize      = parseFloat(pubSet.fontSize)   || 10;
   const lineHeightVal = parseFloat(pubSet.lineHeight)  || 1.75;
-  const contentW = paper.w - m.inner - m.outer; // mm
-  const contentH = paper.h - m.top   - m.bottom; // mm
+  const contentW = paper.w - m.inner - m.outer;
+  const contentH = paper.h - m.top   - m.bottom;
 
   try {
-    // ── DOM 렌더링 기반 실측 ──
-    // CSS multi-column 레이아웃에 실제로 삽입해서 센티넬 위치로 컬럼 수 측정
+    // ── 선형 높이 기반 DOM 실측 ──
+    // processEpisodeBody로 빈 단락 정리 후, 단일 컬럼 렌더링 총 높이 / 페이지 높이
     const PX_MM = 96 / 25.4;
     const cwPx  = contentW * PX_MM;
     const chPx  = contentH * PX_MM;
 
-    // 오프스크린 래퍼
+    let processedHtml = ep.body || '';
+    try { processedHtml = processEpisodeBody(ep.body, ep.title, true).body || processedHtml; } catch(e2){}
+
+    const uid = '_podEst' + (Math.random() * 1e9 | 0);
+    const estStyle = document.createElement('style');
+    estStyle.textContent =
+      '#' + uid + ' { box-sizing:border-box; width:' + cwPx + 'px; }' +
+      '#' + uid + ' p { margin:0; text-indent:1em; font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + '; }' +
+      '#' + uid + ' .n-msg,#' + uid + ' .n-msg-y { margin:10px 0; padding:9px 14px; text-indent:0; line-height:1.6; }' +
+      '#' + uid + ' .n-sys,#' + uid + ' .n-noti,#' + uid + ' .n-alert,#' + uid + ' .n-log,#' + uid + ' .n-record,' +
+      '#' + uid + ' .n-status,#' + uid + ' .n-email,#' + uid + ' .n-doc,#' + uid + ' .n-field,#' + uid + ' .n-memo { margin:12px 0; padding:9px 13px; text-indent:0; }' +
+      '#' + uid + ' hr { height:0; margin:16px 0; border:none; border-top:1px solid #ccc; }' +
+      '#' + uid + ' img { display:none; }';
+    document.head.appendChild(estStyle);
+
     const wrapper = document.createElement('div');
+    wrapper.id = uid;
     wrapper.style.cssText =
-      'position:fixed; left:-99999px; top:0;' +
-      'width:1px; height:1px; overflow:visible; visibility:hidden; z-index:-1;';
-
-    // 컬럼 측정 컨테이너
-    const measurer = document.createElement('div');
-    measurer.style.cssText =
-      'position:absolute; left:0; top:0; overflow:visible;' +
-      'width:' + cwPx + 'px; height:' + chPx + 'px;' +
-      'columns:' + cwPx + 'px; column-gap:0; column-fill:auto;' +
-      'font-family:"KoPub Batang","Noto Serif KR",serif;' +
-      'font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + ';' +
-      'word-break:keep-all; white-space:normal;';
-
-    // 에피소드 본문 삽입
-    const bodyDiv = document.createElement('div');
-    bodyDiv.style.cssText = 'text-indent:1em;';
-    bodyDiv.innerHTML = ep.body || '';
-    // 빈 단락 → 빈 줄 유지
-    bodyDiv.querySelectorAll('p').forEach(pTag => {
-      if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') {
-        pTag.innerHTML = '\u00A0'; // &nbsp;
-      }
-    });
-    measurer.appendChild(bodyDiv);
-
-    // 센티넬: 마지막 위치를 측정
-    const sentinel = document.createElement('span');
-    sentinel.style.cssText = 'display:inline-block; width:0; height:0; vertical-align:top;';
-    measurer.appendChild(sentinel);
-
-    wrapper.appendChild(measurer);
+      'position:fixed; left:-99999px; top:0; visibility:hidden; overflow:visible; z-index:-1;' +
+      'width:' + cwPx + 'px; font-family:"KoPub Batang",serif; font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + '; word-break:keep-all;';
+    wrapper.innerHTML = processedHtml;
     document.body.appendChild(wrapper);
 
-    // sentinel.offsetLeft = 마지막 컬럼의 x 위치
-    const sentinelLeft = sentinel.offsetLeft;
-    const numPages = Math.floor(sentinelLeft / cwPx) + 1;
-
+    const totalH = wrapper.scrollHeight;
     document.body.removeChild(wrapper);
-    return Math.max(1, numPages);
+    document.head.removeChild(estStyle);
+    return Math.max(1, Math.ceil(totalH / chPx));
 
   } catch (e) {
-    // ── 폴백: 문자 수 기반 추정 ──
+    // 폴백: 문자 수 기반
     const fontMm = fontSize * 0.3528;
-    const lineHeightMm = fontMm * lineHeightVal;
-    const linesPerPage = Math.floor(contentH / lineHeightMm);
+    const linesPerPage = Math.floor(contentH / (fontMm * lineHeightVal));
     const charsPerLine = Math.floor(contentW / fontMm);
-    const charsPerPage = Math.max(100, linesPerPage * charsPerLine * 0.62);
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = ep.body || '';
-    const charCount = (tempDiv.textContent || '').length;
-    return Math.max(1, Math.ceil(charCount / charsPerPage));
+    const charsPerPage = Math.max(100, linesPerPage * charsPerLine * 0.55);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = ep.body || '';
+    return Math.max(1, Math.ceil((tmp.textContent || '').replace(/\s/g,'').length / charsPerPage));
   }
 }
 
 /** FM 블록 1개 미리보기 — 실제 책처럼 양면(spread) 표시 */
-function showTreeFmBlockPreview(block, pubSet, p) {
+function showTreeFmBlockPreview(block, pubSet, p, fmPage) {
   const tempPubSet = JSON.parse(JSON.stringify(pubSet));
   tempPubSet.fmBlocks = [block];
   const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
   const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm');
-  const html = _buildTreePreviewHtml(bodyHtml, pubSet, true); // spread: 좌(빈면) + 우(FM)
+  // fmPage가 짝수(좌측)면 우측을 빈면으로, 홀수(우측)면 좌측을 빈면으로
+  const fmIsRight = !fmPage || fmPage % 2 !== 0;
+  const html = fmIsRight
+    ? _buildTreePreviewHtml(bodyHtml, pubSet, true)  // 기존: 좌빈 + 우FM
+    : _buildTreePreviewHtmlLeft(bodyHtml, pubSet);    // 신규: 좌FM + 우빈
   _showTreePreviewInIframe(html, pubSet, true);
 }
 
@@ -3320,9 +3350,9 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
   const leftTx  = leftColIdx  >= 0 ? (-leftColIdx  * contentW) : 0;
   const rightTx = -rightColIdx * contentW;
 
-  // 페이지 번호 표시 (1-indexed within episode)
-  const leftPnum  = leftColIdx  >= 0 ? (leftColIdx  + 1) : -1;
-  const rightPnum = rightColIdx + 1;
+  // 절대 페이지 번호 표시 (책 전체 기준)
+  const leftPnum  = leftColIdx  >= 0 ? (epStartPage + leftColIdx) : -1;
+  const rightPnum = epStartPage + rightColIdx;
 
   // 공통 flow HTML (에피소드 본문만, 제목 없음)
   const flowContent = '<div class="chapter-content ql-editor">' + safeBody + '</div>';
@@ -3330,6 +3360,7 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
   const html =
     '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
     '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">' +
+    '<link rel="stylesheet" href="' + window.location.origin + '/style.css">' +
     '<style>' +
     '* { box-sizing:border-box; margin:0; padding:0; }' +
     'html,body { background:transparent; width:' + (paper.w*2) + 'mm; height:' + paper.h + 'mm; display:flex; overflow:hidden; }' +
@@ -3355,7 +3386,7 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
     '}' +
     '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
     '.chapter-content p + p { margin-top:0; }' +
-    '/* span background preserved for formatting */' + +
+    '/* span inline styles preserved */ ' +
     '.ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }' +
     '.ql-align-center { text-align:center !important; }' +
     '.ql-align-right  { text-align:right  !important; }' +
@@ -3376,6 +3407,23 @@ function showTreeEpisodePreview(ep, pubSet, p, epPageIndex, epStartPage) {
     '.page.right .pnum { right:' + m.outer + 'mm; }' +
     '.page.left::after   { content:""; position:absolute; top:0; right:0; bottom:0; width:16px; background:linear-gradient(to left,rgba(0,0,0,.07),transparent); z-index:10; }' +
     '.page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:16px; background:linear-gradient(to right,rgba(0,0,0,.07),transparent); z-index:10; }' +
+    '/* ── Narrative Block Inline CSS ── */' +
+    '.n-msg,.n-msg-y { display:block; max-width:70%; margin:10px 0; padding:9px 14px; border-radius:14px 14px 14px 2px; font-size:0.93em; line-height:1.6; text-indent:0 !important; word-break:keep-all; }' +
+    '.n-msg { background:#EAF4FF; }' +
+    '.n-msg-y { background:#FFF7DE; color:#5C5230; }' +
+    '.n-noti { display:block; background:#FFFDE7; border-left:3px solid #FFC107; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; }' +
+    '.n-sys  { display:block; background:#F2F7F4; border-left:3px solid #5E9C76; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; color:#4A5A53; }' +
+    '.n-log  { display:block; background:#E8EAF6; border-left:3px solid #5C6BC0; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; font-family:monospace; }' +
+    '.n-alert{ display:block; background:#FFF0F0; border-left:3px solid #EF5350; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; color:#5C2424; }' +
+    '.n-record{display:block; background:#F0F4C3; border-left:3px solid #827717; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
+    '.n-status{display:block; background:#F3E5F5; border-left:3px solid #7B1FA2; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
+    '.n-email { display:block; background:#F8F4FF; border:1px solid #D8C8FF; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; }' +
+    '.n-email-body{display:block; background:#F8F4FF; border:1px solid #D8C8FF; border-top:none; border-radius:0 0 4px 4px; padding:9px 13px; margin:-12px 0 12px; text-indent:0 !important; font-size:0.9em; color:#555; }' +
+    '.n-doc  { display:block; background:#F5F5F5; border:1px solid #CCC; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; font-family:monospace; }' +
+    '.n-field{ display:block; background:#E3F2FD; border:1px dashed #90CAF9; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
+    '.n-memo { display:block; background:#FFFDE7; border:1px dashed #FDD835; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
+    '.n-ui, .n-msg::before, .n-msg-y::before, .n-noti::before, .n-sys::before, .n-log::before, .n-alert::before, .n-record::before, .n-status::before, .n-email::before { display:none; }' +
+    'hr { display:block; border:none; border-top:1px solid #CCC; margin:1.5em auto; width:35%; }' +
     '</style></head><body>' +
     // 좌측 페이지
     '<div class="page left">' +
