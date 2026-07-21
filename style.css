@@ -404,7 +404,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-indent: 0 !important;
   position: relative !important;
 }
-.ql-editor p.n-email::before, .n-email::before { content: '📧' !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
+.ql-editor p.n-email::before, .n-email::before { content: "" !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
 .ql-editor p.n-email:has(+ p.n-email), .n-email:has(+ .n-email) { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; }
 .ql-editor p.n-email + p.n-email, .n-email + .n-email { margin-top: 0 !important; border-top-left-radius: 6px !important; padding-left: 18px !important; }
 .ql-editor p.n-email + p.n-email:not(:has(+ p.n-email)), .n-email + .n-email:not(:has(+ .n-email)) { border-bottom-left-radius: 2px !important; }
@@ -430,7 +430,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 16px 20px 4px 20px !important;
   margin: 20px 0 0 0 !important;
 }
-.ql-editor p.n-email-body::before, .n-email-body::before { content: '📧' !important; display: inline-block !important; font-size: 14px !important; margin-right: 8px !important; }
+.ql-editor p.n-email-body::before, .n-email-body::before { content: "" !important; display: inline-block !important; font-size: 14px !important; margin-right: 8px !important; }
 .ql-editor p.n-email-body + p.n-email-body, .n-email-body + .n-email-body { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
 .ql-editor p.n-email-body + p.n-email-body::before, .n-email-body + .n-email-body::before { content: none !important; }
 .ql-editor p.n-email-body:not(:has(+ p.n-email-body)), .ql-editor p.n-email-body + p.n-email-body:not(:has(+ p.n-email-body)), .n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) {
@@ -461,7 +461,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 16px 20px 4px 20px !important;
   margin: 20px 0 0 0 !important;
 }
-.ql-editor p.n-doc::before, .n-doc::before { content: '📄' !important; display: inline-block !important; font-size: 14px !important; color: #95AED0 !important; margin-right: 8px !important; }
+.ql-editor p.n-doc::before, .n-doc::before { content: "" !important; display: inline-block !important; font-size: 14px !important; color: #95AED0 !important; margin-right: 8px !important; }
 .ql-editor p.n-doc + p.n-doc, .n-doc + .n-doc { padding: 4px 20px 4px 38px !important; margin-top: 0 !important; margin-bottom: 0 !important; border-top: none !important; border-bottom: none !important; border-radius: 0 !important; }
 .ql-editor p.n-doc + p.n-doc::before, .n-doc + .n-doc::before { content: none !important; }
 .ql-editor p.n-doc:not(:has(+ p.n-doc)), .ql-editor p.n-doc + p.n-doc:not(:has(+ p.n-doc)), .n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) {
@@ -558,7 +558,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
     linear-gradient(-45deg, transparent 15px, #DEFFE6 0) !important;
 }
 .ql-editor p.n-memo::before, .n-memo::before {
-  content: '📝' !important;
+  content: "" !important;
   display: inline-block !important;
   font-family: 'Tossface', sans-serif !important;
   font-size: 14px !important;
