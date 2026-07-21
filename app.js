@@ -1835,6 +1835,20 @@ function calculateSpineWidth(p) {
   return Math.max(1, Math.round(estimatedPages * (8.8 / 96) * 10) / 10);
 }
 
+// 책등 두께 mm → px 환산 표시 (표지 작업을 px 기준으로 하는 사용자를 위해).
+// 300dpi는 이 앱이 실제 표지 캔버스를 렌더링할 때 쓰는 해상도(generatePODCoverCanvas의
+// MM_TO_PX = 300/25.4)와 동일하게 맞춘 값이라 여기 표시되는 px가 실제 내보내지는
+// 표지 이미지의 책등 폭과 일치한다. 화면/웹 작업용으로 96dpi도 함께 보여준다.
+function updateSpinePxDisplay() {
+  const el = $('#podSpinePxText');
+  if (!el) return;
+  const mm = parseFloat($('#podSpineWidth')?.value);
+  if (!mm || mm <= 0) { el.textContent = ''; return; }
+  const px300 = Math.round(mm * (300 / 25.4));
+  const px96 = Math.round(mm * (96 / 25.4));
+  el.textContent = `≈ ${px300}px (인쇄용 300dpi 기준) · ${px96}px (화면용 96dpi 기준)`;
+}
+
 // ============================================================
 //  POD Publishing Studio — Phase 1
 //  Split View 출판 스튜디오 로직
@@ -1905,6 +1919,7 @@ async function showPodStudio() {
   const spineW = calculateSpineWidth(p);
   $('#podSpineWidth').value = set.coverOptions?.spineWidthMm || spineW;
   $('#podSpineCalcText').textContent = `(자동 계산: ${spineW}mm)`;
+  updateSpinePxDisplay();
   $('#podPublisherLogo').value = set.coverOptions?.logo || '';
   if ($('#podLogoOptions')) {
     $('#podLogoOptions').style.display = set.coverOptions?.logo ? 'block' : 'none';
@@ -4074,6 +4089,7 @@ $('#podCoverBgColorHex').addEventListener('input', (e) => {
 
 $('#podSpineFont').addEventListener('change', podUpdateCoverPreview);
 $('#podSpineWidth').addEventListener('input', podUpdateCoverPreview);
+$('#podSpineWidth').addEventListener('input', updateSpinePxDisplay);
 
 // 표지 이미지 업로드 (스튜디오)
 $('#podFrontCoverInput').onchange = (e) => {
