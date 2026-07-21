@@ -2376,6 +2376,7 @@ async function renderLivePodPreview(forceMode = null) {
   .chapter-content p { text-indent:10pt !important; margin:0 !important; }
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
   .ql-editor h1, .ql-editor h2, .ql-editor h3, .ql-editor h4 { page-break-after:avoid; break-after:avoid; }
+  .chapter-content h1, .chapter-content h2, .chapter-content h3 { color: ${pubSet.titleColor || '#1C1813'} !important; }
   img { max-width: 100% !important; max-height: 85vh !important; width: auto !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; break-inside: avoid; page-break-inside: avoid; }`;
 
   const currentRenderSessionId = ++podRenderSessionId;

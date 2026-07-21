@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>야니의 소설창고 — 소설 집필 워크스페이스</title>
+<title>야니의 출판 스튜디오 — 소설 집필 워크스페이스</title>
 <meta name="theme-color" content="#FBFBFC">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/favicon.ico" type="image/x-icon">
@@ -18,7 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<meta name="description" content="야니의 소설창고 — 장편소설 집필 워크스페이스 (v6)" />
+<meta name="description" content="야니의 출판 스튜디오 — 장편소설 집필 워크스페이스 (v6)" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2717%27 fill=%27%23C8BEFF%27/%3E%3Cpath d=%27M14 17c8-2 14 0 18 5v27c-4-5-10-7-18-5V17Zm36 0c-8-2-14 0-18 5v27c4-5 10-7 18-5V17Z%27 fill=%27none%27 stroke=%27%2317141F%27 stroke-width=%274%27 stroke-linejoin=%27round%27/%3E%3Cpath d=%27m40 13 7 7-12 12-8 2 2-8 11-13Z%27 fill=%27%23fff%27 stroke=%27%2317141F%27 stroke-width=%273%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +36,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <div id="welcomeScreen" style="position:fixed;inset:0;background:var(--c-bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
   <img src="/apple-touch-icon.png" width="64" height="64" style="border-radius:16px; margin-bottom:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-  <h1 style="font-size:24px;margin:0 0 8px;font-weight:800;">야니의 소설창고 (Cloud)</h1>
+  <h1 style="font-size:24px;margin:0 0 8px;font-weight:800;">야니의 출판 스튜디오 (Cloud)</h1>
   <p style="color:var(--c-body);margin:0 0 24px;line-height:1.6;">모든 원고가 클라우드에 안전하게 보관됩니다.<br>언제 어디서든 로그인하여 집필을 이어가세요.</p>
   <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;text-align:center;">
     <button id="googleLoginBtn" class="primary" style="height:48px;font-size:16px;background:#fff;color:#17141F;border:1px solid #E4E6ED;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;">
@@ -50,7 +50,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <div id="libraryView" class="library-shell">
   <header class="library-top">
-    <div class="brand"><div class="brand-mark"><img src="/apple-touch-icon.png" width="32" height="32" style="border-radius:8px;" /></div><div class="brand-name">야니의 소설창고</div></div>
+    <div class="brand"><div class="brand-mark"><img src="/apple-touch-icon.png" width="32" height="32" style="border-radius:8px;" /></div><div class="brand-name">야니의 출판 스튜디오</div></div>
     <div style="display:flex;gap:8px;"><button id="logoutBtn" class="ghost border" type="button">로그아웃</button><button id="newProjectBtn" class="primary" type="button">＋ 새 작품</button></div>
   </header>
   <main class="library-main">
@@ -87,7 +87,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <div id="workspaceView" class="workspace-shell hidden">
   <aside class="sidebar">
-    <div class="sidebar-brand"><div class="brand"><div class="brand-name" style="font-size:16px;">야니의 소설창고</div></div><button id="backLibraryBtn" class="library-back" type="button">← 서재</button></div>
+    <div class="sidebar-brand"><div class="brand"><div class="brand-name" style="font-size:16px;">야니의 출판 스튜디오</div></div><button id="backLibraryBtn" class="library-back" type="button">← 서재</button></div>
     <div class="project-summary">
       <label>작품명</label><input id="projectTitle" class="project-title-input" />
       <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
