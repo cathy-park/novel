@@ -2040,9 +2040,9 @@ async function renderLivePodPreview(forceMode = null) {
     if (p.episodes.some(e => e.body === undefined)) {
       await ensureProjectBodiesLoaded(p);
     }
-    renderPodPageTree();
+    await renderPodPageTree();
     if (st) st.textContent = '페이지 구조 준비 완료';
-    setTimeout(() => showTreeFirstPage(), 200); // DOM 레이아웃 완료 후 첫 항목 미리보기
+    setTimeout(() => showTreeFirstPage(), 50); // DOM 페인트 이후 첫 항목 미리보기
     return;
   }
 
@@ -2696,6 +2696,10 @@ function podSaveSettings() {
     setTimeout(() => { saveBtn.innerHTML = orig; }, 1500);
   }
   showToast('✅ 설정이 저장되었습니다.');
+
+  // 저장 직후 현재 보고 있는 미리보기(트리 포함)를 즉시 새 설정으로 다시 그린다.
+  // 그 전에는 탭을 벗어났다 다시 들어와야만 줄간격/폰트 등 변경사항이 반영됐다.
+  renderLivePodPreview();
 }
 
 // 구형 modal 입력에 값 동기화 (exportPODPdf가 pubPaperSize 등을 읽기 때문)
@@ -2854,7 +2858,7 @@ function getSingleFmBlockHtml(block, p, pubSet, afterTocEps, centerOffsetFm) {
 }
 
 // ── 페이지 트리 렌더링 ────────────────────────────────────────
-function renderPodPageTree() {
+async function renderPodPageTree() {
   const p = currentProject(); if (!p) return;
   const treeEl = $('#podPageTree');
   if (!treeEl) return;
@@ -3022,8 +3026,11 @@ function renderPodPageTree() {
   // FM→에피소드: 연속 배치 (빈면 없음, 강제 홀수 없음)
 
   // 에피소드: 각 페이지를 버퍼 기반으로 연속 배치
-  eps.forEach((ep, i) => {
-    const estPages    = estimateEpisodePages(ep, pubSet);
+  // (estimateEpisodePages가 이미지 로드를 기다리는 비동기 함수라 순서를 보장하는
+  // for...of + await로 순회한다 — forEach는 await를 기다려주지 않는다)
+  for (let i = 0; i < eps.length; i++) {
+    const ep = eps[i];
+    const estPages    = await estimateEpisodePages(ep, pubSet);
     const epStartPage = pageCounter;
     const epTitle     = ep.title || ('챕터 ' + (i + 1));
 
@@ -3050,7 +3057,7 @@ function renderPodPageTree() {
       addToSpread(absPage, thumb);
     }
     pageCounter += estPages;
-  });
+  }
 
   flushBuf(); // 마지막 짝수 페이지 처리
 
@@ -3107,7 +3114,7 @@ function _showTreePreviewInIframe(html, pubSet, isSpread) {
 }
 
 /** 에피소드 예상 페이지 수 계산 (글자수 기반 추정) */
-function estimateEpisodePages(ep, pubSet) {
+async function estimateEpisodePages(ep, pubSet) {
   const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
   const m = {
     top:    pubSet.margins?.top    || 20,
@@ -3172,6 +3179,7 @@ function estimateEpisodePages(ep, pubSet) {
       '.n-email-body { display:block; margin:-12px 0 12px; padding:9px 13px; font-size:0.9em; text-indent:0; }' +
       'hr { display:block; border:none; border-top:1px solid #ccc; margin:1.5em auto; width:35%; height:0; }' +
       'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; }' +
+      'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
       'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
       '#measurer {' +
         'position:absolute; left:0; top:0; overflow:visible;' +
@@ -3186,6 +3194,23 @@ function estimateEpisodePages(ep, pubSet) {
       '<span id="sentinel" style="display:inline-block; width:0; height:0; vertical-align:top;"></span>' +
       '</div></body></html>');
     idoc.close();
+
+    // 본문에 이미지가 있으면 로드되기 전에는 높이가 0으로 측정돼(이미지 높이만큼)
+    // 실제보다 페이지 수를 적게 잡는다 — 이것도 "회차가 끝나기 전에 다음 회차로
+    // 넘어가 보이는" 원인 중 하나였다. 실측 전에 모든 이미지 로드를 기다린다
+    // (개별 이미지당 최대 3초, 실패해도 진행은 계속한다).
+    const imgs = Array.from(idoc.images || []);
+    if (imgs.length > 0) {
+      await Promise.all(imgs.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          const done = () => resolve();
+          img.addEventListener('load', done, { once: true });
+          img.addEventListener('error', done, { once: true });
+          setTimeout(done, 3000);
+        });
+      }));
+    }
 
     // 컬럼 폭을 명시하면(width:cwPx) 내용과 무관하게 그 너비를 다 채우도록 컬럼이
     // 강제로 늘어나 scrollWidth로는 실제 사용된 컬럼 수를 잴 수 없다. 대신 본문 맨 끝에
@@ -3326,6 +3351,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
     '.ql-size-huge  { font-size:2.5em; }' +
     'strong,b { font-weight:700; } em,i { font-style:italic; }' +
     's { text-decoration:line-through; } u { text-decoration:underline; }' +
+    'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
     'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; color:#555; }' +
     'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
     'ul.toc-list { list-style:none; padding:0; margin:0; }' +
