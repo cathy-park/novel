@@ -1094,9 +1094,16 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   padding: 20px 18px;
 }
 /* flex:1로 남는 세로 공간을 전부 채워야 하단 저장 버튼이 항상 화면 맨
-   아래에 붙는다(짧은 탭 내용 뒤에 무의미한 여백이 남는 대신). 내용이
-   넘치면 패널 전체가 아니라 이 pane 혼자 스크롤되도록 overflow-y:auto. */
-.pod-settings-pane.active { display: flex; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+   아래에 붙는다(짧은 탭 내용 뒤에 무의미한 여백이 남는 대신). 단,
+   overflow-y:auto를 여기 주면 이 pane 자체가 독자적인 스크롤 컨테이너가
+   되어버려서, 전면 디자인 탭 내부의 position:sticky(top:43px, 블록 추가
+   버튼 바)가 원래 기준으로 삼던 "바깥 .pod-settings-panel의 스크롤"이
+   아니라 이 pane 자신의(새로) 생긴 스크롤을 기준으로 다시 계산되며 어긋나,
+   빈 박스가 겹쳐 보이는 오류로 이어졌다. overflow는 그대로 바깥 패널에
+   맡기고(min-height:auto 기본값이라 내용이 길면 자연스럽게 넘쳐 바깥이
+   스크롤된다), 내용이 짧을 때만 flex:1로 채워지도록 min-height/overflow는
+   지정하지 않는다. */
+.pod-settings-pane.active { display: flex; flex: 1 1 auto; }
 
 /* 설정 섹션 */
 .pod-section {
