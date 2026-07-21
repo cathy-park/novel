@@ -1849,6 +1849,25 @@ function updateSpinePxDisplay() {
   el.textContent = `≈ ${px300}px (인쇄용 300dpi 기준) · ${px96}px (화면용 96dpi 기준)`;
 }
 
+// 페이지 수 입력칸이 바뀔 때마다 책등 두께(mm)를 다시 계산해 반영한다.
+function updateSpineFromPageCount() {
+  const count = parseFloat($('#podSpinePageCount')?.value);
+  if (!count || count <= 0) return;
+  const mm = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10);
+  $('#podSpineWidth').value = mm;
+  $('#podSpineCalcText').textContent = `(자동 계산: ${mm}mm)`;
+  updateSpinePxDisplay();
+  podUpdateCoverPreview();
+}
+
+// "자동값으로" 버튼: 사용자가 입력한 페이지 수를 지우고 앱이 추정한 값으로 되돌린다.
+function resetSpinePageCountToAuto() {
+  const p = currentProject(); if (!p) return;
+  const estimatedPageCount = p.podExactPages || podEstimatePages(p);
+  $('#podSpinePageCount').value = estimatedPageCount;
+  updateSpineFromPageCount();
+}
+
 // ============================================================
 //  POD Publishing Studio — Phase 1
 //  Split View 출판 스튜디오 로직
@@ -1916,7 +1935,18 @@ async function showPodStudio() {
   $('#podCoverBgColor').value = set.coverOptions?.bgColor || '#2c2c2c';
   $('#podCoverBgColorHex').value = set.coverOptions?.bgColor || '#2c2c2c';
   $('#podSpineFont').value = set.coverOptions?.spineFont || "'KoPub Batang', serif";
-  const spineW = calculateSpineWidth(p);
+  // 페이지 수 → 책등 두께(mm) 자동 계산. 미리보기 쪽수 추정과 실제 PDF 쪽수가
+  // 어긋나는 경우가 있어(별도 렌더링 경로라 완전히 일치시키기 어렵다), 사용자가
+  // 실제 인쇄될 쪽수를 직접 입력해 책등 두께를 바로잡을 수 있도록 한다.
+  const estimatedPageCount = p.podExactPages || podEstimatePages(p);
+  const savedPageCount = set.coverOptions?.spinePageCount;
+  $('#podSpinePageCount').value = savedPageCount || estimatedPageCount;
+  $('#podSpinePageCountNote').textContent = p.podExactPages
+    ? `실제 PDF에서 측정된 쪽수: ${estimatedPageCount}p`
+    : `자동 추정 쪽수: ${estimatedPageCount}p (실제 인쇄 쪽수와 다르면 위 숫자를 직접 수정하세요)`;
+  const spineW = savedPageCount
+    ? Math.max(1, Math.round(savedPageCount * (8.8 / 96) * 10) / 10)
+    : calculateSpineWidth(p);
   $('#podSpineWidth').value = set.coverOptions?.spineWidthMm || spineW;
   $('#podSpineCalcText').textContent = `(자동 계산: ${spineW}mm)`;
   updateSpinePxDisplay();
@@ -2607,6 +2637,7 @@ async function podUpdateCoverPreview() {
       logo: $('#podPublisherLogo').value,
       spineFont: $('#podSpineFont').value,
       spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
+      spinePageCount: parseFloat($('#podSpinePageCount').value) || null,
       logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 7,
       logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
       logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
@@ -2678,6 +2709,7 @@ function podSaveSettings() {
       logo: $('#podPublisherLogo').value,
       spineFont: $('#podSpineFont').value,
       spineWidthMm: parseFloat($('#podSpineWidth').value) || calculateSpineWidth(p),
+      spinePageCount: parseFloat($('#podSpinePageCount').value) || null,
       logoFrontSize: parseFloat($('#podLogoFrontSize').value) || 7,
       logoFrontBottom: parseFloat($('#podLogoFrontBottom').value) || 15,
       logoSpineRatio: parseFloat($('#podLogoSpineRatio').value) || 60,
@@ -4102,6 +4134,8 @@ $('#podCoverBgColorHex').addEventListener('input', (e) => {
 $('#podSpineFont').addEventListener('change', podUpdateCoverPreview);
 $('#podSpineWidth').addEventListener('input', podUpdateCoverPreview);
 $('#podSpineWidth').addEventListener('input', updateSpinePxDisplay);
+$('#podSpinePageCount').addEventListener('input', updateSpineFromPageCount);
+$('#podSpinePageCountResetBtn').addEventListener('click', resetSpinePageCountToAuto);
 
 // 표지 이미지 업로드 (스튜디오)
 $('#podFrontCoverInput').onchange = (e) => {

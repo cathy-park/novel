@@ -508,6 +508,14 @@ window.addEventListener('unhandledrejection', function(e) {
           <div class="pod-section">
             <div class="pod-section-title">책등 (Spine)</div>
             <div class="pod-field">
+              <label>페이지 수 <span style="color:var(--c-muted); font-weight:400;">(책등 두께 계산용)</span></label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" id="podSpinePageCount" min="1" step="1" class="pod-input" style="width:60%;">
+                <button type="button" id="podSpinePageCountResetBtn" class="ghost" style="font-size:11px; padding:6px 10px; white-space:nowrap;">자동값으로</button>
+              </div>
+              <div id="podSpinePageCountNote" style="font-size:11px; color:var(--c-muted); margin-top:4px;"></div>
+            </div>
+            <div class="pod-field">
               <label>책등 두께</label>
               <div style="display:flex; align-items:center; gap:8px;">
                 <div class="pod-mm-input-wrap" style="width:60%;">
