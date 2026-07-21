@@ -3173,9 +3173,17 @@ async function estimateEpisodePages(ep, pubSet) {
       '.ql-size-large { font-size:1.5em; }' +
       '.ql-size-huge  { font-size:2.5em; }' +
       '.n-msg,.n-msg-y { display:block; max-width:70%; margin:10px 0; padding:9px 14px; font-size:0.93em; line-height:1.6; text-indent:0; word-break:keep-all; }' +
-      '.n-noti,.n-sys,.n-log,.n-alert,.n-record,.n-status,.n-email,.n-doc,.n-field,.n-memo {' +
+      // 실제 미리보기(_buildTreeSpreadHtml)는 서사블록마다 font-size가 다르다
+      // (n-noti/n-sys/n-alert/n-email은 0.93em, 나머지는 0.9em). 예전엔 전부
+      // 0.9em으로 묶어놨는데, 그 차이(0.03em) 때문에 해당 블록이 많은 회차에서
+      // 실측 높이가 실제보다 살짝 작게 나와 페이지 수가 덜 잡히는 원인이었다.
+      '.n-noti,.n-sys,.n-alert,.n-email { display:block; margin:12px 0; padding:9px 13px; font-size:0.93em; text-indent:0; }' +
+      '.n-log,.n-record,.n-status,.n-doc,.n-field,.n-memo {' +
         'display:block; margin:12px 0; padding:9px 13px; font-size:0.9em; text-indent:0;' +
       '}' +
+      // n-log/n-doc는 실제 미리보기에서 monospace 폰트를 쓴다 — 글자 폭이 달라
+      // 줄바꿈 위치가 달라지므로 실측에도 동일하게 반영해야 한다.
+      '.n-log,.n-doc { font-family:monospace; }' +
       '.n-email-body { display:block; margin:-12px 0 12px; padding:9px 13px; font-size:0.9em; text-indent:0; }' +
       'hr { display:block; border:none; border-top:1px solid #ccc; margin:1.5em auto; width:35%; height:0; }' +
       'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; }' +
@@ -3190,9 +3198,8 @@ async function estimateEpisodePages(ep, pubSet) {
 
     idoc.open();
     idoc.write('<!DOCTYPE html><html><head>' + styleTag + '</head><body>' +
-      '<div id="measurer"><div class="chapter-content">' + safeBody + '</div>' +
-      '<span id="sentinel" style="display:inline-block; width:0; height:0; vertical-align:top;"></span>' +
-      '</div></body></html>');
+      '<div id="measurer"><div id="measureContent" class="chapter-content">' + safeBody + '</div></div>' +
+      '</body></html>');
     idoc.close();
 
     // 본문에 이미지가 있으면 로드되기 전에는 높이가 0으로 측정돼(이미지 높이만큼)
@@ -3213,11 +3220,29 @@ async function estimateEpisodePages(ep, pubSet) {
     }
 
     // 컬럼 폭을 명시하면(width:cwPx) 내용과 무관하게 그 너비를 다 채우도록 컬럼이
-    // 강제로 늘어나 scrollWidth로는 실제 사용된 컬럼 수를 잴 수 없다. 대신 본문 맨 끝에
-    // 크기 0인 센티넬을 두고, 그 센티넬이 흘러 들어간 x좌표(offsetLeft)로 마지막 컬럼
-    // 위치를 역산한다 (실제 flow가 멈춘 지점을 그대로 읽어내므로 어긋날 수 없음).
-    const sentinel = idoc.getElementById('sentinel');
-    const numPages = Math.floor(sentinel.offsetLeft / cwPx) + 1;
+    // 강제로 늘어나 scrollWidth로는 실제 사용된 컬럼 수를 잴 수 없다. 그렇다고 본문
+    // 맨 끝에 별도 센티넬 요소(span)를 추가하면, 마지막 줄이 컬럼 높이를 정확히
+    // 채운 경계 상황에서 그 센티넬 자신의 줄 상자(line box)가 다음 컬럼으로 밀려나
+    // 실제보다 1페이지 더 필요한 것처럼 측정되는 경우가 있었다(그 경계 근처 길이의
+    // 회차에서만 간헐적으로 잘림). 대신 Range로 실제 마지막 글자 바로 뒤 위치를
+    // 잡아 좌표를 읽는다 — DOM에 아무것도 추가하지 않으므로 이 문제가 없다.
+    const measureContent = idoc.getElementById('measureContent');
+    const walker = idoc.createTreeWalker(measureContent, NodeFilter.SHOW_TEXT, null);
+    let lastTextNode = null, node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue && node.nodeValue.length > 0) lastTextNode = node;
+    }
+
+    const measurerRect = idoc.getElementById('measurer').getBoundingClientRect();
+    let endX = 0;
+    if (lastTextNode) {
+      const range = idoc.createRange();
+      range.setStart(lastTextNode, lastTextNode.length);
+      range.setEnd(lastTextNode, lastTextNode.length);
+      const rect = range.getClientRects()[0] || range.getBoundingClientRect();
+      endX = Math.max(0, rect.left - measurerRect.left);
+    }
+    const numPages = Math.floor(endX / cwPx) + 1;
     document.body.removeChild(iframe);
     return Math.max(1, numPages);
 
@@ -3333,6 +3358,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
       'font-size:' + fontSize + 'pt;' +
       'line-height:' + lineHeightVal + ';' +
       'color:#111;' +
+      'word-break:keep-all;' +
     '}' +
     '.chapter { height:100%; position:relative; }' +
     '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
