@@ -3172,19 +3172,60 @@ async function estimateEpisodePages(ep, pubSet) {
       '.ql-size-small { font-size:0.75em; }' +
       '.ql-size-large { font-size:1.5em; }' +
       '.ql-size-huge  { font-size:2.5em; }' +
-      '.n-msg,.n-msg-y { display:block; max-width:70%; margin:10px 0; padding:9px 14px; font-size:0.93em; line-height:1.6; text-indent:0; word-break:keep-all; }' +
-      // 실제 미리보기(_buildTreeSpreadHtml)는 서사블록마다 font-size가 다르다
-      // (n-noti/n-sys/n-alert/n-email은 0.93em, 나머지는 0.9em). 예전엔 전부
-      // 0.9em으로 묶어놨는데, 그 차이(0.03em) 때문에 해당 블록이 많은 회차에서
-      // 실측 높이가 실제보다 살짝 작게 나와 페이지 수가 덜 잡히는 원인이었다.
-      '.n-noti,.n-sys,.n-alert,.n-email { display:block; margin:12px 0; padding:9px 13px; font-size:0.93em; text-indent:0; }' +
-      '.n-log,.n-record,.n-status,.n-doc,.n-field,.n-memo {' +
-        'display:block; margin:12px 0; padding:9px 13px; font-size:0.9em; text-indent:0;' +
-      '}' +
+      // 서사블록 CSS는 _buildTreeSpreadHtml(실제 미리보기)과 레이아웃에 영향을
+      // 주는 속성(margin/padding/font-size/font-family/line-height/테두리 두께/
+      // 인라인 아이콘)만 정확히 동일하게 맞춘다 — 색상·둥근모서리·그림자 등
+      // 순수 장식 속성은 페이지 분량에 영향이 없어 생략한다.
+      '.n-msg,.n-msg-y { display:block; max-width:70%; margin:16px 0; padding:12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; word-break:keep-all; }' +
+      '.n-msg:has(+ .n-msg) { margin-bottom:4px; }' +
+      '.n-msg + .n-msg { margin-top:0; }' +
+      '.n-msg-y:has(+ .n-msg-y) { margin-bottom:4px; }' +
+      '.n-msg-y + .n-msg-y { margin-top:0; }' +
+      '.n-sys { display:block; border-left:4px solid transparent; padding:14px 18px; margin:20px 0; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:500; line-height:1.8; text-indent:0; }' +
+      '.n-sys::before { content:"\\25C7"; display:inline-block; font-size:11px; margin-right:8px; }' +
+      '.n-log { display:block; border-left:4px solid transparent; font-family:"D2Coding","Fira Code","Consolas","Courier New",monospace; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-size:0.92em; line-height:1.8; white-space:pre-wrap; text-indent:0; }' +
+      '.n-log + .n-log { margin-top:0; padding-top:4px; }' +
+      '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; border-left:4px solid transparent; padding:14px 18px 4px 42px; margin:20px 0 0 0; font-size:0.95em; line-height:1.8; text-indent:0; }' +
+      '.n-alert + .n-alert { margin-top:0; padding-top:4px; padding-left:42px; }' +
+      '.n-record { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; text-indent:0; }' +
+      '.n-record + .n-record { margin-top:0; padding-top:4px; }' +
+      '.n-email { display:block; max-width:70%; margin:16px 0; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
+      '.n-email:has(+ .n-email) { margin-bottom:4px; }' +
+      '.n-email + .n-email { margin-top:0; padding-left:18px; }' +
+      '.n-email-body { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
+      '.n-email-body::before { content:"📧"; display:inline-block; font-size:14px; margin-right:8px; }' +
+      '.n-email-body + .n-email-body { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; }' +
+      '.n-email-body + .n-email-body::before { content:none; }' +
+      // 그룹의 "마지막 줄(또는 단독 블록)"엔 padding-bottom/margin-bottom이 다시
+      // 커진다 — 이 복원 규칙을 빠뜨리면 해당 블록이 있는 회차의 실측 높이가
+      // 실제보다 작게 나와(페이지 부족) 마지막 페이지가 하얗게 비는 원인이 된다.
+      '.n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) { padding-bottom:16px; margin-bottom:20px; }' +
       // n-log/n-doc는 실제 미리보기에서 monospace 폰트를 쓴다 — 글자 폭이 달라
       // 줄바꿈 위치가 달라지므로 실측에도 동일하게 반영해야 한다.
-      '.n-log,.n-doc { font-family:monospace; }' +
-      '.n-email-body { display:block; margin:-12px 0 12px; padding:9px 13px; font-size:0.9em; text-indent:0; }' +
+      '.n-doc { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
+      '.n-doc::before { content:"📄"; display:inline-block; font-size:14px; margin-right:8px; }' +
+      '.n-doc + .n-doc { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; }' +
+      '.n-doc + .n-doc::before { content:none; }' +
+      '.n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) { padding-bottom:16px; margin-bottom:20px; }' +
+      '.n-noti { display:block; max-width:70%; margin:16px 0; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
+      '.n-noti:has(+ .n-noti) { margin-bottom:4px; }' +
+      '.n-noti + .n-noti { margin-top:0; padding-left:18px; }' +
+      '.n-status { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; line-height:1.8; text-indent:0; }' +
+      '.n-status::before { content:"\\25C7"; display:inline-block; font-size:11px; margin-right:8px; }' +
+      '.n-status + .n-status { margin-top:0; padding-top:4px; padding-left:40px; }' +
+      // n-log/n-alert/n-record/n-status "시스템 계열" 그룹도 마지막 줄(또는
+      // 단독 블록)엔 padding-bottom/margin-bottom이 복원된다.
+      '.n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),' +
+      '.n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),' +
+      '.n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),' +
+      '.n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) { padding-bottom:14px; margin-bottom:20px; }' +
+      '.n-field { display:block; padding:12px 16px; margin:20px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.7; text-indent:0; }' +
+      '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; padding:16px 20px; margin:20px 0; text-indent:0; }' +
+      '.n-memo::before { content:"📝"; display:inline-block; font-size:14px; margin-right:8px; }' +
+      '.n-memo:has(+ .n-memo) { margin-bottom:0; padding-bottom:4px; }' +
+      '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left:42px; }' +
+      '.n-memo + .n-memo::before { content:none; }' +
+      '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; border:1px solid transparent; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0; }' +
       'hr { display:block; border:none; border-top:1px solid #ccc; margin:1.5em auto; width:35%; height:0; }' +
       'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; }' +
       'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
@@ -3405,22 +3446,62 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
     '.page.right .pnum { right:' + m.outer + 'mm; }' +
     '.page.left::after   { content:""; position:absolute; top:0; right:0; bottom:0; width:16px; background:linear-gradient(to left,rgba(0,0,0,.07),transparent); z-index:10; }' +
     '.page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:16px; background:linear-gradient(to right,rgba(0,0,0,.07),transparent); z-index:10; }' +
-    '/* ── Narrative Block Inline CSS ── */' +
-    '.n-msg,.n-msg-y { display:block; max-width:70%; margin:10px 0; padding:9px 14px; border-radius:14px 14px 14px 2px; font-size:0.93em; line-height:1.6; text-indent:0 !important; word-break:keep-all; }' +
+    '/* ── Narrative Block CSS: 원고 편집기(style.css)와 동일한 서식/스타일 ── */' +
+    '.n-msg,.n-msg-y { display:block; max-width:70%; margin:16px 0; border-radius:18px 18px 18px 2px; padding:12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; box-shadow:0 1px 2px rgba(0,0,0,.03); word-break:keep-all; }' +
     '.n-msg { background:#EAF4FF; }' +
     '.n-msg-y { background:#FFF7DE; color:#5C5230; }' +
-    '.n-noti { display:block; background:#FFFDE7; border-left:3px solid #FFC107; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; }' +
-    '.n-sys  { display:block; background:#F2F7F4; border-left:3px solid #5E9C76; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; color:#4A5A53; }' +
-    '.n-log  { display:block; background:#E8EAF6; border-left:3px solid #5C6BC0; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; font-family:monospace; }' +
-    '.n-alert{ display:block; background:#FFF0F0; border-left:3px solid #EF5350; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; color:#5C2424; }' +
-    '.n-record{display:block; background:#F0F4C3; border-left:3px solid #827717; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
-    '.n-status{display:block; background:#F3E5F5; border-left:3px solid #7B1FA2; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
-    '.n-email { display:block; background:#F8F4FF; border:1px solid #D8C8FF; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.93em; }' +
-    '.n-email-body{display:block; background:#F8F4FF; border:1px solid #D8C8FF; border-top:none; border-radius:0 0 4px 4px; padding:9px 13px; margin:-12px 0 12px; text-indent:0 !important; font-size:0.9em; color:#555; }' +
-    '.n-doc  { display:block; background:#F5F5F5; border:1px solid #CCC; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; font-family:monospace; }' +
-    '.n-field{ display:block; background:#E3F2FD; border:1px dashed #90CAF9; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
-    '.n-memo { display:block; background:#FFFDE7; border:1px dashed #FDD835; border-radius:4px; padding:9px 13px; margin:12px 0; text-indent:0 !important; font-size:0.9em; }' +
-    '.n-ui, .n-msg::before, .n-msg-y::before, .n-noti::before, .n-sys::before, .n-log::before, .n-alert::before, .n-record::before, .n-status::before, .n-email::before { display:none; }' +
+    '.n-msg:has(+ .n-msg) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
+    '.n-msg + .n-msg { margin-top:0; border-top-left-radius:6px; }' +
+    '.n-msg + .n-msg:not(:has(+ .n-msg)) { border-bottom-left-radius:2px; }' +
+    '.n-msg-y:has(+ .n-msg-y) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
+    '.n-msg-y + .n-msg-y { margin-top:0; border-top-left-radius:6px; }' +
+    '.n-msg-y + .n-msg-y:not(:has(+ .n-msg-y)) { border-bottom-left-radius:2px; }' +
+    '.n-sys { display:block; background:#F2F7F4; border-left:4px solid #5E9C76; border-radius:6px; padding:14px 18px; margin:20px 0; color:#4A5A53; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:500; line-height:1.8; text-indent:0 !important; }' +
+    '.n-sys::before { content:"\\25C7"; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
+    '.n-log { display:block; background:#E8EAF6; border-left:4px solid #5C6BC0; font-family:"D2Coding","Fira Code","Consolas","Courier New",monospace; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-size:0.92em; line-height:1.8; color:#384A60; white-space:pre-wrap; text-indent:0 !important; }' +
+    '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; background:#FEF4F4; border-left:4px solid #E06C6C; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 42px; margin:20px 0 0 0; position:relative; font-size:0.95em; color:#464646; line-height:1.8; text-indent:0 !important; }' +
+    '.n-alert::before { content:"⚠️"; position:absolute; left:14px; top:14px; font-size:14px; line-height:1.8; }' +
+    '.n-record { display:block; background:#F2F6FC; border-left:4px solid #6B9ED9; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; color:#505050; text-indent:0 !important; }' +
+    '.n-email { display:block; max-width:70%; margin:16px 0; background:#FAF5FF; border-radius:18px 18px 18px 2px; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; position:relative; }' +
+    '.n-email::before { content:"📧"; position:absolute; left:14px; top:13px; font-size:14px; }' +
+    '.n-email:has(+ .n-email) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
+    '.n-email + .n-email { margin-top:0; border-top-left-radius:6px; padding-left:18px; }' +
+    '.n-email + .n-email:not(:has(+ .n-email)) { border-bottom-left-radius:2px; }' +
+    '.n-email + .n-email::before { content:none; }' +
+    '.n-email-body { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; background:#FAF5FF; border-left:4px solid #6B5CE7; line-height:1.7; text-indent:0 !important; color:#333; border-top-left-radius:6px; border-top-right-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
+    '.n-email-body::before { content:"📧"; display:inline-block; font-size:14px; margin-right:8px; }' +
+    '.n-email-body + .n-email-body { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; border-radius:0; }' +
+    '.n-email-body + .n-email-body::before { content:none; }' +
+    '.n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:16px; margin-bottom:20px; }' +
+    '.n-doc { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; background:#FAFAFA; border-left:4px solid #95AED0; line-height:1.7; text-indent:0 !important; color:#222; border-top-left-radius:6px; border-top-right-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
+    '.n-doc::before { content:"📄"; display:inline-block; font-size:14px; color:#95AED0; margin-right:8px; }' +
+    '.n-doc + .n-doc { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; border-radius:0; }' +
+    '.n-doc + .n-doc::before { content:none; }' +
+    '.n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:16px; margin-bottom:20px; }' +
+    '.n-noti { display:block; max-width:70%; margin:16px 0; background:#FFF9C4; border-radius:18px 18px 18px 2px; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; box-shadow:0 1px 2px rgba(0,0,0,.03); position:relative; color:#4A4011; }' +
+    '.n-noti::before { content:"🔔"; position:absolute; left:14px; top:13px; font-size:14px; }' +
+    '.n-noti:has(+ .n-noti) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
+    '.n-noti + .n-noti { margin-top:0; border-top-left-radius:6px; padding-left:18px; }' +
+    '.n-noti + .n-noti:not(:has(+ .n-noti)) { border-bottom-left-radius:2px; }' +
+    '.n-noti + .n-noti::before { content:none; }' +
+    '.n-status { display:block; background:#F2F7F4; border-left:4px solid #5E9C76; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; color:#384A42; line-height:1.8; text-indent:0 !important; }' +
+    '.n-status::before { content:"\\25C7"; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
+    '.n-status + .n-status { color:#4A5A53; }' +
+    '.n-field { display:block; background:#F4F5F6; border-radius:8px; padding:12px 16px; margin:20px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; color:#17141F; line-height:1.7; text-indent:0 !important; }' +
+    '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; color:#4A4A4A; padding:16px 20px; margin:20px 0; border-radius:2px; position:relative; text-indent:0 !important; background:linear-gradient(to top left,#BEEFCD 0%,#BEEFCD 50%,transparent 50%) bottom right/22px 22px no-repeat, linear-gradient(-45deg,transparent 15px,#DEFFE6 0); }' +
+    '.n-memo::before { content:"📝"; display:inline-block; font-size:14px; margin-right:8px; }' +
+    '.n-memo:has(+ .n-memo) { margin-bottom:0; padding-bottom:4px; background:#DEFFE6; border-bottom-left-radius:0; }' +
+    '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left:42px; border-top-left-radius:0; border-top-right-radius:0; }' +
+    '.n-memo + .n-memo::before { content:none; }' +
+    '.n-log + .n-log, .n-alert + .n-alert, .n-record + .n-record, .n-status + .n-status { margin-top:0; margin-bottom:0; border-top-left-radius:0; border-top-right-radius:0; padding-top:4px; }' +
+    '.n-alert + .n-alert::before, .n-status + .n-status::before { content:none; }' +
+    '.n-alert + .n-alert { padding-left:42px; }' +
+    '.n-status + .n-status { padding-left:40px; }' +
+    '.n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),' +
+    '.n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),' +
+    '.n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),' +
+    '.n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:14px; margin-bottom:20px; }' +
+    '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; color:#4A4A4A; background:#EFEFEF; border:1px solid #D6D6D6; border-radius:4px; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0 !important; }' +
     'hr { display:block; border:none; border-top:1px solid #CCC; margin:1.5em auto; width:35%; }' +
     '</style></head><body>' +
     '<div class="page left">' +
