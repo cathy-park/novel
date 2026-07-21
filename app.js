@@ -4594,7 +4594,15 @@ ${mainStyles}
     line-height: ${pubSet.lineHeight || 1.75};
     color: #111;
     background: transparent !important;
-    text-align: justify;
+    /* text-align:justify + word-break:keep-all는 한국어에서 한 줄에 들어가는
+       "단어"(공백 기준 조각) 수가 적을 때 그 몇 안 되는 공백을 억지로 늘려
+       줄 끝까지 채우려다 보니 단어 사이 간격이 널뛰기해 완전히 깨져 보였다
+       ("내보내기에서 완전히 깨져버린다"). 트리 미리보기는 애초에 justify를
+       강제하지 않으므로(좌측 정렬 기본), 실제 PDF도 동일하게 맞춘다. 사용자가
+       특정 문단에 직접 "양쪽 정렬"을 선택한 경우는 .ql-align-justify로 여전히
+       적용된다.
+    */
+    text-align: left;
     word-break: keep-all;
   }
 
@@ -4671,7 +4679,11 @@ ${mainStyles}
   }
   .chapter {
     break-before: page;
-    margin-top: 40px;
+    /* margin-top:40px가 있으면 새 회차가 시작되는 페이지마다 위쪽에 여백이
+       추가로 붙는데, 트리 구조 미리보기(estimateEpisodePages)는 회차 첫
+       페이지도 본문 여백만 있다고 가정하고 쪽수를 센다 — 이 40px이 회차마다
+       누적돼 실제 PDF 쪽수가 미리보기보다 더 많이 나오는 원인 중 하나였다.
+       미리보기와 일치시키기 위해 제거. */
   }
   .chapter.matter-page {
     /* right(무조건 우측 페이지 시작)를 쓰면 직전 내용이 홀수 쪽에서 끝났을 때
@@ -4691,7 +4703,10 @@ ${mainStyles}
     background-color: transparent !important;
   }
   .chapter-content p {
-    text-indent: 10pt !important;
+    /* 트리 미리보기는 들여쓰기를 1em(폰트 크기 기준 상대값)으로 실측한다.
+       여기서 10pt로 고정해두면 사용자가 본문 폰트 크기를 10pt가 아닌 값으로
+       바꿨을 때 실제 들여쓰기 폭이 미리보기와 달라져 줄바꿈 위치가 어긋난다. */
+    text-indent: 1em !important;
     margin: 0 !important;
     word-break: keep-all;
   }
