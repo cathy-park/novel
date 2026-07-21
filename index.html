@@ -314,6 +314,13 @@ window.addEventListener('unhandledrejection', function(e) {
             <label class="pod-check-label">
               <input type="checkbox" id="podShowTitle"> 회차 제목 자동 삽입
             </label>
+            <div class="pod-field" style="margin-top:8px;">
+              <label>회차 제목(H1~H3) 색상 <span style="color:var(--c-muted); font-weight:400;">(원고에 색이 있어도 이 색으로 통일)</span></label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="color" id="podTitleColor" value="#1C1813" style="width:40px; height:32px; border:none; cursor:pointer; border-radius:4px;">
+                <input type="text" id="podTitleColorHex" class="pod-input" placeholder="#1C1813" style="flex:1; max-width:120px;">
+              </div>
+            </div>
           </div>
 
         </div>

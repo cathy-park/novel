@@ -1926,6 +1926,8 @@ async function showPodStudio() {
   $('#podLineHeight').value = set.lineHeight || '1.75';
   $('#podAutoTOC').checked = set.autoTOC !== false;
   $('#podShowTitle').checked = !!set.showTitle;
+  $('#podTitleColor').value = set.titleColor || '#1C1813';
+  $('#podTitleColorHex').value = set.titleColor || '#1C1813';
 
   // 전면부 블록 초기화
   initFmBlocks(p);
@@ -2693,6 +2695,7 @@ function podSaveSettings() {
     paperSize: $('#podPaperSize').value,
     autoTOC: $('#podAutoTOC').checked,
     showTitle: $('#podShowTitle').checked,
+    titleColor: $('#podTitleColor').value || '#1C1813',
     fontSize: parseFloat($('#podFontSize').value) || 10,
     lineHeight: $('#podLineHeight').value,
     margins: {
@@ -3498,7 +3501,9 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.ql-size-huge  { font-size:2.5em; }' +
     'strong,b { font-weight:700; } em,i { font-style:italic; }' +
     's { text-decoration:line-through; } u { text-decoration:underline; }' +
-    'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
+    // 회차 제목(H1~H3) 색상 — 원고에서 다른 색을 지정했더라도(예: 자동으로 파란색이
+    // 되는 경우) 사용자가 "내지 설정"에서 고른 색으로 통일해서 찍는다.
+    'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; color:' + (pubSet.titleColor || '#1C1813') + ' !important; }' +
     'blockquote { display:block; background:#F1F3F5; border-radius:12px 12px 12px 0; padding:16px 20px; margin:24px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.6; text-indent:0 !important; color:#17141F; }' +
     'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
     'ul.toc-list { list-style:none; padding:0; margin:0; }' +
@@ -4128,6 +4133,18 @@ $('#podCoverBgColorHex').addEventListener('input', (e) => {
   if (/^#[0-9A-Fa-f]{6}$/i.test(e.target.value)) {
     $('#podCoverBgColor').value = e.target.value;
     podUpdateCoverPreview();
+  }
+});
+
+// 회차 제목(H1~H3) 색상 동기화 — 원고에 다른 색이 들어있어도 이 색으로 통일해 찍는다.
+$('#podTitleColor').addEventListener('input', (e) => {
+  $('#podTitleColorHex').value = e.target.value;
+  if (typeof renderLivePodPreview === 'function') renderLivePodPreview();
+});
+$('#podTitleColorHex').addEventListener('input', (e) => {
+  if (/^#[0-9A-Fa-f]{6}$/i.test(e.target.value)) {
+    $('#podTitleColor').value = e.target.value;
+    if (typeof renderLivePodPreview === 'function') renderLivePodPreview();
   }
 });
 
@@ -4781,15 +4798,19 @@ ${mainStyles}
     margin: 0 !important;
     word-break: keep-all;
   }
+  /* 회차 제목(H1~H3) 색상 — 원고에 다른 색이 들어있어도(자동으로 파란색이 되는 등)
+     "내지 설정"에서 고른 색으로 통일해서 찍는다. 트리 미리보기와 동일하게 맞춤. */
   .chapter-content h1, .chapter-content h3 {
     margin-top: 1.5em !important;
     margin-bottom: 1em !important;
     line-height: 1.4;
+    color: ${pubSet.titleColor || '#1C1813'} !important;
   }
   .chapter-content h2 {
     margin-top: 1.5em !important;
     margin-bottom: 2.75em !important; /* ## 제목 아래 1줄 여백 추가 */
     line-height: 1.4;
+    color: ${pubSet.titleColor || '#1C1813'} !important;
   }
   .chapter-content .ql-size-huge,
   .chapter-content .ql-size-large {
