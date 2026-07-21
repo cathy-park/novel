@@ -4546,7 +4546,7 @@ async function exportPODPdf(isSilent = false) {
 <title>${escapeHtml(p.title)} - 출판용 원고</title>
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
-<script src="https://unpkg.com/pagedjs/dist/js/paged.polyfill.js"></${'script'}>
+<script src="${window.location.origin}/paged.custom.js"></${'script'}>
 <style>
 ${mainStyles}
 </style>
