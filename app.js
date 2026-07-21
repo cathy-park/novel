@@ -3345,12 +3345,24 @@ function showTreeSpreadForPage(pageDescriptors, absPage, pubSet, p) {
   const rightPage = (absPage % 2 === 0) ? absPage + 1 : absPage;
   const leftDesc  = (leftPage  && leftPage  <= totalPages) ? pageDescriptors[leftPage  - 1] : null;
   const rightDesc = (rightPage && rightPage <= totalPages) ? pageDescriptors[rightPage - 1] : null;
-  const html = _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p);
+  const html = _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors);
   _showTreePreviewInIframe(html, pubSet, true);
 }
 
+/** 회차 id → 그 회차의 첫 페이지 절대 쪽수. 목차 미리보기에 실제 쪽수를 바로 찍기 위함
+ *  (target-counter는 실제 CSS Paged Media에서만 동작해 트리 미리보기에선 쓸 수 없다). */
+function _computeEpisodeStartPages(pageDescriptors) {
+  const map = {};
+  if (!pageDescriptors) return map;
+  for (const d of pageDescriptors) {
+    if (d && d.kind === 'episode' && d.epPageIndex === 0) map[d.ep.id] = d.absPage;
+  }
+  return map;
+}
+
 /** 좌/우 페이지 서술자(fm 블록 또는 에피소드 페이지)로부터 펼침면 전체 HTML 생성 */
-function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
+function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
+  const episodeStartPages = _computeEpisodeStartPages(pageDescriptors);
   const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
   const m = {
     top:    pubSet.margins?.top    || 20,
@@ -3385,7 +3397,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
     if (desc.kind === 'fm') {
       const tempPubSet = JSON.parse(JSON.stringify(pubSet));
       tempPubSet.fmBlocks = [desc.block];
-      const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm');
+      const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm', episodeStartPages);
       return '<div class="fm-static">' + bodyHtml + '</div>';
     }
     if (desc.kind === 'episode') {
@@ -4359,7 +4371,7 @@ async function exportPODCover() {
 }
 
 
-function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
+function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episodeStartPages = null) {
   const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
   let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
 
@@ -4440,7 +4452,16 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null) {
         let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:page;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
         tocEps.forEach((ep, i) => {
           let manualNum = manualNumbers[i] !== undefined && manualNumbers[i] !== '' ? manualNumbers[i] : '';
-          let pageRefHTML = manualNum ? `<span class="toc-manual-page" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};">${escapeHtml(manualNum)}</span>` : `<a href="#ep-${ep.id}" class="toc-page-ref" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};"></a>`;
+          // 수동 입력이 없으면: 트리 미리보기에선 이미 계산해 둔 회차 시작 쪽수를 바로
+          // 숫자로 찍고(target-counter는 실제 CSS Paged Media에서만 동작해 컬럼 방식인
+          // 트리 미리보기에선 쓸 수 없다), 실제 PDF에선 그대로 target-counter 링크를
+          // 써서 Paged.js가 최종 조판 결과로 정확히 채우게 둔다.
+          const autoPageNum = !manualNum && episodeStartPages && episodeStartPages[ep.id] ? episodeStartPages[ep.id] : null;
+          let pageRefHTML = manualNum
+            ? `<span class="toc-manual-page" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};">${escapeHtml(manualNum)}</span>`
+            : autoPageNum
+              ? `<span class="toc-auto-page" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};">${autoPageNum}</span>`
+              : `<a href="#ep-${ep.id}" class="toc-page-ref" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};"></a>`;
           tocHtml += `<li style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="toc-title" style="font-family:${tocFont};color:${tocColor};">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots" style="flex:1 1 auto;border-bottom:1px dotted currentColor;opacity:0.6;margin:0 8px;position:relative;top:-4px;"></span>${pageRefHTML}</li>`;
         });
         tocHtml += `</ul></div></div>`;
