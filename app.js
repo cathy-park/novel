@@ -3240,12 +3240,12 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-alert + .n-alert { margin-top:0; padding-top:4px; padding-left:42px; }' +
       '.n-record { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; text-indent:0; }' +
       '.n-record + .n-record { margin-top:0; padding-top:4px; }' +
-      '.n-email { display:block; max-width:70%; margin:16px 0; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
+      '.n-email { display:block; max-width:70%; margin:16px 0; padding: 12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
       '.n-email:has(+ .n-email) { margin-bottom:4px; }' +
       '.n-email + .n-email { margin-top:0; padding-left:18px; }' +
       '.n-email-body { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
       '.n-email-body::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
-      '.n-email-body + .n-email-body { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; }' +
+      '.n-email-body + .n-email-body { padding: 4px 20px 4px 20px; margin-top:0; margin-bottom:0; }' +
       '.n-email-body + .n-email-body::before { content:none; }' +
       // 그룹의 "마지막 줄(또는 단독 블록)"엔 padding-bottom/margin-bottom이 다시
       // 커진다 — 이 복원 규칙을 빠뜨리면 해당 블록이 있는 회차의 실측 높이가
@@ -3255,7 +3255,7 @@ async function estimateEpisodePages(ep, pubSet) {
       // 줄바꿈 위치가 달라지므로 실측에도 동일하게 반영해야 한다.
       '.n-doc { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
       '.n-doc::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
-      '.n-doc + .n-doc { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; }' +
+      '.n-doc + .n-doc { padding: 4px 20px 4px 20px; margin-top:0; margin-bottom:0; }' +
       '.n-doc + .n-doc::before { content:none; }' +
       '.n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) { padding-bottom:16px; margin-bottom:20px; }' +
       '.n-noti { display:block; max-width:70%; margin:16px 0; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
@@ -3274,7 +3274,7 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; padding:16px 20px; margin:20px 0; text-indent:0; }' +
       '.n-memo::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
       '.n-memo:has(+ .n-memo) { margin-bottom:0; padding-bottom:4px; }' +
-      '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left:42px; }' +
+      '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left: 20px; }' +
       '.n-memo + .n-memo::before { content:none; }' +
       '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; border:1px solid transparent; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0; }' +
       'hr { display:block; border:none; border-top:1px solid #D4D7E0; margin:32px auto; width:80px; height:0; }' +
@@ -3530,7 +3530,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; background:#FEF4F4; border-left:4px solid #E06C6C; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 42px; margin:20px 0 0 0; position:relative; font-size:0.95em; color:#464646; line-height:1.8; text-indent:0 !important; }' +
     '.n-alert::before { content:"⚠️"; position:absolute; left:14px; top:14px; font-size:14px; line-height:1.8; }' +
     '.n-record { display:block; background:#F2F6FC; border-left:4px solid #6B9ED9; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; color:#505050; text-indent:0 !important; }' +
-    '.n-email { display:block; max-width:70%; margin:16px 0; background:#FAF5FF; border-radius:18px 18px 18px 2px; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; position:relative; }' +
+    '.n-email { display:block; max-width:70%; margin:16px 0; background:#FAF5FF; border-radius:18px 18px 18px 2px; padding: 12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; position:relative; }' +
     '.n-email::before { content:""; position:absolute; left:14px; top:13px; font-size:14px; }' +
     '.n-email:has(+ .n-email) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
     '.n-email + .n-email { margin-top:0; border-top-left-radius:6px; padding-left:18px; }' +
@@ -3538,12 +3538,12 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-email + .n-email::before { content:none; }' +
     '.n-email-body { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; background:#FAF5FF; border-left:4px solid #6B5CE7; line-height:1.7; text-indent:0 !important; color:#333; border-top-left-radius:6px; border-top-right-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
     '.n-email-body::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
-    '.n-email-body + .n-email-body { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; border-radius:0; }' +
+    '.n-email-body + .n-email-body { padding: 4px 20px 4px 20px; margin-top:0; margin-bottom:0; border-radius:0; }' +
     '.n-email-body + .n-email-body::before { content:none; }' +
     '.n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:16px; margin-bottom:20px; }' +
     '.n-doc { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; background:#FAFAFA; border-left:4px solid #95AED0; line-height:1.7; text-indent:0 !important; color:#222; border-top-left-radius:6px; border-top-right-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
     '.n-doc::before { content:""; display:inline-block; font-size:14px; color:#95AED0; margin-right:8px; }' +
-    '.n-doc + .n-doc { padding:4px 20px 4px 38px; margin-top:0; margin-bottom:0; border-radius:0; }' +
+    '.n-doc + .n-doc { padding: 4px 20px 4px 20px; margin-top:0; margin-bottom:0; border-radius:0; }' +
     '.n-doc + .n-doc::before { content:none; }' +
     '.n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:16px; margin-bottom:20px; }' +
     '.n-noti { display:block; max-width:70%; margin:16px 0; background:#FFF9C4; border-radius:18px 18px 18px 2px; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; box-shadow:0 1px 2px rgba(0,0,0,.03); position:relative; color:#4A4011; }' +
@@ -3559,7 +3559,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; color:#4A4A4A; padding:16px 20px; margin:20px 0; border-radius:2px; position:relative; text-indent:0 !important; background:linear-gradient(to top left,#BEEFCD 0%,#BEEFCD 50%,transparent 50%) bottom right/22px 22px no-repeat, linear-gradient(-45deg,transparent 15px,#DEFFE6 0); }' +
     '.n-memo::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
     '.n-memo:has(+ .n-memo) { margin-bottom:0; padding-bottom:4px; background:#DEFFE6; border-bottom-left-radius:0; }' +
-    '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left:42px; border-top-left-radius:0; border-top-right-radius:0; }' +
+    '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left: 20px; border-top-left-radius:0; border-top-right-radius:0; }' +
     '.n-memo + .n-memo::before { content:none; }' +
     '.n-log + .n-log, .n-alert + .n-alert, .n-record + .n-record, .n-status + .n-status { margin-top:0; margin-bottom:0; border-top-left-radius:0; border-top-right-radius:0; padding-top:4px; }' +
     '.n-alert + .n-alert::before, .n-status + .n-status::before { content:none; }' +
@@ -4883,7 +4883,7 @@ ${mainStyles}
   }
   .chapter-content .n-email {
     display: block; max-width: 70%; margin: 16px 0; background: #FAF5FF; border-radius: 18px 18px 18px 2px;
-    padding: 12px 18px 12px 38px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     line-height: 1.6; text-align: left; text-indent: 0 !important; position: relative;
   }
   .chapter-content .n-email::before { content: ""; position: absolute; left: 14px; top: 13px; font-size: 14px; }
