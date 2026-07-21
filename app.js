@@ -3226,8 +3226,11 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left:42px; }' +
       '.n-memo + .n-memo::before { content:none; }' +
       '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; border:1px solid transparent; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0; }' +
-      'hr { display:block; border:none; border-top:1px solid #ccc; margin:1.5em auto; width:35%; height:0; }' +
-      'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; }' +
+      'hr { display:block; border:none; border-top:1px solid #D4D7E0; margin:32px auto; width:80px; height:0; }' +
+      // 실제 편집기(style.css)의 blockquote는 border-left가 아니라 좌측 선 없는
+      // 둥근 회색 박스다 — 예전엔 왼쪽에 3px 회색 선을 긋는 완전히 다른(임시)
+      // 스타일을 쓰고 있어서 "블록 왼쪽에 없던 줄이 생긴다"는 오류로 보였다.
+      'blockquote { display:block; background:#F1F3F5; border-radius:12px 12px 12px 0; padding:16px 20px; margin:24px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.6; text-indent:0; }' +
       'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
       'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
       '#measurer {' +
@@ -3437,7 +3440,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
     'strong,b { font-weight:700; } em,i { font-style:italic; }' +
     's { text-decoration:line-through; } u { text-decoration:underline; }' +
     'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
-    'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; color:#555; }' +
+    'blockquote { display:block; background:#F1F3F5; border-radius:12px 12px 12px 0; padding:16px 20px; margin:24px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.6; text-indent:0 !important; color:#17141F; }' +
     'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
     'ul.toc-list { list-style:none; padding:0; margin:0; }' +
     'ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; }' +
@@ -3502,7 +3505,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
     '.n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),' +
     '.n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:14px; margin-bottom:20px; }' +
     '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; color:#4A4A4A; background:#EFEFEF; border:1px solid #D6D6D6; border-radius:4px; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0 !important; }' +
-    'hr { display:block; border:none; border-top:1px solid #CCC; margin:1.5em auto; width:35%; }' +
+    'hr { display:block; border:none; border-top:1px solid #D4D7E0; margin:32px auto; width:80px; }' +
     '</style></head><body>' +
     '<div class="page left">' +
       '<div class="viewport">' + leftHtml + '</div>' +
@@ -4776,6 +4779,11 @@ ${mainStyles}
                 linear-gradient(-45deg,transparent 15px,#DEFFE6 0);
   }
   .chapter-content .n-memo::before { content: '📝'; display: inline-block; font-size: 14px; margin-right: 8px; }
+  .chapter-content blockquote {
+    display: block; background: #F1F3F5; border-radius: 12px 12px 12px 0; padding: 16px 20px;
+    margin: 24px 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em;
+    line-height: 1.6; text-indent: 0 !important; color: #17141F;
+  }
 
   /* Paged.js Fallback for Narrative Blocks */
   .chapter-content p.pdf-group-isolated,
@@ -4835,6 +4843,11 @@ ${mainStyles}
   /* Remove overrides that break print */
   html, body { height: auto !important; overflow: visible !important; }
   .ql-editor { padding: 0 !important; overflow-y: visible !important; height: auto !important; }
+
+  /* 장면 구분선(hr) — mainStyles엔 <link>로 불러온 style.css의 .ql-editor hr
+     규칙이 안 잡혀서 브라우저 기본(3D 인셋) 선으로 찍히던 것을 원고 편집기와
+     동일하게(짧고 가운데 정렬된 옅은 선) 맞춘다. */
+  .chapter-content hr { display: block; border: none; border-top: 1px solid #D4D7E0; margin: 32px auto; width: 80px; }
 </style>
 </head>
 <body>
