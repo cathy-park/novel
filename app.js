@@ -4699,6 +4699,84 @@ ${mainStyles}
     line-height: 1.4;
   }
   
+  /* ── Narrative Block 기본 서식 (원고 편집기 style.css와 동일) ──
+     style.css는 <link>로 불러오므로 위 mainStyles(document.querySelectorAll('style')만
+     수집)에는 잡히지 않는다. 그래서 아래 pdf-group-* 그룹핑 보정 규칙만 있고
+     정작 기본 배경색/테두리/아이콘/서체가 하나도 없어 서사블록이 맨 문단처럼
+     찍히던 것 — 여기서 기본 서식을 직접 채워준다. */
+  .chapter-content .n-msg, .chapter-content .n-msg-y {
+    display: block; max-width: 70%; margin: 16px 0; border-radius: 18px 18px 18px 2px;
+    padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    line-height: 1.6; text-align: left; text-indent: 0 !important; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+  .chapter-content .n-msg { background: #EAF4FF; }
+  .chapter-content .n-msg-y { background: #FFF7DE; color: #5C5230; }
+  .chapter-content .n-sys {
+    display: block; background: #F2F7F4; border-left: 4px solid #5E9C76; border-radius: 6px;
+    padding: 14px 18px; margin: 20px 0; color: #4A5A53; font-size: 0.95em;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-weight: 500; line-height: 1.8; text-indent: 0 !important;
+  }
+  .chapter-content .n-sys::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-log {
+    display: block; background: #E8EAF6; border-left: 4px solid #5C6BC0;
+    font-family: 'D2Coding', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    border-radius: 6px; padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-size: 0.92em;
+    line-height: 1.8; color: #384A60; white-space: pre-wrap; text-indent: 0 !important;
+  }
+  .chapter-content .n-alert {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background: #FEF4F4;
+    border-left: 4px solid #E06C6C; border-radius: 6px; padding: 14px 18px 4px 42px; margin: 20px 0 0 0;
+    position: relative; font-size: 0.95em; color: #464646; line-height: 1.8; text-indent: 0 !important;
+  }
+  .chapter-content .n-alert::before { content: '⚠️'; position: absolute; left: 14px; top: 14px; font-size: 14px; line-height: 1.8; }
+  .chapter-content .n-record {
+    display: block; background: #F2F6FC; border-left: 4px solid #6B9ED9; border-radius: 6px;
+    padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-size: 0.95em; line-height: 1.9; color: #505050; text-indent: 0 !important;
+  }
+  .chapter-content .n-email {
+    display: block; max-width: 70%; margin: 16px 0; background: #FAF5FF; border-radius: 18px 18px 18px 2px;
+    padding: 12px 18px 12px 38px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    line-height: 1.6; text-align: left; text-indent: 0 !important; position: relative;
+  }
+  .chapter-content .n-email::before { content: '📧'; position: absolute; left: 14px; top: 13px; font-size: 14px; }
+  .chapter-content .n-email-body {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; background: #FAF5FF;
+    border-left: 4px solid #6B5CE7; line-height: 1.7; text-indent: 0 !important; color: #333;
+    border-top-left-radius: 6px; border-top-right-radius: 6px; padding: 16px 20px 4px 20px; margin: 20px 0 0 0;
+  }
+  .chapter-content .n-email-body::before { content: '📧'; display: inline-block; font-size: 14px; margin-right: 8px; }
+  .chapter-content .n-doc {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; background: #FAFAFA;
+    border-left: 4px solid #95AED0; line-height: 1.7; text-indent: 0 !important; color: #222;
+    border-top-left-radius: 6px; border-top-right-radius: 6px; padding: 16px 20px 4px 20px; margin: 20px 0 0 0;
+  }
+  .chapter-content .n-doc::before { content: '📄'; display: inline-block; font-size: 14px; color: #95AED0; margin-right: 8px; }
+  .chapter-content .n-noti {
+    display: block; max-width: 70%; margin: 16px 0; background: #FFF9C4; border-radius: 18px 18px 18px 2px;
+    padding: 12px 18px 12px 38px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    line-height: 1.6; text-align: left; text-indent: 0 !important; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    position: relative; color: #4A4011;
+  }
+  .chapter-content .n-noti::before { content: '🔔'; position: absolute; left: 14px; top: 13px; font-size: 14px; }
+  .chapter-content .n-status {
+    display: block; background: #F2F7F4; border-left: 4px solid #5E9C76; border-radius: 6px;
+    padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-size: 0.92em; color: #384A42; line-height: 1.8; text-indent: 0 !important;
+  }
+  .chapter-content .n-status::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-field {
+    display: block; background: #F4F5F6; border-radius: 8px; padding: 12px 16px; margin: 20px 0;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; color: #17141F; line-height: 1.7; text-indent: 0 !important;
+  }
+  .chapter-content .n-memo {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; color: #4A4A4A;
+    padding: 16px 20px; margin: 20px 0; border-radius: 2px; position: relative; text-indent: 0 !important;
+    background: linear-gradient(to top left,#BEEFCD 0%,#BEEFCD 50%,transparent 50%) bottom right/22px 22px no-repeat,
+                linear-gradient(-45deg,transparent 15px,#DEFFE6 0);
+  }
+  .chapter-content .n-memo::before { content: '📝'; display: inline-block; font-size: 14px; margin-right: 8px; }
+
   /* Paged.js Fallback for Narrative Blocks */
   .chapter-content p.pdf-group-isolated,
   .chapter-content p.pdf-group-last,
