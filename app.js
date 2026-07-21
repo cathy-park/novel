@@ -3196,11 +3196,29 @@ async function estimateEpisodePages(ep, pubSet) {
       '}' +
       '</style>';
 
+    // 실제 미리보기(_buildTreeSpreadHtml) iframe은 Noto Serif KR 웹폰트를 <link>로
+    // 불러온다. "KoPub Batang"은 이 앱이 직접 내려주는 폰트가 아니라 사용자
+    // 기기에 설치돼 있어야만 적용되는데, 설치돼 있지 않은 환경(대부분의 경우)
+    // 에서는 두 곳 모두 결국 Noto Serif KR로 폴백된다. 그런데 이 실측용 iframe엔
+    // 그 <link>가 없어서 Noto Serif KR조차 못 불러오고 완전히 다른 기본 세리프
+    // 폰트로 측정해버렸다 — 글자 폭/줄바꿈 위치가 실제 화면과 어긋나 페이지 수가
+    // 안 맞고(회차 끝이 잘리거나 반대로 마지막 페이지가 하얗게 비는) 근본 원인이었다.
+    const fontLink = '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">';
+
     idoc.open();
-    idoc.write('<!DOCTYPE html><html><head>' + styleTag + '</head><body>' +
+    idoc.write('<!DOCTYPE html><html><head>' + fontLink + styleTag + '</head><body>' +
       '<div id="measurer"><div id="measureContent" class="chapter-content">' + safeBody + '</div></div>' +
       '</body></html>');
     idoc.close();
+
+    // 폰트가 실제로 적용된 뒤에 실측해야 한다 — 로드 전에 재면 폴백 폰트 기준으로
+    // 측정돼 또 어긋난다. 최대 2초만 기다리고(네트워크 실패 대비) 진행한다.
+    try {
+      await Promise.race([
+        idoc.fonts.ready,
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ]);
+    } catch (e) { /* 폰트 로드 실패해도 측정은 계속 진행 */ }
 
     // 본문에 이미지가 있으면 로드되기 전에는 높이가 0으로 측정돼(이미지 높이만큼)
     // 실제보다 페이지 수를 적게 잡는다 — 이것도 "회차가 끝나기 전에 다음 회차로
