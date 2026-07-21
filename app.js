@@ -2353,12 +2353,17 @@ async function renderLivePodPreview(forceMode = null) {
   const pageCSS = `@page {
     size: ${pubSet.paperSize || 'A5'};
     margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm;
-    @bottom-center { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; }
   }
-  @page:left  { margin: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; }
-  @page:right { margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; }
-  @page:first { @bottom-center { content:none; } }
-  @page cover { margin:0; @bottom-center { content:none; } }`;
+  @page:left  { 
+    margin: ${m.top}mm ${m.inner}mm ${m.bottom}mm ${m.outer}mm; 
+    @bottom-left { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; text-align:left; }
+  }
+  @page:right { 
+    margin: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm; 
+    @bottom-right { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; text-align:right; }
+  }
+  @page:first { @bottom-center { content:none; } @bottom-left { content:none; } @bottom-right { content:none; } }
+  @page cover { margin:0; @bottom-center { content:none; } @bottom-left { content:none; } @bottom-right { content:none; } }`;
 
   const bodyCSS = `body {
     font-family:'KoPub Batang','Noto Serif KR',serif;
@@ -4651,6 +4656,8 @@ ${mainStyles}
   }
   @page front-matter {
     @bottom-center { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
   }
   .bg-colored {
     page: front-matter;
@@ -4658,24 +4665,35 @@ ${mainStyles}
   @page {
     size: ${pubSet.paperSize};
     margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
-    @bottom-center {
-      content: counter(page);
-      font-size: 9pt;
-      font-family: 'KoPub Batang', 'Noto Serif KR', serif;
-    }
   }
   @page:left {
     margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.inner || 25}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.outer || 18}mm;
+    @bottom-left {
+      content: counter(page);
+      font-size: 9pt;
+      font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+      text-align: left;
+    }
   }
   @page:right {
     margin: ${pubSet.margins?.top || 20}mm ${pubSet.margins?.outer || 18}mm ${pubSet.margins?.bottom || 20}mm ${pubSet.margins?.inner || 25}mm;
+    @bottom-right {
+      content: counter(page);
+      font-size: 9pt;
+      font-family: 'KoPub Batang', 'Noto Serif KR', serif;
+      text-align: right;
+    }
   }
   @page:first {
     @bottom-center { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
   }
   @page cover {
     margin: 0;
     @bottom-center { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
   }
   body {
     font-family: 'KoPub Batang', 'Noto Serif KR', serif;
