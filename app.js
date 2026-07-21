@@ -3121,39 +3121,80 @@ function estimateEpisodePages(ep, pubSet) {
   const contentH = paper.h - m.top   - m.bottom;
 
   try {
-    // ── 선형 높이 기반 DOM 실측 ──
-    // processEpisodeBody로 빈 단락 정리 후, 단일 컬럼 렌더링 총 높이 / 페이지 높이
+    // ── 실제 트리 미리보기(펼침면)와 동일한 CSS multi-column 흐름으로 실측 ──
+    // 선형 높이(scrollHeight ÷ 페이지높이) 추정은 실제 컬럼 분할 결과와 어긋날 수 있어,
+    // 회차가 끝나기 전에 다음 회차로 넘어가 보이는 오류(페이지 수 불일치)가 생겼다.
+    // _buildTreeSpreadHtml이 쓰는 것과 동일한 컬럼 CSS로 실측해 정확히 일치시킨다.
     const PX_MM = 96 / 25.4;
     const cwPx  = contentW * PX_MM;
     const chPx  = contentH * PX_MM;
 
-    let processedHtml = ep.body || '';
-    try { processedHtml = processEpisodeBody(ep.body, ep.title, true).body || processedHtml; } catch(e2){}
+    const processed = processEpisodeBody(ep.body, ep.title, true);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = processed.body;
+    tempDiv.querySelectorAll('p').forEach(pTag => {
+      if (pTag.innerHTML.trim() === '' || pTag.innerHTML === '<br>') pTag.remove();
+    });
+    const safeBody = tempDiv.innerHTML || '<p>&nbsp;</p>';
 
-    const uid = '_podEst' + (Math.random() * 1e9 | 0);
-    const estStyle = document.createElement('style');
-    estStyle.textContent =
-      '#' + uid + ' { box-sizing:border-box; width:' + cwPx + 'px; }' +
-      '#' + uid + ' p { margin:0; text-indent:1em; font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + '; }' +
-      '#' + uid + ' .n-msg,#' + uid + ' .n-msg-y { margin:10px 0; padding:9px 14px; text-indent:0; line-height:1.6; }' +
-      '#' + uid + ' .n-sys,#' + uid + ' .n-noti,#' + uid + ' .n-alert,#' + uid + ' .n-log,#' + uid + ' .n-record,' +
-      '#' + uid + ' .n-status,#' + uid + ' .n-email,#' + uid + ' .n-doc,#' + uid + ' .n-field,#' + uid + ' .n-memo { margin:12px 0; padding:9px 13px; text-indent:0; }' +
-      '#' + uid + ' hr { height:0; margin:16px 0; border:none; border-top:1px solid #ccc; }' +
-      '#' + uid + ' img { display:none; }';
-    document.head.appendChild(estStyle);
+    // 격리된 iframe 안에서 측정한다 (본문 DOM에 직접 넣지 않는다).
+    // 앱 전역 style.css는 .n-msg/.n-sys/... 같은 서사블록 클래스명을 최상위(bare)
+    // 셀렉터로도 정의해 두고 있어(.ql-editor 안이 아니어도 적용됨), 이 측정용
+    // 요소를 본문 DOM에 직접 넣으면 그 전역 규칙이 그대로 섞여 들어와(특히
+    // .ql-editor{height:100%;overflow-y:auto}) 컬럼 흐름이 아니라 내부 스크롤
+    // 상자에 갇혀버려 실측이 몇 컬럼 만에 멈추는 문제가 있었다. iframe은 별도
+    // 문서라 이런 전역 CSS 오염이 원천 차단된다.
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed; left:-99999px; top:0; width:10px; height:10px; border:none; visibility:hidden;';
+    document.body.appendChild(iframe);
+    const idoc = iframe.contentDocument;
 
-    const wrapper = document.createElement('div');
-    wrapper.id = uid;
-    wrapper.style.cssText =
-      'position:fixed; left:-99999px; top:0; visibility:hidden; overflow:visible; z-index:-1;' +
-      'width:' + cwPx + 'px; font-family:"KoPub Batang",serif; font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + '; word-break:keep-all;';
-    wrapper.innerHTML = processedHtml;
-    document.body.appendChild(wrapper);
+    const styleTag =
+      '<style>' +
+      '* { margin:0; padding:0; box-sizing:border-box; }' +
+      'body { font-family:"KoPub Batang","Noto Serif KR",serif; font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + '; word-break:keep-all; }' +
+      '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
+      '.chapter-content p + p { margin-top:0; }' +
+      '.ql-align-center { text-align:center !important; }' +
+      '.ql-align-right  { text-align:right  !important; }' +
+      '.ql-align-justify{ text-align:justify !important; }' +
+      '.ql-indent-1 { padding-left:2.5em; }' +
+      '.ql-indent-2 { padding-left:5em; }' +
+      '.ql-indent-3 { padding-left:7.5em; }' +
+      '.ql-indent-4 { padding-left:10em; }' +
+      '.ql-size-small { font-size:0.75em; }' +
+      '.ql-size-large { font-size:1.5em; }' +
+      '.ql-size-huge  { font-size:2.5em; }' +
+      '.n-msg,.n-msg-y { display:block; max-width:70%; margin:10px 0; padding:9px 14px; font-size:0.93em; line-height:1.6; text-indent:0; word-break:keep-all; }' +
+      '.n-noti,.n-sys,.n-log,.n-alert,.n-record,.n-status,.n-email,.n-doc,.n-field,.n-memo {' +
+        'display:block; margin:12px 0; padding:9px 13px; font-size:0.9em; text-indent:0;' +
+      '}' +
+      '.n-email-body { display:block; margin:-12px 0 12px; padding:9px 13px; font-size:0.9em; text-indent:0; }' +
+      'hr { display:block; border:none; border-top:1px solid #ccc; margin:1.5em auto; width:35%; height:0; }' +
+      'blockquote { border-left:3px solid #ccc; padding-left:1em; margin:0.5em 0; }' +
+      'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
+      '#measurer {' +
+        'position:absolute; left:0; top:0; overflow:visible;' +
+        'width:' + cwPx + 'px; height:' + chPx + 'px;' +
+        'columns:' + cwPx + 'px; column-gap:0; column-fill:auto;' +
+      '}' +
+      '</style>';
 
-    const totalH = wrapper.scrollHeight;
-    document.body.removeChild(wrapper);
-    document.head.removeChild(estStyle);
-    return Math.max(1, Math.ceil(totalH / chPx));
+    idoc.open();
+    idoc.write('<!DOCTYPE html><html><head>' + styleTag + '</head><body>' +
+      '<div id="measurer"><div class="chapter-content">' + safeBody + '</div>' +
+      '<span id="sentinel" style="display:inline-block; width:0; height:0; vertical-align:top;"></span>' +
+      '</div></body></html>');
+    idoc.close();
+
+    // 컬럼 폭을 명시하면(width:cwPx) 내용과 무관하게 그 너비를 다 채우도록 컬럼이
+    // 강제로 늘어나 scrollWidth로는 실제 사용된 컬럼 수를 잴 수 없다. 대신 본문 맨 끝에
+    // 크기 0인 센티넬을 두고, 그 센티넬이 흘러 들어간 x좌표(offsetLeft)로 마지막 컬럼
+    // 위치를 역산한다 (실제 flow가 멈춘 지점을 그대로 읽어내므로 어긋날 수 없음).
+    const sentinel = idoc.getElementById('sentinel');
+    const numPages = Math.floor(sentinel.offsetLeft / cwPx) + 1;
+    document.body.removeChild(iframe);
+    return Math.max(1, numPages);
 
   } catch (e) {
     // 폴백: 문자 수 기반
@@ -3236,7 +3277,14 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p) {
   return (
     '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
     '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">' +
-    '<link rel="stylesheet" href="' + window.location.origin + '/style.css">' +
+    // 앱 전역 style.css는 절대 불러오지 않는다: 그 시트가 .n-msg/.ql-editor 등을
+    // !important로 재정의하고 있어서(채팅 말풍선 UI용 16px 마진/산세리프 폰트),
+    // 이 미리보기의 자체 <style>(아래, 책 조판용 10px 마진/명조체)이 조용히
+    // 덮어써졌다. 그 결과 실제로 화면에 그려지는 서사블록 크기가 페이지 수
+    // 산정(estimateEpisodePages)의 가정보다 커져, 회차가 끝나기 전에 다음
+    // 회차로 넘어가 보이는 오류의 진짜 원인이었다. 실제 PDF 내보내기는 애초에
+    // 이 시트를 불러오지 않으므로(자체 <style>만 사용), 여기서도 똑같이
+    // 자체 완결형으로 맞춘다.
     '<style>' +
     '* { box-sizing:border-box; margin:0; padding:0; }' +
     'html,body { background:transparent; width:' + (paper.w*2) + 'mm; height:' + paper.h + 'mm; display:flex; overflow:hidden; }' +
