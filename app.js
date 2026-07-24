@@ -2851,7 +2851,7 @@ if ($('#fmShowGuides')) {
 }
 
 // ── 페이지 트리 렌더링 ────────────────────────────────────────
-async function renderPodPageTree() {
+async function renderPodPageTree(realPageMap = null) {
   const p = currentProject(); if (!p) return;
   const treeEl = $('#podPageTree');
   if (!treeEl) return;
@@ -3003,53 +3003,123 @@ async function renderPodPageTree() {
     if (spreadBuf) { innerSec.appendChild(mkSpreadRow(spreadBuf, null)); spreadBuf = null; }
   };
 
-  // FM 블록: 연속 배치 (1,2,3,4,5 순서 — 강제 홀수/빈면 없음)
-  activeFmBlocks.forEach(block => {
-    const fmPage    = pageCounter;
-    const label     = FM_LABELS_MAP[block.type] || block.type;
-    const isBlankFm = block.type === 'blank';
-    const captPage  = fmPage;
-    pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage };
-    const thumb = mkThumb(fmPage, label, 'FM', '#a78bfa', () => {
-      showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
-    }, isBlankFm);
-    addToSpread(fmPage, thumb);
-    pageCounter++;
-  });
-  // FM→에피소드: 연속 배치 (빈면 없음, 강제 홀수 없음)
+  if (realPageMap && realPageMap.length > 0) {
+    // ── 실측 모드: 진짜 Paged.js가 만든 페이지 목록을 그대로 그린다 ──
+    // (추측이 아니라 실제 렌더링 결과라 개수·순서·빈 페이지 위치가 실제
+    // PDF와 100% 일치한다.)
+    const reverseLabelType = {};
+    Object.keys(FM_LABELS_MAP).forEach(type => { reverseLabelType[FM_LABELS_MAP[type]] = type; });
+    const fmConsumeIdx = {};
+    let lastFmLabel = null;
+    let lastFmBlock = null;
+    const findFmBlockForLabel = (label) => {
+      if (label === lastFmLabel && lastFmBlock) return lastFmBlock; // 같은 라벨이 연속되면(다쪽짜리 블록) 같은 블록 재사용
+      const type = reverseLabelType[label];
+      const candidates = type ? activeFmBlocks.filter(b => b.type === type) : [];
+      const idx = fmConsumeIdx[label] || 0;
+      const block = candidates[idx] || candidates[candidates.length - 1] || { type: type || 'blank', style: {}, content: {} };
+      fmConsumeIdx[label] = idx + 1;
+      lastFmLabel = label;
+      lastFmBlock = block;
+      return block;
+    };
 
-  // 에피소드: 각 페이지를 버퍼 기반으로 연속 배치
-  // (estimateEpisodePages가 이미지 로드를 기다리는 비동기 함수라 순서를 보장하는
-  // for...of + await로 순회한다 — forEach는 await를 기다려주지 않는다)
-  for (let i = 0; i < eps.length; i++) {
-    const ep = eps[i];
-    const estPages    = await estimateEpisodePages(ep, pubSet);
-    const epStartPage = pageCounter;
-    const epTitle     = ep.title || ('챕터 ' + (i + 1));
-
-    // 챕터 헤더 (버퍼 유지: 다음 페이지가 홀수면 자연스럽게 페어)
-    const secEl = document.createElement('div');
-    secEl.style.cssText = 'padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
-    secEl.textContent = epTitle + ' (약 ' + estPages + 'p)';
-    innerSec.appendChild(secEl);
-
-    // 에피소드 각 페이지: 1페이지씩 버퍼에 추가 (홀짝 자동 배치)
-    for (let off = 0; off < estPages; off++) {
-      const absPage = epStartPage + off;
-      const isFirst = off === 0;
+    let lastEpForHeader = null;
+    let epPageRunIndex = 0;
+    realPageMap.forEach((entry, idx) => {
+      const absPage = idx + 1;
       const captPage = absPage;
-      pageDescriptors[absPage - 1] = { kind: 'episode', ep, epPageIndex: off, epStartPage, absPage };
-      const thumb = mkThumb(
-        absPage,
-        isFirst ? epTitle : (absPage + 'p'),
-        isFirst ? ('약 ' + estPages + 'p') : epTitle,
-        isFirst ? '#7c6bf6' : '#b8b0f5',
-        () => { showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p); },
-        ep.type.startsWith('blank')
-      );
-      addToSpread(absPage, thumb);
+
+      if (entry.kind === 'fm') {
+        const block = findFmBlockForLabel(entry.label);
+        pageDescriptors[absPage - 1] = { kind: 'fm', block, absPage };
+        const thumb = mkThumb(absPage, entry.label, '실측', '#a78bfa', () => {
+          showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
+        }, entry.label === '여백');
+        addToSpread(absPage, thumb);
+        lastEpForHeader = null;
+      } else if (entry.kind === 'blank') {
+        pageDescriptors[absPage - 1] = { kind: 'auto-recto-blank', absPage };
+        const thumb = mkThumb(absPage, '(여백)', '실측', '#ddd', () => {
+          showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
+        }, true);
+        addToSpread(absPage, thumb);
+        lastEpForHeader = null;
+      } else if (entry.kind === 'episode') {
+        const ep = eps.find(e => e.id === entry.epId);
+        if (!ep) return; // 방금 삭제된 회차 등 — 안전하게 건너뜀
+        const isFirst = ep !== lastEpForHeader;
+        if (isFirst) {
+          epPageRunIndex = 0;
+          const epTitle = ep.title || '회차';
+          const secEl = document.createElement('div');
+          secEl.style.cssText = 'padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+          secEl.textContent = epTitle + ' (실측)';
+          innerSec.appendChild(secEl);
+        }
+        pageDescriptors[absPage - 1] = { kind: 'episode', ep, epPageIndex: epPageRunIndex, epStartPage: absPage - epPageRunIndex, absPage };
+        const epTitle = ep.title || '회차';
+        const thumb = mkThumb(
+          absPage,
+          isFirst ? epTitle : (absPage + 'p'),
+          isFirst ? '실측' : epTitle,
+          isFirst ? '#7c6bf6' : '#b8b0f5',
+          () => { showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p); },
+          ep.type.startsWith('blank')
+        );
+        addToSpread(absPage, thumb);
+        lastEpForHeader = ep;
+        epPageRunIndex++;
+      }
+      pageCounter = absPage + 1;
+    });
+  } else {
+    // ── 추정 모드(초벌 렌더링): 실측 데이터가 도착하기 전 빠르게 먼저 보여준다 ──
+    // FM 블록: 연속 배치 (1,2,3,4,5 순서 — 강제 홀수/빈면 없음)
+    activeFmBlocks.forEach(block => {
+      const fmPage    = pageCounter;
+      const label     = FM_LABELS_MAP[block.type] || block.type;
+      const isBlankFm = block.type === 'blank';
+      const captPage  = fmPage;
+      pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage };
+      const thumb = mkThumb(fmPage, label, 'FM(추정)', '#a78bfa', () => {
+        showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
+      }, isBlankFm);
+      addToSpread(fmPage, thumb);
+      pageCounter++;
+    });
+
+    // 에피소드: 각 페이지를 버퍼 기반으로 연속 배치
+    // (estimateEpisodePages가 이미지 로드를 기다리는 비동기 함수라 순서를 보장하는
+    // for...of + await로 순회한다 — forEach는 await를 기다려주지 않는다)
+    for (let i = 0; i < eps.length; i++) {
+      const ep = eps[i];
+      const estPages    = await estimateEpisodePages(ep, pubSet);
+      const epStartPage = pageCounter;
+      const epTitle     = ep.title || ('챕터 ' + (i + 1));
+
+      const secEl = document.createElement('div');
+      secEl.style.cssText = 'padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+      secEl.textContent = epTitle + ' (약 ' + estPages + 'p, 추정)';
+      innerSec.appendChild(secEl);
+
+      for (let off = 0; off < estPages; off++) {
+        const absPage = epStartPage + off;
+        const isFirst = off === 0;
+        const captPage = absPage;
+        pageDescriptors[absPage - 1] = { kind: 'episode', ep, epPageIndex: off, epStartPage, absPage };
+        const thumb = mkThumb(
+          absPage,
+          isFirst ? epTitle : (absPage + 'p'),
+          isFirst ? ('약 ' + estPages + 'p, 추정') : epTitle,
+          isFirst ? '#7c6bf6' : '#b8b0f5',
+          () => { showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p); },
+          ep.type.startsWith('blank')
+        );
+        addToSpread(absPage, thumb);
+      }
+      pageCounter += estPages;
     }
-    pageCounter += estPages;
   }
 
   flushBuf(); // 마지막 짝수 페이지 처리
@@ -3061,19 +3131,23 @@ async function renderPodPageTree() {
   const footer = document.createElement('div');
   footer.id = 'podTreeFooter';
   footer.style.cssText = 'margin-top:8px; padding:10px 12px; border-top:1px solid var(--border-color); font-size:11px; font-weight:700; color:var(--c-ink);';
-  footer.textContent = '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상, 실측 중...)';
+  footer.textContent = realPageMap
+    ? '내지 총: ' + (pageCounter - 1) + '쪽 (Paged.js 실측)'
+    : '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상, 실측 중...)';
   treeEl.appendChild(footer);
 
-  // 썸네일 배치는 estimateEpisodePages의 추정치를 그대로 쓰지만(구조가 복잡해
-  // 잘못 건드리면 오히려 어긋난다 — 실제로 한 번 겪었다), 사용자가 실제 PDF와
-  // 계속 비교하는 "총 쪽수"만큼은 진짜 Paged.js로 백그라운드에서 조용히 다시
-  // 재서(exportPODPdf의 isSilent 모드 — 이미 만들어져 있었는데 트리거할 버튼이
-  // 없어서 방치돼 있었다) 정확한 값으로 덮어쓴다.
-  exportPODPdf(true, true).catch(() => {
-    if (document.getElementById('podTreeFooter')) {
-      footer.textContent = '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상)';
-    }
-  });
+  // 초벌(추정) 렌더링일 때만 실측을 트리거한다 — 실측 결과로 다시 그릴 땐
+  // (realPageMap이 있을 때) 또 트리거하면 무한 루프가 된다. 진짜 Paged.js로
+  // 렌더링해서(exportPODPdf의 isSilent 모드 — 이미 만들어져 있었는데 트리거할
+  // 버튼이 없어서 방치돼 있었다) 각 페이지가 실제로 무엇인지까지 postMessage로
+  // 받아 썸네일 전체를 실측 데이터로 다시 그린다(PAGES_READY 핸들러에서 처리).
+  if (!realPageMap) {
+    exportPODPdf(true, true).catch(() => {
+      if (document.getElementById('podTreeFooter')) {
+        footer.textContent = '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상)';
+      }
+    });
+  }
 }
 
 
@@ -4085,10 +4159,13 @@ window.addEventListener('message', e => {
     // #podEstPages/#podEstSpine는 UI 개편 때 삭제된 요소라 null 체크 필수.
     if ($('#podEstPages')) $('#podEstPages').innerHTML = `${count} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
     if ($('#podEstSpine')) $('#podEstSpine').textContent = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10).toFixed(1);
-    // 페이지 구조 탭의 총 쪽수 푸터도 실측값으로 갱신 (renderPodPageTree가
-    // 백그라운드로 exportPODPdf(true, true)를 트리거해서 여기로 들어온다).
-    const treeFooter = document.getElementById('podTreeFooter');
-    if (treeFooter) treeFooter.textContent = '내지 총: ' + count + '쪽 (Paged.js 실측)';
+    // 페이지 구조 탭이 열려 있으면(renderPodPageTree가 백그라운드로
+    // exportPODPdf(true, true)를 트리거해서 여기로 들어온다) 썸네일 전체를
+    // 실측 데이터(e.data.pageMap)로 다시 그린다 — 추측이 아니라 실제 Paged.js가
+    // 만든 페이지 목록 그대로라 개수·순서·빈 페이지 위치가 실제 PDF와 일치한다.
+    if (document.getElementById('podTreeFooter') && e.data.pageMap) {
+      renderPodPageTree(e.data.pageMap).catch(err => console.error('실측 트리 재렌더링 실패:', err));
+    }
 
     if (isSilent) {
       const btn = $('#podCalcExactBtn');
@@ -5065,10 +5142,41 @@ ${mainStyles}
   <script>
     class PrintHandler extends window.Paged.Handler {
       afterRendered(pages) {
+        // 각 실제 페이지가 무엇인지(전면부 블록/회차/빈 페이지) 읽어서 트리
+        // 미리보기 썸네일이 추측이 아니라 이 실측 결과를 그대로 쓰게 한다.
+        // data-fm-label(전면부 블록 렌더링 시 붙는 표식)과 id="ep-{회차ID}"
+        // (회차 시작 지점에 붙는 표식)만으로 각 페이지를 정확히 식별할 수 있다.
+        var pageMap = [];
+        var lastEpId = null;
+        var pageEls = document.querySelectorAll('.pagedjs_page');
+        for (var i = 0; i < pageEls.length; i++) {
+          var pg = pageEls[i];
+          var fmLabelEl = pg.querySelector('[data-fm-label]');
+          var epEl = pg.querySelector('[id^="ep-"]');
+          var isMatter = !!pg.querySelector('.matter-page');
+          var entry;
+          if (fmLabelEl) {
+            entry = { kind: 'fm', label: fmLabelEl.getAttribute('data-fm-label') };
+            lastEpId = null;
+          } else if (epEl) {
+            var epId = epEl.id.replace(/^ep-/, '');
+            entry = { kind: 'episode', epId: epId };
+            lastEpId = epId;
+          } else if (isMatter) {
+            entry = { kind: 'blank' };
+            lastEpId = null;
+          } else if (lastEpId) {
+            entry = { kind: 'episode', epId: lastEpId };
+          } else {
+            entry = { kind: 'unknown' };
+          }
+          pageMap.push(entry);
+        }
+
         if (window.parent && window.parent !== window) {
-           window.parent.postMessage({ type: 'PAGES_READY', count: pages.length, isSilent: ${isSilent} }, '*');
+           window.parent.postMessage({ type: 'PAGES_READY', count: pages.length, pageMap: pageMap, isSilent: ${isSilent} }, '*');
         } else {
-           window.opener?.postMessage({ type: 'PAGES_READY', count: pages.length, isSilent: false }, '*');
+           window.opener?.postMessage({ type: 'PAGES_READY', count: pages.length, pageMap: pageMap, isSilent: false }, '*');
         }
         ${isSilent ? '' : 'setTimeout(() => window.print(), 500);'}
       }
