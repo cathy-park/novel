@@ -2952,7 +2952,9 @@ async function renderPodPageTree(realPageMap = null) {
   const activeFmBlocks = ((pubSet.fmBlocks && pubSet.fmBlocks.length > 0) ? pubSet.fmBlocks : (window.fmBlocks || []))
     .filter(b => b.active && b.type !== 'main_body');
 
-  const eps = orderedEpisodes(p).filter(isPublishableEpisode);
+  // 본문 중간의 순수 '빈 페이지'(blank_front/blank_back 제외)는 실제 PDF에서
+  // 아예 안 찍히도록 방금 고쳤으니, 미리보기 썸네일에도 안 나오게 여기서도 뺀다.
+  const eps = orderedEpisodes(p).filter(isPublishableEpisode).filter(e => e.type !== 'blank');
 
   if (activeFmBlocks.length === 0 && eps.length === 0) {
     const empty = document.createElement('div');
@@ -4533,11 +4535,17 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     epsList.forEach((ep) => {
       if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
       
+      if (ep.type === 'blank') {
+        // 본문 중간(앞/뒷부속이 아닌 순수 '빈 페이지')은 절대 찍지 않는다 —
+        // 페이지를 소비하지 않고 통째로 건너뛴다.
+        return;
+      }
       if (ep.type.startsWith('blank')) {
+        // blank_front/blank_back(앞·뒷부속 여백)은 그대로 유지.
         html += `<div class="chapter matter-page" style="break-before: page; page-break-before: always; height:100%; display:flex;"><div style="opacity:0;">&nbsp;</div></div>`;
         return;
       }
-      
+
       if (isPreview) {
         if (!placeholderRendered) {
           html += `<div class="chapter matter-page" style="break-before:page;display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;"><div style="text-align:center;color:#888;font-size:14pt;font-weight:600;">[원고 내용 생략 : ${label}]<br><span style="font-size:10pt;font-weight:400;margin-top:12px;display:block;">실제 PDF 내보내기 시 원본 텍스트가 정상 출력됩니다.</span></div></div>`;
