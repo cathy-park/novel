@@ -1015,7 +1015,6 @@ function updateBodyStats() { const s = stats(quill ? quill.getText() : $('#bodyE
 function setViewMode(mode, save = true) { saveEditorScroll(); const p = currentProject(); if (p) p.viewMode = mode; $('#editorColumns').className = `editor-columns mode-${mode}`; $$('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode)); if (save) queueSaveFS(); restoreEditorScroll(); }
 function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 불길한 징조)'); if (title === null) return; const t = title.trim(); persistEditor(); const p = currentProject(); const ep = defaultEpisode('chapter', 1); ep.title = t; if (t.includes('프롤로그')) ep.type = 'prologue'; else if (t.includes('에필로그')) ep.type = 'epilogue'; p.episodes.push(ep); p.selectedEpisodeId = ep.id; p.episodes = orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('회차를 추가했어요.'); }
 
-function addBlankEpisode() { persistEditor(); const p = currentProject(); if (!p) return; const ep = defaultEpisode('blank', 1); ep.title = '빈 페이지 (여백)'; ep.body = ''; p.episodes.push(ep); p.selectedEpisodeId = ep.id; p.episodes = orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('빈 페이지를 추가했어요.'); }
 function addFrontMatter() {
   persistEditor();
   const p = currentProject();
@@ -1588,7 +1587,6 @@ $$('.filter-btn').forEach(b => b.onclick = () => { libraryFilter = b.dataset.fil
 $('#projectTitle').oninput = () => { const p = currentProject(); p.title = $('#projectTitle').value || '제목 없는 작품'; $('#projectBreadcrumb').textContent = p.title; touchProject(); queueSaveFS(); };
 $('#projectStatus').onchange = () => { currentProject().status = $('#projectStatus').value; touchProject(); queueSaveFS(); };
 $('#addEpisodeBtn').onclick = addEpisode;
-$('#addBlankEpisodeBtn').onclick = addBlankEpisode;
 $('#cleanEmptyEpsBtn').onclick = async () => {
   const p = currentProject(); if (!p) return;
   const ghosts = p.episodes.filter(e => !e.body || e.body.replace(/<[^>]*>?/gm, '').trim() === '');
@@ -4392,7 +4390,9 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
   const prefaceEps = [];
   const mainEps = [];
   loadedEps.forEach(e => {
-    if ((e.title && (e.title.includes('머리말') || e.title.includes('서문'))) || e.type === 'prologue') {
+    // 프롤로그는 에필로그와 대칭으로 본문 취급한다(목차에도 나와야 함).
+    // "머리말"/"서문" 제목인 회차만 저자 서문으로 보고 별도 취급한다.
+    if (e.title && (e.title.includes('머리말') || e.title.includes('서문'))) {
       prefaceEps.push(e);
     } else {
       mainEps.push(e);
@@ -4919,7 +4919,21 @@ ${mainStyles}
   .chapter-content p.n-noti.pdf-group-isolated, .chapter-content p.n-noti.pdf-group-last {
     margin-bottom: 12px !important; padding-bottom: 10px !important; border-radius: 18px 18px 18px 2px !important;
   }
-  
+
+  /* 그룹 첫/단독 블록의 상단 여백 복원 — 위 .chapter-content p { margin:0 !important }가
+     모든 문단 여백을 지워버리는데, 지금까지는 하단(pdf-group-isolated/last)만
+     복원하고 있어서 첫/단독 블록이 윗문단에 붙어버리는 문제였다. */
+  .chapter-content p.pdf-group-first, .chapter-content p.pdf-group-isolated,
+  .chapter-content .pdf-group-first, .chapter-content .pdf-group-isolated {
+    margin-top: 20px !important;
+  }
+  .chapter-content p.n-msg.pdf-group-first, .chapter-content p.n-msg.pdf-group-isolated,
+  .chapter-content p.n-msg-y.pdf-group-first, .chapter-content p.n-msg-y.pdf-group-isolated,
+  .chapter-content p.n-noti.pdf-group-first, .chapter-content p.n-noti.pdf-group-isolated,
+  .chapter-content p.n-email.pdf-group-first, .chapter-content p.n-email.pdf-group-isolated {
+    margin-top: 16px !important;
+  }
+
   .chapter-content p.pdf-group-first,
   .chapter-content p.pdf-group-middle,
   .chapter-content .pdf-group-first,
