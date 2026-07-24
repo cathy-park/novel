@@ -4403,6 +4403,9 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
 
   const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
     ? pubSet.fmBlocks : (window.fmBlocks || []);
+  // 머리말 회차는 있는데 출판 설정에 "머리말" 블록을 따로 안 넣어둔 경우를 대비한
+  // 자동 보정 — 블록이 없으면 prefaceEps가 어디에도 안 쓰이고 그냥 사라졌었다.
+  const hasPrefaceBlock = fmBlocksForRender.some(b => b.active && b.type === 'preface');
 
   const marginInnerFm = parseFloat(pubSet.margins?.inner || 25);
   const marginOuterFm = parseFloat(pubSet.margins?.outer || 18);
@@ -4469,6 +4472,9 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const type = block.type;
 
     if (type === 'main_body') {
+      if (!hasPrefaceBlock && prefaceEps.length > 0) {
+        fullHtml += renderEps(prefaceEps, true, targetEpId === 'fm', '머리말');
+      }
       fullHtml += renderEps(mainEps, true, targetEpId === 'fm', '본문');
       return;
     }
