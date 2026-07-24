@@ -2953,6 +2953,18 @@ async function renderPodPageTree() {
     .filter(b => b.active && b.type !== 'main_body');
 
   const eps = orderedEpisodes(p).filter(isPublishableEpisode);
+  // generatePODBodyContent와 동일한 규칙으로 머리말/서문 회차만 분리한다
+  // (프롤로그는 포함 안 함 — 본문과 동일하게 취급).
+  const prefaceEpsForTree = [];
+  const mainEpsForTree = [];
+  eps.forEach(e => {
+    if (e.title && (e.title.includes('머리말') || e.title.includes('서문'))) {
+      prefaceEpsForTree.push(e);
+    } else {
+      mainEpsForTree.push(e);
+    }
+  });
+  const hasPrefaceBlockForTree = activeFmBlocks.some(b => b.active && b.type === 'preface');
 
   if (activeFmBlocks.length === 0 && eps.length === 0) {
     const empty = document.createElement('div');
@@ -3003,37 +3015,34 @@ async function renderPodPageTree() {
     if (spreadBuf) { innerSec.appendChild(mkSpreadRow(spreadBuf, null)); spreadBuf = null; }
   };
 
-  // FM 블록: 연속 배치 (1,2,3,4,5 순서 — 강제 홀수/빈면 없음)
-  activeFmBlocks.forEach(block => {
-    const fmPage    = pageCounter;
-    const label     = FM_LABELS_MAP[block.type] || block.type;
-    const isBlankFm = block.type === 'blank';
-    const captPage  = fmPage;
-    pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage };
-    const thumb = mkThumb(fmPage, label, 'FM', '#a78bfa', () => {
-      showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
-    }, isBlankFm);
-    addToSpread(fmPage, thumb);
-    pageCounter++;
-  });
-  // FM→에피소드: 연속 배치 (빈면 없음, 강제 홀수 없음)
+  // 실제 PDF 내보내기(generatePODBodyContent → renderEps)는 머리말/본문 시작 시
+  // break-before:right를 걸어 홀수(오른쪽)쪽에서 시작하도록 강제하고, 다음 페이지가
+  // 짝수면 Paged.js가 빈 페이지를 하나 자동으로 끼워 넣는다. 트리 미리보기는 이걸
+  // 시뮬레이션하지 않아서(그냥 순서대로 이어붙이기만 함) 실제 PDF보다 총 쪽수가
+  // 적게 나오는 원인이었다 — 여기서 동일하게 흉내낸다.
+  const forceRectoIfNeeded = () => {
+    if (pageCounter % 2 === 0) {
+      const blankAbs = pageCounter;
+      pageDescriptors[blankAbs - 1] = { kind: 'auto-recto-blank', absPage: blankAbs };
+      const thumb = mkThumb(blankAbs, '(자동 여백)', '홀수쪽 정렬', '#ddd', () => {
+        showTreeSpreadForPage(pageDescriptors, blankAbs, pubSet, p);
+      }, true);
+      addToSpread(blankAbs, thumb);
+      pageCounter++;
+    }
+  };
 
-  // 에피소드: 각 페이지를 버퍼 기반으로 연속 배치
-  // (estimateEpisodePages가 이미지 로드를 기다리는 비동기 함수라 순서를 보장하는
-  // for...of + await로 순회한다 — forEach는 await를 기다려주지 않는다)
-  for (let i = 0; i < eps.length; i++) {
-    const ep = eps[i];
+  // 에피소드 1개의 페이지들을 버퍼 기반으로 연속 배치 (기존 로직 그대로, 재사용을 위해 함수로 분리)
+  const renderEpisodePagesToTree = async (ep, fallbackIdx) => {
     const estPages    = await estimateEpisodePages(ep, pubSet);
     const epStartPage = pageCounter;
-    const epTitle     = ep.title || ('챕터 ' + (i + 1));
+    const epTitle     = ep.title || ('챕터 ' + (fallbackIdx + 1));
 
-    // 챕터 헤더 (버퍼 유지: 다음 페이지가 홀수면 자연스럽게 페어)
     const secEl = document.createElement('div');
     secEl.style.cssText = 'padding:10px 4px 4px; font-size:10px; font-weight:700; color:#7c6bf6; border-top:1px dashed #e0ddf8; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
     secEl.textContent = epTitle + ' (약 ' + estPages + 'p)';
     innerSec.appendChild(secEl);
 
-    // 에피소드 각 페이지: 1페이지씩 버퍼에 추가 (홀짝 자동 배치)
     for (let off = 0; off < estPages; off++) {
       const absPage = epStartPage + off;
       const isFirst = off === 0;
@@ -3050,6 +3059,49 @@ async function renderPodPageTree() {
       addToSpread(absPage, thumb);
     }
     pageCounter += estPages;
+  };
+
+  // FM 블록: 저장된 순서 그대로 배치. "머리말" 타입 블록을 만나면 그 자리에서
+  // 머리말 회차 내용을 실제 페이지 수만큼 렌더링한다(기존엔 무조건 1페이지로
+  // 잘못 가정하고 있었다).
+  for (const block of activeFmBlocks) {
+    if (block.type === 'preface') {
+      if (prefaceEpsForTree.length > 0) {
+        forceRectoIfNeeded();
+        for (let i = 0; i < prefaceEpsForTree.length; i++) {
+          await renderEpisodePagesToTree(prefaceEpsForTree[i], i);
+        }
+      }
+      continue;
+    }
+    const fmPage    = pageCounter;
+    const label     = FM_LABELS_MAP[block.type] || block.type;
+    const isBlankFm = block.type === 'blank';
+    const captPage  = fmPage;
+    pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage };
+    const thumb = mkThumb(fmPage, label, 'FM', '#a78bfa', () => {
+      showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
+    }, isBlankFm);
+    addToSpread(fmPage, thumb);
+    pageCounter++;
+  }
+
+  // 전면부 블록 목록에 "머리말" 블록이 따로 없는데 머리말/서문 회차가 있으면
+  // 본문 시작 직전에 자동으로 끼워 넣는다 (generatePODBodyContent의 자동삽입과 동일).
+  if (!hasPrefaceBlockForTree && prefaceEpsForTree.length > 0) {
+    forceRectoIfNeeded();
+    for (let i = 0; i < prefaceEpsForTree.length; i++) {
+      await renderEpisodePagesToTree(prefaceEpsForTree[i], i);
+    }
+  }
+
+  // 본문 시작 전 홀수쪽 강제 정렬
+  if (mainEpsForTree.length > 0) forceRectoIfNeeded();
+
+  // (estimateEpisodePages가 이미지 로드를 기다리는 비동기 함수라 순서를 보장하는
+  // for...of + await로 순회한다 — forEach는 await를 기다려주지 않는다)
+  for (let i = 0; i < mainEpsForTree.length; i++) {
+    await renderEpisodePagesToTree(mainEpsForTree[i], i);
   }
 
   flushBuf(); // 마지막 짝수 페이지 처리
