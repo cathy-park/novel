@@ -4485,13 +4485,23 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
 
   let fullHtml = '';
   
-  const renderEps = (epsList, forceRectoStart = false) => {
+  const renderEps = (epsList, forceRectoStart = false, isPreview = false, label = '본문') => {
     let html = '';
     let foundFirstMain = false;
+    let placeholderRendered = false;
     epsList.forEach((ep) => {
       if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
+      
       if (ep.type.startsWith('blank')) {
         html += `<div class="chapter matter-page" style="break-before: page; page-break-before: always;"></div>`;
+        return;
+      }
+      
+      if (isPreview) {
+        if (!placeholderRendered) {
+          html += `<div class="chapter matter-page" style="break-before:page;display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;"><div style="text-align:center;color:#888;font-size:14pt;font-weight:600;">[원고 내용 생략 : ${label}]<br><span style="font-size:10pt;font-weight:400;margin-top:12px;display:block;">실제 PDF 내보내기 시 원본 텍스트가 정상 출력됩니다.</span></div></div>`;
+          placeholderRendered = true;
+        }
         return;
       }
       const processed = processEpisodeBody(ep.body, ep.title, true);
@@ -4533,19 +4543,13 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const c = block.content || {};
     const type = block.type;
 
-    if (targetEpId === 'fm' && (type === 'main_body' || type === 'preface')) {
-      const label = type === 'preface' ? '머리말' : '본문';
-      fullHtml += `<div class="chapter matter-page" style="break-before:page;display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;"><div style="text-align:center;color:#888;font-size:14pt;font-weight:600;">[여기에 원고의 ${label}이(가) 출력됩니다]</div></div>`;
-      return; 
-    }
-
     if (type === 'main_body') {
-      fullHtml += renderEps(mainEps, true);
+      fullHtml += renderEps(mainEps, true, targetEpId === 'fm', '본문');
       return;
     }
     
     if (type === 'preface') {
-      if (prefaceEps.length > 0) fullHtml += renderEps(prefaceEps, true);
+      if (prefaceEps.length > 0) fullHtml += renderEps(prefaceEps, true, targetEpId === 'fm', '머리말');
       return;
     }
 
