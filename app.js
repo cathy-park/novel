@@ -3154,7 +3154,7 @@ async function estimateEpisodePages(ep, pubSet) {
       '* { margin:0; padding:0; box-sizing:border-box; }' +
       'body { font-family:"KoPub Batang","Noto Serif KR",serif; font-size:' + fontSize + 'pt; line-height:' + lineHeightVal + '; word-break:keep-all; }' +
       '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
-      '.chapter-content p + p { margin-top:0; }' +
+      '.chapter-content p + p { margin-top:0.4em; }' +
       '.ql-align-center { text-align:center !important; }' +
       '.ql-align-right  { text-align:right  !important; }' +
       '.ql-align-justify{ text-align:justify !important; }' +
@@ -3441,7 +3441,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '}' +
     '.chapter { height:100%; position:relative; }' +
     '.chapter-content p { text-indent:1em; margin:0 0 0 0; }' +
-    '.chapter-content p + p { margin-top:0; }' +
+    '.chapter-content p + p { margin-top:0.4em; }' +
     '/* span inline styles preserved */ ' +
     '.ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }' +
     '.ql-align-center { text-align:center !important; }' +
@@ -4800,6 +4800,11 @@ ${mainStyles}
     text-indent: 1em !important;
     margin: 0 !important;
     word-break: keep-all;
+  }
+  /* 문단이 바뀔 때 살짝 더 구분되도록 — 챕터 첫 문단은 그대로 붙여서 시작한다
+     (트리 미리보기/estimateEpisodePages와 동일하게 맞춤). */
+  .chapter-content p + p {
+    margin-top: 0.4em !important;
   }
   /* 회차 제목(H1~H3) 색상 — 원고에 다른 색이 들어있어도(자동으로 파란색이 되는 등)
      "내지 설정"에서 고른 색으로 통일해서 찍는다. 트리 미리보기와 동일하게 맞춤. */
