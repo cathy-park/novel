@@ -4493,7 +4493,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
       if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
       
       if (ep.type.startsWith('blank')) {
-        html += `<div class="chapter matter-page" style="break-before: page; page-break-before: always;"></div>`;
+        html += `<div class="chapter matter-page" style="break-before: page; page-break-before: always; height:100%; display:flex;"><div style="opacity:0;">&nbsp;</div></div>`;
         return;
       }
       
