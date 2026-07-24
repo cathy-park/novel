@@ -3061,8 +3061,19 @@ async function renderPodPageTree() {
   const footer = document.createElement('div');
   footer.id = 'podTreeFooter';
   footer.style.cssText = 'margin-top:8px; padding:10px 12px; border-top:1px solid var(--border-color); font-size:11px; font-weight:700; color:var(--c-ink);';
-  footer.textContent = '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상)';
+  footer.textContent = '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상, 실측 중...)';
   treeEl.appendChild(footer);
+
+  // 썸네일 배치는 estimateEpisodePages의 추정치를 그대로 쓰지만(구조가 복잡해
+  // 잘못 건드리면 오히려 어긋난다 — 실제로 한 번 겪었다), 사용자가 실제 PDF와
+  // 계속 비교하는 "총 쪽수"만큼은 진짜 Paged.js로 백그라운드에서 조용히 다시
+  // 재서(exportPODPdf의 isSilent 모드 — 이미 만들어져 있었는데 트리거할 버튼이
+  // 없어서 방치돼 있었다) 정확한 값으로 덮어쓴다.
+  exportPODPdf(true, true).catch(() => {
+    if (document.getElementById('podTreeFooter')) {
+      footer.textContent = '내지 총: 약 ' + (pageCounter - 1) + '쪽 (예상)';
+    }
+  });
 }
 
 
@@ -4071,8 +4082,13 @@ window.addEventListener('message', e => {
       p.podExactPages = count;
     }
 
-    $('#podEstPages').innerHTML = `${count} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
-    $('#podEstSpine').textContent = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10).toFixed(1);
+    // #podEstPages/#podEstSpine는 UI 개편 때 삭제된 요소라 null 체크 필수.
+    if ($('#podEstPages')) $('#podEstPages').innerHTML = `${count} <span style="font-size:10px; color:#5e9c76;">(실제 측정됨)</span>`;
+    if ($('#podEstSpine')) $('#podEstSpine').textContent = Math.max(1, Math.round(count * (8.8 / 96) * 10) / 10).toFixed(1);
+    // 페이지 구조 탭의 총 쪽수 푸터도 실측값으로 갱신 (renderPodPageTree가
+    // 백그라운드로 exportPODPdf(true, true)를 트리거해서 여기로 들어온다).
+    const treeFooter = document.getElementById('podTreeFooter');
+    if (treeFooter) treeFooter.textContent = '내지 총: ' + count + '쪽 (Paged.js 실측)';
 
     if (isSilent) {
       const btn = $('#podCalcExactBtn');
