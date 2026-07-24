@@ -510,6 +510,13 @@ function cleanText(t = '') {
   }
   return s.replace(/\r\n/g, '\n').replace(/[\t\u00A0]+/g, ' ').replace(/[ ]+\n/g, '\n').replace(/\n{4,}/g, '\n\n\n').trim();
 }
+// 여백(빈 페이지) 회차는 본문이 비어 있는 게 정상이라 cleanText만으로 걸러내면
+// 앞부속/뒷부속에 넣은 blank_front·blank_back 회차가 출판 목록에서 통째로
+// 빠져버린다(미리보기·PDF 내보내기 모두). 회차 목록을 구성할 땐 항상 이 함수로
+// 필터링해 빈 페이지 타입은 본문 유무와 무관하게 살려둔다.
+function isPublishableEpisode(e) {
+  return !!cleanText(e.body) || (e.type || '').startsWith('blank');
+}
 function stats(t = '') {
   let text = String(t).replace(/<p[^>]*>/gi, '\n').replace(/<br[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
   text = text.replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').trim();
@@ -2307,7 +2314,7 @@ async function renderLivePodPreview(forceMode = null) {
     if (st) st.textContent = '내용 데이터를 불러오는 중...';
     await ensureProjectBodiesLoaded(p);
   }
-  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode);
   if (loadedEps.length === 0) {
     if (st) st.textContent = '출판할 본문 내용이 없습니다.';
     return;
@@ -3027,7 +3034,7 @@ async function renderPodPageTree() {
   const activeFmBlocks = ((pubSet.fmBlocks && pubSet.fmBlocks.length > 0) ? pubSet.fmBlocks : (window.fmBlocks || []))
     .filter(b => b.active && b.type !== 'main_body');
 
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const eps = orderedEpisodes(p).filter(isPublishableEpisode);
 
   if (activeFmBlocks.length === 0 && eps.length === 0) {
     const empty = document.createElement('div');
@@ -3120,7 +3127,7 @@ async function renderPodPageTree() {
         isFirst ? ('약 ' + estPages + 'p') : epTitle,
         isFirst ? '#7c6bf6' : '#b8b0f5',
         () => { showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p); },
-        false
+        ep.type.startsWith('blank')
       );
       addToSpread(absPage, thumb);
     }
@@ -3427,7 +3434,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
   const lineHeightVal = parseFloat(pubSet.lineHeight)  || 1.75;
   const contentW = paper.w - m.inner - m.outer;  // mm
   const contentH = paper.h - m.top   - m.bottom; // mm
-  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode);
 
   // 같은 에피소드가 좌/우 양쪽에 걸쳐 있어도 본문 가공은 한 번만 수행
   const flowCache = new Map();
@@ -4474,7 +4481,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     }
   });
 
-  const tocEps = mainEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
+  const tocEps = mainEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter' && !e.type.startsWith('blank'));
 
   const fmBlocksForRender = (pubSet.fmBlocks && pubSet.fmBlocks.length > 0)
     ? pubSet.fmBlocks : (window.fmBlocks || []);
@@ -4621,7 +4628,7 @@ async function exportPODPdf(isSilent = false) {
   const p = currentProject();
   if (!p) return;
 
-  const eps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const eps = orderedEpisodes(p).filter(isPublishableEpisode);
   if (eps.length === 0) {
     if (!isSilent) showToast('출판할 본문이 없습니다.');
     return;
@@ -4656,7 +4663,7 @@ async function exportPODPdf(isSilent = false) {
     await ensureProjectBodiesLoaded(p);
   }
 
-  const loadedEps = orderedEpisodes(p).filter(e => cleanText(e.body));
+  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode);
   const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const pubSet = getPublishSettings(p);
 
