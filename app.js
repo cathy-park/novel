@@ -2578,7 +2578,7 @@ window.addEventListener('message', (e) => {
       if (tabId === 'fm') {
         const block = window.fmBlocks && fmActiveBlockIdx !== null ? window.fmBlocks[fmActiveBlockIdx] : null;
         if (block && window.podPageMap) {
-          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', blank: '여백' };
+          const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', blank: '여백', preface: '머리말' };
           const label = FM_LABELS[block.type] || block.type;
           const pm = window.podPageMap.find(m => m.label === label || (m.label && m.label.includes(label)));
           if (pm) pageNum = pm.pageNum;
@@ -2853,7 +2853,7 @@ if ($('#fmShowGuides')) {
 }
 
 function getSingleFmBlockHtml(block, p, pubSet, afterTocEps, centerOffsetFm) {
-  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
+  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백', preface: '머리말' };
   const s = block.style || {};
   const c = block.content || {};
   const type = block.type;
@@ -3011,7 +3011,7 @@ async function renderPodPageTree() {
   innerSec.style.cssText = 'padding:0 8px;';
   innerSec.appendChild(mkSectionHead('─ 내지 (전체 페이지) ─'));
 
-  const FM_LABELS_MAP = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', blank: '여백', epigraph: '부제사', dedication: '헌정사', main_body: '본문' };
+  const FM_LABELS_MAP = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', blank: '여백', epigraph: '부제사', dedication: '헌정사', main_body: '본문', preface: '머리말' };
   const activeFmBlocks = ((pubSet.fmBlocks && pubSet.fmBlocks.length > 0) ? pubSet.fmBlocks : (window.fmBlocks || []))
     .filter(b => b.active && b.type !== 'main_body');
 
@@ -3658,7 +3658,8 @@ const FM_BLOCK_META = {
   title_page: { name: '본표지', icon: '📗', fields: ['title', 'subtitle', 'publisher'] },
   copyright: { name: '판권지', icon: '©️', fields: ['title', 'author', 'date', 'publisher'] },
   toc: { name: '목차', icon: '📋', fields: ['tocManual'] },
-  blank: { name: '빈 면지', icon: '⬜', fields: [] }
+  blank: { name: '빈 면지', icon: '⬜', fields: [] },
+  preface: { name: '머리말', icon: '📝', fields: ['title', 'customText'] }
 };
 
 // 기본 스타일 팩토리
@@ -4443,7 +4444,7 @@ async function exportPODCover() {
 
 
 function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episodeStartPages = null) {
-  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
+  const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백', preface: '머리말' };
   let firstMainIdx = loadedEps.findIndex(e => 
     (e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue') &&
     !(e.title && (e.title.includes('머리말') || e.title.includes('서문')))
@@ -4511,6 +4512,8 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
       blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
     } else if (type === 'epigraph') {
       blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
+    } else if (type === 'preface') {
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}text-align:justify;${fontCss}"><h2 style="${titleSz}font-weight:700;margin-bottom:20px;text-align:center;">${pTitle}</h2><div style="line-height:1.8;">${pCustom}</div></div></div>`;
     } else if (type === 'copyright') {
       blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:page;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
