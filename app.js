@@ -690,22 +690,32 @@ async function openProject(id) {
 
 // Order Logic
 function orderedEpisodes(p = currentProject()) {
-  const fm = p.episodes.filter(e => e.type === 'frontmatter');
+  const fm = p.episodes.filter(e => e.type === 'frontmatter' || e.type === 'blank_front');
   const pr = p.episodes.filter(e => e.type === 'prologue');
-  const ch = p.episodes.filter(e => e.type === 'chapter' || !['frontmatter', 'prologue', 'epilogue', 'backmatter'].includes(e.type));
+  const ch = p.episodes.filter(e => e.type === 'chapter' || e.type === 'blank' || !['frontmatter', 'prologue', 'epilogue', 'backmatter', 'blank_front', 'blank_back'].includes(e.type));
   const ep = p.episodes.filter(e => e.type === 'epilogue');
-  const bm = p.episodes.filter(e => e.type === 'backmatter');
+  const bm = p.episodes.filter(e => e.type === 'backmatter' || e.type === 'blank_back');
   return [...fm, ...pr, ...ch, ...ep, ...bm];
 }
 function reorderEpisode(targetId) {
   if (!draggedId || draggedId === targetId) return;
   const p = currentProject();
   const fIdx = p.episodes.findIndex(e => e.id === draggedId);
-  const tIdx = p.episodes.findIndex(e => e.id === targetId);
-  if (fIdx < 0 || tIdx < 0) { draggedId = null; return; }
-
+  if (fIdx < 0) { draggedId = null; return; }
   const [m] = p.episodes.splice(fIdx, 1);
-  p.episodes.splice(tIdx, 0, m);
+  
+  const tIdx = p.episodes.findIndex(e => e.id === targetId);
+  if (tIdx < 0) { 
+    p.episodes.push(m); 
+  } else {
+    const targetEp = p.episodes[tIdx];
+    if (m.type.startsWith('blank') && targetEp) {
+      if (targetEp.type === 'frontmatter' || targetEp.type === 'prologue' || targetEp.type === 'blank_front') m.type = 'blank_front';
+      else if (targetEp.type === 'epilogue' || targetEp.type === 'backmatter' || targetEp.type === 'blank_back') m.type = 'blank_back';
+      else m.type = 'blank';
+    }
+    p.episodes.splice(tIdx, 0, m);
+  }
 
   p.episodes = orderedEpisodes(p);
   p.episodes.forEach(e => e._dirty = true);
@@ -772,8 +782,8 @@ function renderEpisodeList() {
 
   eps.forEach(ep => {
     let cat = 'body';
-    if (ep.type === 'frontmatter' || ep.type === 'prologue') cat = 'front';
-    else if (ep.type === 'epilogue' || ep.type === 'backmatter') cat = 'back';
+    if (ep.type === 'frontmatter' || ep.type === 'prologue' || ep.type === 'blank_front') cat = 'front';
+    else if (ep.type === 'epilogue' || ep.type === 'backmatter' || ep.type === 'blank_back') cat = 'back';
 
     if (cat !== currentCategory) {
       const catLabel = document.createElement('div');
@@ -4480,7 +4490,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     let foundFirstMain = false;
     epsList.forEach((ep) => {
       if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
-      if (ep.type === 'blank') {
+      if (ep.type.startsWith('blank')) {
         html += `<div class="chapter matter-page" style="break-before: page; page-break-before: always;"></div>`;
         return;
       }
