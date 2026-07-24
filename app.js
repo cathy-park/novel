@@ -998,6 +998,7 @@ function updateBodyStats() { const s = stats(quill ? quill.getText() : $('#bodyE
 function setViewMode(mode, save = true) { saveEditorScroll(); const p = currentProject(); if (p) p.viewMode = mode; $('#editorColumns').className = `editor-columns mode-${mode}`; $$('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode)); if (save) queueSaveFS(); restoreEditorScroll(); }
 function addEpisode() { const title = prompt('새 회차의 제목을 입력하세요 (예: 불길한 징조)'); if (title === null) return; const t = title.trim(); persistEditor(); const p = currentProject(); const ep = defaultEpisode('chapter', 1); ep.title = t; if (t.includes('프롤로그')) ep.type = 'prologue'; else if (t.includes('에필로그')) ep.type = 'epilogue'; p.episodes.push(ep); p.selectedEpisodeId = ep.id; p.episodes = orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('회차를 추가했어요.'); }
 
+function addBlankEpisode() { persistEditor(); const p = currentProject(); if (!p) return; const ep = defaultEpisode('blank', 1); ep.title = '빈 페이지 (여백)'; ep.body = ''; p.episodes.push(ep); p.selectedEpisodeId = ep.id; p.episodes = orderedEpisodes(p); touchProject(); queueSaveFS(); showEditor(); renderEpisodeList(); renderEpisode(); showToast('빈 페이지를 추가했어요.'); }
 function addFrontMatter() {
   persistEditor();
   const p = currentProject();
@@ -1574,6 +1575,7 @@ $$('.filter-btn').forEach(b => b.onclick = () => { libraryFilter = b.dataset.fil
 $('#projectTitle').oninput = () => { const p = currentProject(); p.title = $('#projectTitle').value || '제목 없는 작품'; $('#projectBreadcrumb').textContent = p.title; touchProject(); queueSaveFS(); };
 $('#projectStatus').onchange = () => { currentProject().status = $('#projectStatus').value; touchProject(); queueSaveFS(); };
 $('#addEpisodeBtn').onclick = addEpisode;
+$('#addBlankEpisodeBtn').onclick = addBlankEpisode;
 $('#cleanEmptyEpsBtn').onclick = async () => {
   const p = currentProject(); if (!p) return;
   const ghosts = p.episodes.filter(e => !e.body || e.body.replace(/<[^>]*>?/gm, '').trim() === '');
@@ -4478,6 +4480,10 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     let foundFirstMain = false;
     epsList.forEach((ep) => {
       if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
+      if (ep.type === 'blank') {
+        html += `<div class="chapter matter-page" style="break-before: page; page-break-before: always;"></div>`;
+        return;
+      }
       const processed = processEpisodeBody(ep.body, ep.title, true);
       const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
       let isFirstMain = false;

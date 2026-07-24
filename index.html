@@ -92,7 +92,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <label>작품명</label><input id="projectTitle" class="project-title-input" />
       <div class="project-summary-row"><span id="projectStats" class="project-stats">총 0자</span><select id="projectStatus" class="project-status"><option value="serializing">연재 중</option><option value="completed">완결</option></select></div>
     </div>
-    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
+    <div class="section-title"><span>원고</span><div style="display:flex; gap:4px;"><button id="cleanEmptyEpsBtn" class="icon-btn" type="button" title="빈 회차 싹쓸이" style="font-size:12px; width:auto; padding:0 8px; color:#A0AAB5;">🧹 빈 회차 정리</button><button id="addBlankEpisodeBtn" class="icon-btn" type="button" title="빈 페이지 추가" style="font-size:12px; width:auto; padding:0 8px;">📄 빈 페이지</button><button id="addEpisodeBtn" class="icon-btn" type="button" title="회차 추가">＋</button></div></div>
     <div id="episodeList" class="episode-list"></div>
     <div class="sidebar-foot">
       <button id="openPublishSettingsFromEditorBtn" class="ghost" style="background:#6B5CE7; color:#fff;" type="button">📐 출판 스튜디오</button>
@@ -129,6 +129,7 @@ window.addEventListener('unhandledrejection', function(e) {
                   <option value="prologue">프롤로그</option>
                   <option value="chapter">본편</option>
                   <option value="epilogue">에필로그</option>
+                  <option value="blank">빈 페이지 (여백)</option>
                 </optgroup>
                 <optgroup label="뒷부속">
                   <option value="backmatter">📄 뒷부속 (작가의 말·참고문헌 등)</option>
@@ -341,7 +342,6 @@ window.addEventListener('unhandledrejection', function(e) {
               <button class="pod-preset-btn" data-fm-add="title_page">+ 본표지</button>
               <button class="pod-preset-btn" data-fm-add="copyright">+ 판권지</button>
               <button class="pod-preset-btn" data-fm-add="toc">+ 목차</button>
-              <button class="pod-preset-btn" data-fm-add="main_body">+ 본문</button>
               <button class="pod-preset-btn" data-fm-add="blank">+ 빈 면지</button>
               <button class="pod-preset-btn" data-fm-add="preface">+ 머리말</button>
             </div>
@@ -355,14 +355,6 @@ window.addEventListener('unhandledrejection', function(e) {
           <!-- 선택된 블록 스타일 편집 패널 -->
           <div id="fmBlockEditor" style="display:none; border-top:2px solid var(--primary); margin-top:8px; padding-top:16px;">
             <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.05em;" id="fmEditorTitle">블록 편집</div>
-            
-            <div class="pod-field" style="margin-bottom:16px;">
-              <label>페이지 위치</label>
-              <select id="fmPlacement" class="pod-input">
-                <option value="front">앞부속 (전면 - 목차 앞)</option>
-                <option value="back">뒷부속 (후면 - 본문 뒤)</option>
-              </select>
-            </div>
 
             <!-- 고급 설정 (배경/텍스트 정렬/여백/폰트) -->
             <details style="margin-bottom: 16px; border: 1px solid var(--c-line); border-radius: 6px; padding: 12px; background: var(--c-surface);">
