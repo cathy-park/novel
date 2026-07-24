@@ -207,7 +207,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <div class="pod-settings-panel">
         <div class="pod-settings-tabs">
           <button class="pod-settings-tab active" data-pane="inner">📄 내지 설정</button>
-          <button class="pod-settings-tab" data-pane="fm">✦ 전면 디자인</button>
+          <button class="pod-settings-tab" data-pane="fm">✦ 전면/후면</button>
           <button class="pod-settings-tab" data-pane="tree">📑 페이지 구조</button>
           <button class="pod-settings-tab" data-pane="cover">🎨 표지 설정</button>
 
@@ -325,7 +325,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
         </div>
 
-        <!-- ── 전면부 디자인 탭 ── -->
+        <!-- ── 전면/후면 부속 탭 ── -->
         <div class="pod-settings-pane" id="podPane-fm">
 
           <!-- 디자인 테마 선택 (삭제됨) -->
@@ -354,6 +354,14 @@ window.addEventListener('unhandledrejection', function(e) {
           <!-- 선택된 블록 스타일 편집 패널 -->
           <div id="fmBlockEditor" style="display:none; border-top:2px solid var(--primary); margin-top:8px; padding-top:16px;">
             <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.05em;" id="fmEditorTitle">블록 편집</div>
+            
+            <div class="pod-field" style="margin-bottom:16px;">
+              <label>페이지 위치</label>
+              <select id="fmPlacement" class="pod-input">
+                <option value="front">앞부속 (전면 - 목차 앞)</option>
+                <option value="back">뒷부속 (후면 - 본문 뒤)</option>
+              </select>
+            </div>
 
             <!-- 고급 설정 (배경/텍스트 정렬/여백/폰트) -->
             <details style="margin-bottom: 16px; border: 1px solid var(--c-line); border-radius: 6px; padding: 12px; background: var(--c-surface);">

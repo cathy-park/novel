@@ -3688,6 +3688,7 @@ function migrateFmOrder(oldOrder) {
     id: 'fm_' + (item.id || Date.now()) + '_' + Math.random().toString(36).slice(2, 6),
     type: item.id.startsWith('blank_') ? 'blank' : item.id,
     active: item.active !== false,
+    placement: item.placement || 'front',
     style: defaultFmStyle(item.id.startsWith('blank_') ? 'blank' : item.id),
     content: defaultFmContent(item.id)
   }));
@@ -3703,10 +3704,10 @@ function initFmBlocks(p) {
     blocks = migrateFmOrder(p.publishSettings.frontMatter.order);
   } else {
     blocks = [
-      { id: 'fm_half_title', type: 'half_title', active: true, style: defaultFmStyle('half_title'), content: defaultFmContent('half_title') },
-      { id: 'fm_title_page', type: 'title_page', active: true, style: defaultFmStyle('title_page'), content: defaultFmContent('title_page') },
-      { id: 'fm_copyright', type: 'copyright', active: true, style: defaultFmStyle('copyright'), content: defaultFmContent('copyright') },
-      { id: 'fm_toc', type: 'toc', active: true, style: defaultFmStyle('toc'), content: defaultFmContent('toc') }
+      { id: 'fm_half_title', type: 'half_title', active: true, placement: 'front', style: defaultFmStyle('half_title'), content: defaultFmContent('half_title') },
+      { id: 'fm_title_page', type: 'title_page', active: true, placement: 'front', style: defaultFmStyle('title_page'), content: defaultFmContent('title_page') },
+      { id: 'fm_copyright', type: 'copyright', active: true, placement: 'front', style: defaultFmStyle('copyright'), content: defaultFmContent('copyright') },
+      { id: 'fm_toc', type: 'toc', active: true, placement: 'front', style: defaultFmStyle('toc'), content: defaultFmContent('toc') }
     ];
   }
 
@@ -3786,7 +3787,8 @@ function renderFmBlockList() {
     // 아이콘 + 이름
     const labelSpan = document.createElement('span');
     labelSpan.style.flex = '1';
-    labelSpan.innerHTML = `<span style="margin-right:6px;">${meta.icon}</span>${meta.name}`;
+    const placementBadge = (block.placement === 'back') ? '<span style="color:#E06C6C;font-size:10px;margin-right:4px;">[후면]</span>' : '<span style="color:#6B5CE7;font-size:10px;margin-right:4px;">[전면]</span>';
+    labelSpan.innerHTML = `${placementBadge}<span style="margin-right:6px;">${meta.icon}</span>${meta.name}`;
 
     // 배경색 미리보기 점
     const colorDot = document.createElement('span');
@@ -3855,6 +3857,8 @@ function openFmBlockEditor(index) {
   const ed = $('#fmBlockEditor'); if (!ed) return;
   ed.style.display = 'block';
   $('#fmEditorTitle').textContent = `${meta.name} 편집`;
+  
+  if ($('#fmPlacement')) $('#fmPlacement').value = block.placement || 'front';
 
   // 배경색
   $('#fmBgColorPicker').value = s.bgColor || '#ffffff';
@@ -3929,6 +3933,14 @@ function syncFmBlockLive() {
   if (fmActiveBlockIdx === null) return;
   const block = window.fmBlocks[fmActiveBlockIdx];
 
+  if ($('#fmPlacement')) {
+    const newPlacement = $('#fmPlacement').value;
+    if (block.placement !== newPlacement) {
+      block.placement = newPlacement;
+      renderFmBlockList(); // 리스트 배지 업데이트
+    }
+  }
+
   block.style.hideText = $('#fmHideText')?.checked || false;
   block.style.bgColor = $('#fmBgColorHex').value || '#ffffff';
   block.style.fontFamily = $('#fmFontFamily').value;
@@ -3954,6 +3966,7 @@ function syncFmBlockLive() {
 }
 
 [
+  '#fmPlacement',
   '#fmBgColorHex', '#fmBgColorPicker', '#fmFontFamily', '#fmFontSize', '#fmFontColorHex', '#fmFontColorPicker', '#fmLetterSpacing', '#fmBgOpacity', '#fmHideText',
   '#fmPaddingTop', '#fmPaddingBottom', '#fmPaddingLeft', '#fmPaddingRight',
   '#fmContentTitle', '#fmContentSubtitle', '#fmContentPublisher', '#fmContentAuthor', '#fmContentDate', '#fmContentCustom', '#fmContentQuoteAuthor', '#fmContentTocManual'
@@ -4035,6 +4048,7 @@ $$('[data-fm-add]').forEach(btn => {
       id: 'fm_' + type + '_' + Date.now(),
       type,
       active: true,
+      placement: 'front',
       style: defaultFmStyle(type),
       content: defaultFmContent(type)
     });
@@ -4430,7 +4444,10 @@ async function exportPODCover() {
 
 function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episodeStartPages = null) {
   const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백' };
-  let firstMainIdx = loadedEps.findIndex(e => e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue');
+  let firstMainIdx = loadedEps.findIndex(e => 
+    (e.type === 'chapter' || e.type === 'prologue' || e.type === 'epilogue') &&
+    !(e.title && (e.title.includes('머리말') || e.title.includes('서문')))
+  );
 
   if (firstMainIdx === -1) firstMainIdx = loadedEps.length;
 
@@ -4447,10 +4464,12 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
   const centerOffsetFm = (marginInnerFm - marginOuterFm) / 2;
 
   let htmlFm = '';
+  let htmlBm = '';
   fmBlocksForRender.filter(b => b.active).forEach(block => {
     const s = block.style || {};
     const c = block.content || {};
     const type = block.type;
+    const isBack = block.placement === 'back';
 
     const pTitle = escapeHtml(c.title || p.title || '');
     const pSub = escapeHtml(c.subtitle || '');
@@ -4475,31 +4494,25 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const zi = s.bgImage ? 'position:relative;z-index:1;' : '';
     const rel = s.bgImage ? 'position:relative;overflow:hidden;' : '';
 
-    // PagedJS 크래시 방지를 위해 display:none 대신 시각적 숨김 처리
     const hideTxt = s.hideText ? 'opacity:0 !important; visibility:hidden !important; pointer-events:none !important;' : '';
     const podLogo = pubSet.coverOptions?.logo || '';
     const pPubHtml = (podLogo && type === 'copyright') ? `<img src="${podLogo}" style="max-height:16px; object-fit:contain; vertical-align:middle; margin-right:4px;"> ${pPub}` : pPub;
 
-    // break-before:page(연속 배치) — right(무조건 우측면 시작)를 쓰면 직전 내용이
-    // 홀수 쪽에서 끝났을 때 짝수 쪽 빈 페이지가 자동으로 끼워 넣어진다. 트리
-    // 구조 미리보기는 처음부터 "강제 홀수/빈면 없음"으로 연속 배치를 가정하고
-    // 페이지 수를 세는데, 실제 PDF만 break-before:right를 써서 FM 블록이
-    // 이어질 때마다 빈 페이지가 생겨 미리보기(93p)와 실제 PDF(96p) 쪽수가
-    // 어긋났다 — 실제 PDF도 트리와 동일하게 연속 배치로 맞춘다.
     const pageBase = `break-before:page;display:flex;flex-direction:column;justify-content:${jc};align-items:${ai};height:100%;${bgPrintCss}${rel}`;
-
     const padCss = `padding:${s.paddingTop ?? 20}mm ${s.paddingRight ?? 20}mm ${s.paddingBottom ?? 20}mm ${s.paddingLeft ?? 20}mm;`;
 
+    let blockHtml = '';
+
     if (type === 'half_title') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin:0;">${pTitle}</h1></div></div>`;
     } else if (type === 'title_page') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
     } else if (type === 'dedication') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><p style="${titleSz}font-style:italic;line-height:1.8;margin:0;">${pCustom}</p></div></div>`;
     } else if (type === 'epigraph') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}${padCss}max-width:75%;${fontCss}"><blockquote style="border-left:2px solid currentColor;padding-left:16px;margin:0;"><p style="${titleSz}font-style:italic;line-height:1.8;margin-bottom:12px;">${pCustom}</p>${pQuote ? `<cite style="font-size:10pt;opacity:0.7;">${pQuote}</cite>` : ''}</blockquote></div></div>`;
     } else if (type === 'copyright') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:page;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:page;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
       const tocEps = afterTocEps.filter(e => e.type !== 'frontmatter' && e.type !== 'backmatter');
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
@@ -4509,10 +4522,6 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
         let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:page;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
         tocEps.forEach((ep, i) => {
           let manualNum = manualNumbers[i] !== undefined && manualNumbers[i] !== '' ? manualNumbers[i] : '';
-          // 수동 입력이 없으면: 트리 미리보기에선 이미 계산해 둔 회차 시작 쪽수를 바로
-          // 숫자로 찍고(target-counter는 실제 CSS Paged Media에서만 동작해 컬럼 방식인
-          // 트리 미리보기에선 쓸 수 없다), 실제 PDF에선 그대로 target-counter 링크를
-          // 써서 Paged.js가 최종 조판 결과로 정확히 채우게 둔다.
           const autoPageNum = !manualNum && episodeStartPages && episodeStartPages[ep.id] ? episodeStartPages[ep.id] : null;
           let pageRefHTML = manualNum
             ? `<span class="toc-manual-page" style="margin-left:auto;white-space:nowrap;font-family:${tocFont};color:${tocColor};">${escapeHtml(manualNum)}</span>`
@@ -4522,12 +4531,18 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
           tocHtml += `<li style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="toc-title" style="font-family:${tocFont};color:${tocColor};">${getEpisodeDisplayTitle(ep, p, true)}</span><span class="toc-dots" style="flex:1 1 auto;border-bottom:1px dotted currentColor;opacity:0.6;margin:0 8px;position:relative;top:-4px;"></span>${pageRefHTML}</li>`;
         });
         tocHtml += `</ul></div></div>`;
-        htmlFm += tocHtml;
+        blockHtml += tocHtml;
       }
     } else if (type === 'main_body') {
-      htmlFm += `<!--MAIN_BODY_PLACEHOLDER-->`;
+      blockHtml += `<!--MAIN_BODY_PLACEHOLDER-->`;
     } else if (type === 'blank') {
-      htmlFm += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:page;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="여백" style="break-before:page;height:100%;${bgPrintCss}${rel}">${bgImgHtml}</div>`;
+    }
+    
+    if (isBack) {
+      htmlBm += blockHtml;
+    } else {
+      htmlFm += blockHtml;
     }
   });
 
@@ -4556,11 +4571,19 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     epsHtml += `<div class="chapter matter-page" style="break-before: page;"><div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
   });
 
+  let foundFirstMain = false;
   // 5. 본문 (목차 이후의 회차 및 뒷부속)
   afterTocEps.forEach((ep, i) => {
     if (targetEpId && targetEpId !== 'fm' && targetEpId !== ep.id) return;
     const processed = processEpisodeBody(ep.body, ep.title, true);
     const isMatter = ep.type === 'frontmatter' || ep.type === 'backmatter';
+    
+    let isFirstMain = false;
+    if (!isMatter && !foundFirstMain) {
+      isFirstMain = true;
+      foundFirstMain = true;
+    }
+    
     const renderTitle = false; // !isMatter && pubSet.showTitle && !processed.hasTitle;
     const displayTitle = getEpisodeDisplayTitle(ep, p);
 
@@ -4579,7 +4602,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     let safeBody = tempDiv.innerHTML;
     if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
-    epsHtml += `<div class="chapter ${isMatter ? 'matter-page' : ''}">` +
+    epsHtml += `<div class="chapter ${isMatter ? 'matter-page' : ''} ${isFirstMain ? 'first-main' : ''}">` +
       (renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : '') +
       `<div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
   });
@@ -4589,9 +4612,9 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     epsHtml = '';
   }
 
-  if (targetEpId === 'fm') return htmlFm;
+  if (targetEpId === 'fm') return htmlFm + htmlBm;
 
-  return targetEpId ? epsHtml : htmlFm + epsHtml;
+  return targetEpId ? epsHtml : htmlFm + epsHtml + htmlBm;
 }
 
 async function exportPODPdf(isSilent = false) {
@@ -4786,6 +4809,9 @@ ${mainStyles}
   }
   .chapter {
     break-before: page;
+  }
+  .chapter.first-main {
+    break-before: right !important;
     /* margin-top:40px가 있으면 새 회차가 시작되는 페이지마다 위쪽에 여백이
        추가로 붙는데, 트리 구조 미리보기(estimateEpisodePages)는 회차 첫
        페이지도 본문 여백만 있다고 가정하고 쪽수를 센다 — 이 40px이 회차마다
