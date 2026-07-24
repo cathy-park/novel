@@ -3212,6 +3212,13 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),' +
       '.n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),' +
       '.n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) { padding-bottom:14px; margin-bottom:20px; }' +
+      // 그룹 첫/단독 블록의 상단 여백 복원 — .chapter-content p { margin:0 }가
+      // 이 파일의 단독 클래스 .n-record 등보다 우선순위가 높아 상단 여백이
+      // 지워지고 있었다. 실측(페이지 수 예측)이 실제 PDF보다 낮게 나오는
+      // 원인 중 하나였다 — 예측이 실제보다 늘 적게 잡히면 estimate가 실제
+      // 분량을 과소평가해 미리보기 총 쪽수가 실제 PDF보다 적게 나온다.
+      '.pdf-group-first, .pdf-group-isolated { margin-top:20px !important; }' +
+      '.n-msg.pdf-group-first, .n-msg.pdf-group-isolated, .n-msg-y.pdf-group-first, .n-msg-y.pdf-group-isolated, .n-email.pdf-group-first, .n-email.pdf-group-isolated, .n-noti.pdf-group-first, .n-noti.pdf-group-isolated { margin-top:16px !important; }' +
       '.n-field { display:block; padding:12px 16px; margin:20px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.7; text-indent:0; }' +
       '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; padding:16px 20px; margin:20px 0; text-indent:0; }' +
       '.n-memo::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
@@ -3516,6 +3523,12 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),' +
     '.n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),' +
     '.n-status:not(:has(+ .n-status)), .n-status + .n-status:not(:has(+ .n-status)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:14px; margin-bottom:20px; }' +
+    /* 그룹 첫/단독 블록의 상단 여백 복원 — 이 파일의 .n-record 등 기본 규칙이
+       .chapter-content 없이 단독 클래스라 .chapter-content p { margin:0 }보다
+       우선순위가 낮아서 상단 여백이 지워졌다. pdf-group-first/isolated는
+       processEpisodeBody가 이미 붙여주는 클래스라 그대로 재사용한다. */
+    '.pdf-group-first, .pdf-group-isolated { margin-top:20px !important; }' +
+    '.n-msg.pdf-group-first, .n-msg.pdf-group-isolated, .n-msg-y.pdf-group-first, .n-msg-y.pdf-group-isolated, .n-email.pdf-group-first, .n-email.pdf-group-isolated, .n-noti.pdf-group-first, .n-noti.pdf-group-isolated { margin-top:16px !important; }' +
     '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; color:#4A4A4A; background:#EFEFEF; border:1px solid #D6D6D6; border-radius:4px; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0 !important; }' +
     'hr { display:block; border:none; border-top:1px solid #D4D7E0; margin:32px auto; width:80px; }' +
     '</style></head><body>' +
@@ -4479,15 +4492,18 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const type = block.type;
 
     if (type === 'main_body') {
+      // 머리말은 짧은 게 보통이라, 구조 미리보기에서도 안내 박스 대신 실제
+      // 글자를 그대로 보여준다(본문 전체를 미리보기에서 다 그리는 건 무거워서
+      // 본문 쪽만 계속 안내 박스로 대체한다).
       if (!hasPrefaceBlock && prefaceEps.length > 0) {
-        fullHtml += renderEps(prefaceEps, true, targetEpId === 'fm', '머리말');
+        fullHtml += renderEps(prefaceEps, true, false, '머리말');
       }
       fullHtml += renderEps(mainEps, true, targetEpId === 'fm', '본문');
       return;
     }
-    
+
     if (type === 'preface') {
-      if (prefaceEps.length > 0) fullHtml += renderEps(prefaceEps, true, targetEpId === 'fm', '머리말');
+      if (prefaceEps.length > 0) fullHtml += renderEps(prefaceEps, true, false, '머리말');
       return;
     }
 
