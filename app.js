@@ -4639,6 +4639,20 @@ async function exportPODPdf(isSilent = false) {
 <title>${escapeHtml(p.title)} - 출판용 원고</title>
 <link href="https://fonts.googleapis.com/css2?family=KoPub+Batang&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css">
+<script>
+  // 웹폰트(KoPub Batang 등)가 로드되기 전에 Paged.js가 페이지를 나누면 폴백
+  // 폰트 기준 글자 폭으로 잘못 계산되어 실제 인쇄와 쪽수가 어긋난다.
+  // estimateEpisodePages가 이미 겪고 고친 것과 동일한 문제라 같은 방식(최대
+  // 2초 대기, 네트워크 실패해도 진행)으로 맞춘다.
+  window.PagedConfig = {
+    before: function () {
+      return Promise.race([
+        document.fonts.ready,
+        new Promise(function (resolve) { setTimeout(resolve, 2000); })
+      ]);
+    }
+  };
+</${'script'}>
 <script src="${window.location.origin}/paged.custom.js"></${'script'}>
 <style>
 ${mainStyles}
