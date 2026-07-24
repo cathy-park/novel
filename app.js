@@ -4473,7 +4473,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
 
   let fullHtml = '';
   
-  const renderEps = (epsList) => {
+  const renderEps = (epsList, forceRectoStart = false) => {
     let html = '';
     let foundFirstMain = false;
     epsList.forEach((ep) => {
@@ -4503,7 +4503,9 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
       let safeBody = tempDiv.innerHTML;
       if (safeBody.trim() === '') safeBody = '<p>&nbsp;</p>';
 
-      html += `<div class="chapter ${isMatter ? 'matter-page' : ''} ${isFirstMain ? 'first-main' : ''}">` +
+      const forceRightStyle = (forceRectoStart && isFirstMain) ? 'break-before: right !important;' : '';
+
+      html += `<div class="chapter ${isMatter ? 'matter-page' : ''} ${isFirstMain ? 'first-main' : ''}" style="${forceRightStyle}">` +
         (renderTitle ? `<div class="chapter-title">${escapeHtml(displayTitle)}</div>` : '') +
         `<div class="chapter-content ql-editor" id="ep-${ep.id}">${safeBody}</div></div>`;
     });
@@ -4520,12 +4522,12 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     }
 
     if (type === 'main_body') {
-      fullHtml += renderEps(mainEps);
+      fullHtml += renderEps(mainEps, true);
       return;
     }
     
     if (type === 'preface') {
-      if (prefaceEps.length > 0) fullHtml += renderEps(prefaceEps);
+      if (prefaceEps.length > 0) fullHtml += renderEps(prefaceEps, true);
       return;
     }
 
