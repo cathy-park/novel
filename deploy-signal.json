@@ -1,6 +1,6 @@
 {
   "service": "novel",
   "provider": "vercel",
-  "triggeredAt": "2026-07-14T21:36:30+09:00",
-  "reason": "Force a fresh Vercel deployment after Publish Studio fixes."
+  "triggeredAt": "2026-07-24T22:23:00+09:00",
+  "reason": "Force a fresh Vercel deployment after fm/bm design block fixes."
 }
