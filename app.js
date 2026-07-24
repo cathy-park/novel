@@ -2376,7 +2376,9 @@ async function renderLivePodPreview(forceMode = null) {
     @bottom-right { content: counter(page); font-size:9pt; font-family:'KoPub Batang','Noto Serif KR',serif; text-align:right; }
   }
   @page:first { @bottom-center { content:none; } @bottom-left { content:none; } @bottom-right { content:none; } }
-  @page cover { margin:0; @bottom-center { content:none; } @bottom-left { content:none; } @bottom-right { content:none; } }`;
+  @page cover { margin:0; @bottom-center { content:none; } @bottom-left { content:none; } @bottom-right { content:none; } }
+  @page front-matter { @bottom-center { content:none; } @bottom-left { content:none; } @bottom-right { content:none; } }
+  .matter-page { page: front-matter; }`;
 
   const bodyCSS = `body {
     font-family:'KoPub Batang','Noto Serif KR',serif;
@@ -3384,10 +3386,15 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     return '';
   };
 
+  // 페이지 번호는 본문(장/프롤로그/에필로그)에만 찍는다 — 전면부/후면부(FM 블록,
+  // frontmatter/backmatter/여백 회차)는 실제 인쇄 관례상 쪽번호를 안 넣는다.
+  const isNumberedPage = (desc) => desc && desc.kind === 'episode' &&
+    !desc.ep.type.startsWith('blank') && desc.ep.type !== 'frontmatter' && desc.ep.type !== 'backmatter';
+
   const leftHtml  = renderSideHtml(leftDesc);
   const rightHtml = renderSideHtml(rightDesc);
-  const leftPnum  = leftDesc  ? leftDesc.absPage  : -1;
-  const rightPnum = rightDesc ? rightDesc.absPage : -1;
+  const leftPnum  = isNumberedPage(leftDesc)  ? leftDesc.absPage  : -1;
+  const rightPnum = isNumberedPage(rightDesc) ? rightDesc.absPage : -1;
 
   return (
     '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
@@ -4613,7 +4620,11 @@ ${mainStyles}
     @bottom-left { content: none; }
     @bottom-right { content: none; }
   }
-  .bg-colored {
+  /* 페이지 번호는 본문에만 찍는다 — 전면부/후면부(FM 블록, frontmatter/backmatter/
+     여백 회차)는 모두 .matter-page 클래스를 받으므로 이걸로 통째로 잡아 번호 없는
+     front-matter 페이지 타입으로 보낸다. (예전엔 .bg-colored를 썼는데 실제로는
+     어떤 요소에도 그 클래스가 붙지 않아 전혀 작동하지 않고 있었다.) */
+  .matter-page {
     page: front-matter;
   }
   @page {
