@@ -4524,6 +4524,8 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const type = block.type;
 
     if (targetEpId === 'fm' && (type === 'main_body' || type === 'preface')) {
+      const label = type === 'preface' ? '머리말' : '본문';
+      fullHtml += `<div class="chapter matter-page" style="break-before:page;display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;"><div style="text-align:center;color:#888;font-size:14pt;font-weight:600;">[여기에 원고의 ${label}이(가) 출력됩니다]</div></div>`;
       return; 
     }
 
