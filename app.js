@@ -2397,7 +2397,84 @@ async function renderLivePodPreview(forceMode = null) {
   .ql-editor { padding:0 !important; overflow-y:visible !important; height:auto !important; }
   .ql-editor h1, .ql-editor h2, .ql-editor h3, .ql-editor h4 { page-break-after:avoid; break-after:avoid; }
   .chapter-content h1, .chapter-content h2, .chapter-content h3 { color: ${pubSet.titleColor || '#1C1813'} !important; }
-  img { max-width: 100% !important; max-height: 85vh !important; width: auto !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; break-inside: avoid; page-break-inside: avoid; }`;
+  img { max-width: 100% !important; max-height: 85vh !important; width: auto !important; height: auto !important; object-fit: contain; display: block; margin: 10px auto; break-inside: avoid; page-break-inside: avoid; }
+  .chapter-content .n-msg, .chapter-content .n-msg-y {
+    display: block; max-width: 70%; margin: 16px 0; border-radius: 18px 18px 18px 2px;
+    padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    line-height: 1.6; text-align: left; text-indent: 0 !important; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+  .chapter-content .n-msg { background: #EAF4FF; }
+  .chapter-content .n-msg-y { background: #FFF7DE; color: #5C5230; }
+  .chapter-content .n-sys {
+    display: block; background: #F2F7F4; border-left: 4px solid #5E9C76; border-radius: 6px;
+    padding: 14px 18px; margin: 20px 0; color: #4A5A53; font-size: 0.95em;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-weight: 500; line-height: 1.8; text-indent: 0 !important;
+  }
+  .chapter-content .n-sys::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-log {
+    display: block; background: #E8EAF6; border-left: 4px solid #5C6BC0;
+    font-family: 'D2Coding', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    border-radius: 6px; padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-size: 0.92em;
+    line-height: 1.8; color: #384A60; white-space: pre-wrap; text-indent: 0 !important;
+  }
+  .chapter-content .n-alert {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background: #FEF4F4;
+    border-left: 4px solid #E06C6C; border-radius: 6px; padding: 14px 18px 4px 42px; margin: 20px 0 0 0;
+    position: relative; font-size: 0.95em; color: #464646; line-height: 1.8; text-indent: 0 !important;
+  }
+  .chapter-content .n-alert::before { content: '⚠️'; position: absolute; left: 14px; top: 14px; font-size: 14px; line-height: 1.8; }
+  .chapter-content .n-record {
+    display: block; background: #F2F6FC; border-left: 4px solid #6B9ED9; border-radius: 6px;
+    padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-size: 0.95em; line-height: 1.9; color: #505050; text-indent: 0 !important;
+  }
+  .chapter-content .n-email {
+    display: block; max-width: 70%; margin: 16px 0; background: #FAF5FF; border-radius: 18px 18px 18px 2px;
+    padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    line-height: 1.6; text-align: left; text-indent: 0 !important; position: relative;
+  }
+  .chapter-content .n-email-body {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; background: #FAF5FF;
+    border-left: 4px solid #6B5CE7; line-height: 1.7; text-indent: 0 !important; color: #333;
+    border-top-left-radius: 6px; border-top-right-radius: 6px; padding: 16px 20px 4px 20px; margin: 20px 0 0 0;
+  }
+  .chapter-content .n-doc {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; background: #FAFAFA;
+    border-left: 4px solid #95AED0; line-height: 1.7; text-indent: 0 !important; color: #222;
+    border-top-left-radius: 6px; border-top-right-radius: 6px; padding: 16px 20px 4px 20px; margin: 20px 0 0 0;
+  }
+  .chapter-content .n-noti {
+    display: block; max-width: 70%; margin: 16px 0; background: #FFF9C4; border-radius: 18px 18px 18px 2px;
+    padding: 12px 18px 12px 38px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    line-height: 1.6; text-align: left; text-indent: 0 !important; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    position: relative; color: #4A4011;
+  }
+  .chapter-content .n-noti::before { content: '🔔'; position: absolute; left: 14px; top: 13px; font-size: 14px; }
+  .chapter-content .n-status {
+    display: block; background: #F2F7F4; border-left: 4px solid #5E9C76; border-radius: 6px;
+    padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-size: 0.92em; color: #384A42; line-height: 1.8; text-indent: 0 !important;
+  }
+  .chapter-content .n-status::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-field {
+    display: block; background: #F4F5F6; border-radius: 8px; padding: 12px 16px; margin: 20px 0;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; color: #17141F; line-height: 1.7; text-indent: 0 !important;
+  }
+  .chapter-content .n-memo {
+    display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; color: #4A4A4A;
+    padding: 16px 20px; margin: 20px 0; border-radius: 2px; position: relative; text-indent: 0 !important;
+    background: linear-gradient(to top left,#BEEFCD 0%,#BEEFCD 50%,transparent 50%) bottom right/22px 22px no-repeat,
+                linear-gradient(-45deg,transparent 15px,#DEFFE6 0);
+  }
+  .chapter-content .n-ui {
+    display: inline-block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-weight: 600; font-size: 0.88em;
+    border: 1px solid #DADFE8; border-radius: 5px; padding: 0 5px; margin: 0 2px; line-height: 1.5; text-indent: 0 !important;
+  }
+  .chapter-content blockquote {
+    display: block; background: #F1F3F5; border-radius: 12px 12px 12px 0; padding: 16px 20px;
+    margin: 24px 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em;
+    line-height: 1.6; text-indent: 0 !important; color: #17141F;
+  }`;
 
   const currentRenderSessionId = ++podRenderSessionId;
   window.podPendingRenderHTML = bodyHTML;
@@ -3256,23 +3333,23 @@ async function estimateEpisodePages(ep, pubSet) {
       // 주는 속성(margin/padding/font-size/font-family/line-height/테두리 두께/
       // 인라인 아이콘)만 정확히 동일하게 맞춘다 — 색상·둥근모서리·그림자 등
       // 순수 장식 속성은 페이지 분량에 영향이 없어 생략한다.
-      '.n-msg,.n-msg-y { display:block; max-width:70%; margin:16px 0; padding:12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; word-break:keep-all; }' +
+      '.n-msg,.n-msg-y { display:block; max-width:70%; margin:16px 0; padding:12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0 !important; word-break:keep-all; }' +
       '.n-msg:has(+ .n-msg) { margin-bottom:4px; }' +
       '.n-msg + .n-msg { margin-top:0; }' +
       '.n-msg-y:has(+ .n-msg-y) { margin-bottom:4px; }' +
       '.n-msg-y + .n-msg-y { margin-top:0; }' +
-      '.n-sys { display:block; border-left:4px solid transparent; padding:14px 18px; margin:20px 0; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:500; line-height:1.8; text-indent:0; }' +
+      '.n-sys { display:block; border-left:4px solid transparent; padding:14px 18px; margin:20px 0; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:500; line-height:1.8; text-indent:0 !important; }' +
       '.n-sys::before { content:"\\25C7"; display:inline-block; font-size:11px; margin-right:8px; }' +
-      '.n-log { display:block; border-left:4px solid transparent; font-family:"D2Coding","Fira Code","Consolas","Courier New",monospace; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-size:0.92em; line-height:1.8; white-space:pre-wrap; text-indent:0; }' +
+      '.n-log { display:block; border-left:4px solid transparent; font-family:"D2Coding","Fira Code","Consolas","Courier New",monospace; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-size:0.92em; line-height:1.8; white-space:pre-wrap; text-indent:0 !important; }' +
       '.n-log + .n-log { margin-top:0; padding-top:4px; }' +
-      '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; border-left:4px solid transparent; padding:14px 18px 4px 42px; margin:20px 0 0 0; font-size:0.95em; line-height:1.8; text-indent:0; }' +
+      '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; border-left:4px solid transparent; padding:14px 18px 4px 42px; margin:20px 0 0 0; font-size:0.95em; line-height:1.8; text-indent:0 !important; }' +
       '.n-alert + .n-alert { margin-top:0; padding-top:4px; padding-left:42px; }' +
-      '.n-record { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; text-indent:0; }' +
+      '.n-record { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; text-indent:0 !important; }' +
       '.n-record + .n-record { margin-top:0; padding-top:4px; }' +
-      '.n-email { display:block; max-width:70%; margin:16px 0; padding: 12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
+      '.n-email { display:block; max-width:70%; margin:16px 0; padding: 12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0 !important; }' +
       '.n-email:has(+ .n-email) { margin-bottom:4px; }' +
       '.n-email + .n-email { margin-top:0; padding-left:18px; }' +
-      '.n-email-body { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
+      '.n-email-body { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0 !important; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
       '.n-email-body::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
       '.n-email-body + .n-email-body { padding: 4px 20px 4px 20px; margin-top:0; margin-bottom:0; }' +
       '.n-email-body + .n-email-body::before { content:none; }' +
@@ -3282,15 +3359,15 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-email-body:not(:has(+ .n-email-body)), .n-email-body + .n-email-body:not(:has(+ .n-email-body)) { padding-bottom:16px; margin-bottom:20px; }' +
       // n-log/n-doc는 실제 미리보기에서 monospace 폰트를 쓴다 — 글자 폭이 달라
       // 줄바꿈 위치가 달라지므로 실측에도 동일하게 반영해야 한다.
-      '.n-doc { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
+      '.n-doc { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; border-left:4px solid transparent; line-height:1.7; text-indent:0 !important; padding:16px 20px 4px 20px; margin:20px 0 0 0; }' +
       '.n-doc::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
       '.n-doc + .n-doc { padding: 4px 20px 4px 20px; margin-top:0; margin-bottom:0; }' +
       '.n-doc + .n-doc::before { content:none; }' +
       '.n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) { padding-bottom:16px; margin-bottom:20px; }' +
-      '.n-noti { display:block; max-width:70%; margin:16px 0; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0; }' +
+      '.n-noti { display:block; max-width:70%; margin:16px 0; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-indent:0 !important; }' +
       '.n-noti:has(+ .n-noti) { margin-bottom:4px; }' +
       '.n-noti + .n-noti { margin-top:0; padding-left:18px; }' +
-      '.n-status { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; line-height:1.8; text-indent:0; }' +
+      '.n-status { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; line-height:1.8; text-indent:0 !important; }' +
       '.n-status::before { content:"\\25C7"; display:inline-block; font-size:11px; margin-right:8px; }' +
       '.n-status + .n-status { margin-top:0; padding-top:4px; padding-left:40px; }' +
       // n-log/n-alert/n-record/n-status "시스템 계열" 그룹도 마지막 줄(또는
@@ -3306,18 +3383,18 @@ async function estimateEpisodePages(ep, pubSet) {
       // 분량을 과소평가해 미리보기 총 쪽수가 실제 PDF보다 적게 나온다.
       '.pdf-group-first, .pdf-group-isolated { margin-top:20px !important; }' +
       '.n-msg.pdf-group-first, .n-msg.pdf-group-isolated, .n-msg-y.pdf-group-first, .n-msg-y.pdf-group-isolated, .n-email.pdf-group-first, .n-email.pdf-group-isolated, .n-noti.pdf-group-first, .n-noti.pdf-group-isolated { margin-top:16px !important; }' +
-      '.n-field { display:block; padding:12px 16px; margin:20px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.7; text-indent:0; }' +
-      '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; padding:16px 20px; margin:20px 0; text-indent:0; }' +
+      '.n-field { display:block; padding:12px 16px; margin:20px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.7; text-indent:0 !important; }' +
+      '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; padding:16px 20px; margin:20px 0; text-indent:0 !important; }' +
       '.n-memo::before { content:""; display:inline-block; font-size:14px; margin-right:8px; }' +
       '.n-memo:has(+ .n-memo) { margin-bottom:0; padding-bottom:4px; }' +
       '.n-memo + .n-memo { margin-top:0; padding-top:4px; padding-left: 20px; }' +
       '.n-memo + .n-memo::before { content:none; }' +
-      '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; border:1px solid transparent; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0; }' +
+      '.n-ui { display:inline-block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:600; font-size:0.88em; border:1px solid transparent; padding:0 5px; margin:0 2px; line-height:1.5; text-indent:0 !important; }' +
       'hr { display:block; border:none; border-top:1px solid #D4D7E0; margin:32px auto; width:80px; height:0; }' +
       // 실제 편집기(style.css)의 blockquote는 border-left가 아니라 좌측 선 없는
       // 둥근 회색 박스다 — 예전엔 왼쪽에 3px 회색 선을 긋는 완전히 다른(임시)
       // 스타일을 쓰고 있어서 "블록 왼쪽에 없던 줄이 생긴다"는 오류로 보였다.
-      'blockquote { display:block; background:#F1F3F5; border-radius:12px 12px 12px 0; padding:16px 20px; margin:24px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.6; text-indent:0; }' +
+      'blockquote { display:block; background:#F1F3F5; border-radius:12px 12px 12px 0; padding:16px 20px; margin:24px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.6; text-indent:0 !important; }' +
       'h1,h2,h3 { font-weight:800; margin-top:1.5em; margin-bottom:0.5em; }' +
       'img { max-width:100%; max-height:50mm; object-fit:contain; display:block; margin:4mm auto; }' +
       '#measurer {' +
@@ -4267,14 +4344,28 @@ if ($('#exportPODCoverBtn')) $('#exportPODCoverBtn').onclick = exportPODCover;
 function processEpisodeBody(html, epTitle, isForPublishing = false) {
   if (!html) return { body: '', hasTitle: false };
 
-  // <br> 태그를 문단 분리(</p><p>)로 정규화하여 빈 줄 감지를 정확하게 함
-  let normalizedHtml = html;
-  if (isForPublishing) {
-    normalizedHtml = html.replace(/<br\s*\/?>/gi, '</p><p>');
-  }
-
   const div = document.createElement('div');
-  div.innerHTML = normalizedHtml;
+  div.innerHTML = html;
+
+  // <br> 태그를 문단 분리(<p>+<p>)로 정규화하여 빈 줄 감지를 정확하게 함.
+  // 예전엔 html.replace(/<br>/g,'</p><p>') 문자열 치환으로 처리했는데, 그러면
+  // 원래 <p class="n-record">처럼 서사 블록 안에서 줄바꿈(Shift+Enter)한 경우
+  // 첫 조각만 class를 유지하고 나머지 조각은 class 없는 민짜 <p>가 되어버려
+  // 서사 블록 배경/테두리가 사라지고 본문과 같은 들여쓰기가 새로 붙는 문제가
+  // 있었다 — DOM에서 <p>를 직접 쪼개 원래 속성(class 포함)을 각 조각에 물려준다.
+  if (isForPublishing) {
+    Array.from(div.querySelectorAll('p')).forEach(pEl => {
+      if (!/<br\s*\/?>/i.test(pEl.innerHTML)) return;
+      const fragments = pEl.innerHTML.split(/<br\s*\/?>/gi);
+      fragments.forEach(frag => {
+        const np = document.createElement('p');
+        Array.from(pEl.attributes).forEach(attr => np.setAttribute(attr.name, attr.value));
+        np.innerHTML = frag;
+        div.insertBefore(np, pEl);
+      });
+      div.removeChild(pEl);
+    });
+  }
 
   // 1. 빈 리스트 삭제
   div.querySelectorAll('li').forEach(li => {
