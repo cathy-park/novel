@@ -1,0 +1,9 @@
+node_modules
+tests
+*.py
+test_*.js
+test-*.html
+screenshot.js
+vercel_screenshot.png
+_backup_20260714
+*.backup_*
