@@ -3782,6 +3782,14 @@ const FM_BLOCK_META = {
   main_body: { name: '본문', icon: '📚', fields: [] }
 };
 
+// 웹폰트 로딩 실패 시 시스템 폰트(AppleMyungjo 등)로 떨어지는 것을 막기 위해,
+// 지정된 폰트 스택에 이미 로드가 보장된 'Noto Serif KR'을 안전망으로 끼워 넣는다.
+function withFontSafetyNet(familyCss) {
+  const stack = familyCss || "'KoPub Batang', serif";
+  if (stack.includes('Noto Serif KR') || stack.includes('Noto Sans KR')) return stack;
+  return stack.replace(/,\s*(serif|sans-serif)\s*$/, ", 'Noto Serif KR', $1");
+}
+
 // 기본 스타일 팩토리
 function defaultFmStyle(type) {
   const dark = [].includes(type);
@@ -4701,7 +4709,9 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const pTitle = escapeHtml(c.title || p.title || '');
     const pSub = escapeHtml(c.subtitle || '');
     const pAuth = escapeHtml(c.author || pubSet.frontMatter?.author || '저자');
-    const pDate = escapeHtml(c.date || pubSet.frontMatter?.publishDate || new Date().getFullYear() + '년');
+    const today = new Date();
+    const todayFull = `${today.getFullYear()}년 ${String(today.getMonth() + 1).padStart(2, '0')}월 ${String(today.getDate()).padStart(2, '0')}일`;
+    const pDate = escapeHtml(c.date || pubSet.frontMatter?.publishDate || todayFull);
     const presetObj = POD_PRESETS[pubSet.preset] || {};
     const pPub = escapeHtml(c.publisher || pubSet.frontMatter?.fmPublisher || presetObj.name || '');
 
@@ -4709,7 +4719,7 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     const bgIsColored = bgColor.toLowerCase() !== '#ffffff';
     const bgPrintCss = bgIsColored ? `-webkit-print-color-adjust:exact;print-color-adjust:exact;background-color:${bgColor} !important;` : '';
 
-    const fontCss = `font-family:${s.fontFamily || "'KoPub Batang',serif"};color:${s.fontColor || '#1C1813'};letter-spacing:${s.letterSpacing || '0em'};`;
+    const fontCss = `font-family:${withFontSafetyNet(s.fontFamily)};color:${s.fontColor || '#1C1813'};letter-spacing:${s.letterSpacing || '0em'};`;
     const titleSz = `font-size:${s.fontSize || 20}pt;`;
     const jc = s.alignY || 'center';
     const ai = s.alignX || 'center';
@@ -4733,11 +4743,11 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
     } else if (type === 'title_page') {
       blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="${pageBase}">${bgImgHtml}<div style="${hideTxt}${zi}${offsetStyle}display:flex;flex-direction:column;align-items:${ai};text-align:center;${padCss}${fontCss}"><h1 style="${titleSz}font-weight:700;margin-bottom:20px;">${pTitle}</h1>${pSub ? `<div style="font-size:12pt;opacity:0.7;margin-bottom:40px;">${pSub}</div>` : ''} ${pPubHtml ? `<div style="font-size:12pt;font-weight:700;">${pPubHtml}</div>` : ''}</div></div>`;
     } else if (type === 'copyright') {
-      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:page;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
+      blockHtml += `<div class="chapter matter-page" data-fm-label="${FM_LABELS[type] || type}" style="break-before:page;position:relative;height:100%;${bgPrintCss}${rel}">${bgImgHtml}<div style="${hideTxt}${zi}position:absolute;bottom:0;left:0;right:0;${padCss}font-size:8pt !important;font-family:'KoPub Batang','Noto Serif KR',serif;line-height:1.6 !important;color:${s.fontColor || '#1C1813'};"><h2 style="font-size:12pt !important;margin-bottom:20px;font-weight:700;">${pTitle}</h2><div style="display:grid;grid-template-columns:70px 1fr;gap:6px;margin-bottom:12px;"><div style="opacity:0.6;">발행일</div><div>${pDate}</div><div style="opacity:0.6;">지은이</div><div>${pAuth}</div><div style="opacity:0.6;">출판사</div><div>퍼플</div></div><div style="margin-bottom:12px;"><p style="margin:0;">출판등록 제300-2012-167호 (2012년 09월 07일)</p><p style="margin:0;">주 소 서울시 종로구 종로1가 1번지</p><p style="margin:0;">대표전화 1544-1900</p><p style="margin:0;">홈페이지 www.kyobobook.co.kr</p></div><div style="font-size:7.5pt !important;opacity:0.7;padding-top:12px;border-top:1px solid currentColor;"><p style="margin-bottom:4px;">ⓒ ${pAuth} ${new Date().getFullYear()}</p><p>본 책 내용의 전부 또는 일부를 재사용하려면 반드시 저작권자의 동의를 받으셔야 합니다.</p></div></div></div>`;
     } else if (type === 'toc') {
       if (pubSet.autoTOC !== false && tocEps.length > 0) {
         const manualNumbers = (c.tocManual || '').split(/[\\n,]+/).map(s => s.trim());
-        const tocFont = s.fontFamily || "'KoPub Batang',serif";
+        const tocFont = withFontSafetyNet(s.fontFamily);
         const tocColor = s.fontColor || '#1C1813';
         let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:page;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
         tocEps.forEach((ep, i) => {
