@@ -2859,6 +2859,7 @@ $('#backFromPodStudio').onclick = hidePodStudio;
 // 내지 전용 PDF: 2번째 인자 true → 표지 배제
 $('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(false, true); };
 $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
+if ($('#podExportDocxBtn')) $('#podExportDocxBtn').onclick = () => { podSaveSettings(); exportPODDocx(); };
 
 // 저장 버튼
 $('#podSaveSettingsBtn').onclick = podSaveSettings;
@@ -4589,6 +4590,137 @@ async function exportPODCover() {
   link.click();
 }
 
+// Quill 본문 HTML(ep.body)의 인라인 서식(굵게/기울임/밑줄/취소선/줄바꿈)을
+// docx TextRun 배열로 변환한다. altChunk로 원본 HTML을 통째로 끼워넣는
+// 방식(html-docx-js 등)은 Word에서는 열리지만 Google Docs/LibreOffice에서는
+// 빈 문서로 보인다(altChunk 미지원) — 그래서 실제 OOXML 문단을 직접 만든다.
+function quillNodeToDocxRuns(containerNode) {
+  const { TextRun, UnderlineType } = window.docx;
+  const runs = [];
+  const walk = (node, fmt) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent) {
+        runs.push(new TextRun({
+          text: node.textContent,
+          bold: fmt.bold || undefined,
+          italics: fmt.italic || undefined,
+          strike: fmt.strike || undefined,
+          underline: fmt.underline ? { type: UnderlineType.SINGLE } : undefined
+        }));
+      }
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') { runs.push(new TextRun({ text: '', break: 1 })); return; }
+    const nextFmt = {
+      bold: fmt.bold || tag === 'strong' || tag === 'b',
+      italic: fmt.italic || tag === 'em' || tag === 'i',
+      underline: fmt.underline || tag === 'u',
+      strike: fmt.strike || tag === 's' || tag === 'del'
+    };
+    node.childNodes.forEach(child => walk(child, nextFmt));
+  };
+  containerNode.childNodes.forEach(child => walk(child, {}));
+  if (runs.length === 0) runs.push(new TextRun({ text: '' }));
+  return runs;
+}
+
+// Quill 본문 HTML 한 회차 분량을 docx Paragraph 배열로 변환.
+function quillHtmlToDocxParagraphs(html) {
+  const { Paragraph, AlignmentType } = window.docx;
+  const container = document.createElement('div');
+  container.innerHTML = html || '';
+
+  const alignmentOf = el => {
+    if (el.classList.contains('ql-align-center')) return AlignmentType.CENTER;
+    if (el.classList.contains('ql-align-right')) return AlignmentType.RIGHT;
+    if (el.classList.contains('ql-align-justify')) return AlignmentType.JUSTIFIED;
+    return undefined;
+  };
+
+  const paragraphs = [];
+  container.childNodes.forEach(node => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase();
+    const runs = quillNodeToDocxRuns(node);
+
+    if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+      const heading = { h1: 'Heading1', h2: 'Heading2', h3: 'Heading3' }[tag];
+      paragraphs.push(new Paragraph({ children: runs, heading, alignment: alignmentOf(node), spacing: { before: 240, after: 120 } }));
+      return;
+    }
+    if (tag === 'ul' || tag === 'ol') {
+      node.querySelectorAll(':scope > li').forEach(li => {
+        paragraphs.push(new Paragraph({ children: [new (window.docx.TextRun)('• '), ...quillNodeToDocxRuns(li)] }));
+      });
+      return;
+    }
+    if (tag === 'blockquote') {
+      paragraphs.push(new Paragraph({ children: runs, indent: { left: 480 }, alignment: alignmentOf(node) }));
+      return;
+    }
+    // 일반 문단(p) 및 그 외 블록 요소 — 원고 본문 들여쓰기 관례(첫 줄 1자)를 맞춘다.
+    paragraphs.push(new Paragraph({ children: runs, indent: { firstLine: 200 }, alignment: alignmentOf(node) }));
+  });
+
+  if (paragraphs.length === 0) paragraphs.push(new Paragraph({ children: [] }));
+  return paragraphs;
+}
+
+// Google Docs로 내보내기: 실제 Docs API 연동 없이 .docx로 내려받아, 사용자가
+// 구글 드라이브에 올리면 드라이브가 자동으로 구글독스 문서로 변환해준다.
+// 표지/여백 페이지는 인쇄용 개념이라 제외하고, PDF 내보내기와 동일한 회차
+// 목록(orderedEpisodes + isPublishableEpisode)을 사용해 원고 내용을 통일한다.
+async function exportPODDocx() {
+  const p = currentProject();
+  if (!p) return;
+  if (!window.docx) { showToast('문서 변환 모듈을 아직 불러오는 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+
+  const eps = orderedEpisodes(p).filter(isPublishableEpisode).filter(e => !(e.type || '').startsWith('blank'));
+  if (eps.length === 0) {
+    showToast('출판할 본문이 없습니다.');
+    return;
+  }
+
+  if (p.episodes.some(e => e.body === undefined)) {
+    showToast('문서를 준비하기 위해 데이터를 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+
+  showToast('Google Docs용 문서를 준비 중입니다...');
+
+  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode).filter(e => !(e.type || '').startsWith('blank'));
+  const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer } = window.docx;
+
+  const children = [];
+  loadedEps.forEach((ep, i) => {
+    children.push(new Paragraph({
+      children: [new TextRun({ text: ep.title || '', bold: true })],
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      pageBreakBefore: i > 0,
+      spacing: { after: 240 }
+    }));
+    children.push(...quillHtmlToDocxParagraphs(ep.body));
+  });
+
+  const doc = new Document({
+    title: p.title || '',
+    sections: [{ children }]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${p.title || '원고'}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('docx 파일을 다운로드했어요. 구글 드라이브에 업로드하면 자동으로 구글독스 문서로 열려요.');
+}
 
 function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episodeStartPages = null) {
   const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백', preface: '머리말' };
