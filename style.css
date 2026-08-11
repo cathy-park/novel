@@ -249,6 +249,14 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-align: left !important;
   text-indent: 0 !important;
 }
+/* 예전에 다른 서식이었다가 메시지(노랑)로 바뀐 문단 등, 글자 하나하나에 남아있는
+   인라인 색상(span style="color:...")은 부모의 color !important보다 우선해서
+   상속을 뚫고 검정으로 보인다 — 하위 요소까지 강제로 갈색을 입혀 통일한다. */
+.ql-editor p.n-msg-y *,
+.ql-editor .n-msg-y *,
+.n-msg-y * {
+  color: #5C5230 !important;
+}
 .ql-editor p.n-msg-y:has(+ p.n-msg-y),
 .n-msg-y:has(+ .n-msg-y) {
   margin-bottom: 4px !important;
