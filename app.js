@@ -629,6 +629,29 @@ function renderLibrary() {
   // 서재 필터 기본값을 'all'로 초기화
   if (!state.projects.some(p => p.status === libraryFilter) && libraryFilter !== 'all') libraryFilter = 'all';
   setTimeout(() => window.addEventListener('click', () => $$('.kebab-menu').forEach(m => m.classList.remove('show')), { once: true }), 0);
+  ensureLibraryStatsLoaded();
+}
+
+// 서재 카드의 글자수는 회차 본문(body)이 이미 메모리에 로드돼 있어야 정확히
+// 계산된다 — 본문은 프로젝트를 열 때만 지연 로드되므로, 이번 세션에 한 번도
+// 열어보지 않은 작품은 본문이 없어 글자수가 0으로 보였다. 서재를 그릴 때마다
+// 백그라운드로 부족한 본문을 마저 불러와 다시 그린다(중복 호출 방지 가드).
+let libraryStatsLoadInFlight = false;
+async function ensureLibraryStatsLoaded() {
+  if (libraryStatsLoadInFlight) return;
+  const needLoad = state.projects.filter(p => p.episodes.some(e => e.body === undefined));
+  if (needLoad.length === 0) return;
+  libraryStatsLoadInFlight = true;
+  try {
+    for (const p of needLoad) {
+      await ensureProjectBodiesLoaded(p);
+    }
+    if (!$('#libraryView').classList.contains('hidden')) renderLibrary();
+  } catch (e) {
+    console.error('서재 글자수용 본문 로딩 실패:', e);
+  } finally {
+    libraryStatsLoadInFlight = false;
+  }
 }
 function showLibrary() {
   persistEditor();
@@ -1009,7 +1032,21 @@ function renderEpisode() {
 
 
 function selectEpisode(id) { persistEditor(); saveEditorScroll(); currentProject().selectedEpisodeId = id; touchProject(); queueSaveFS(); showEditor(); renderEpisode(); }
-function persistEditor() { if ($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return; const p = currentProject(), ep = currentEpisode(); if (!p || !ep) return; ep.title = $('#episodeTitle').value.trim() || '제목 없는 회차'; ep.type = $('#episodeType').value; ep.plan = $('#planEditor').value; ep.body = quill ? quill.root.innerHTML : $('#bodyEditor').innerHTML; ep._dirty = true; }
+function persistEditor() {
+  if ($('#workspaceView').classList.contains('hidden') || $('#manuscriptView').classList.contains('active')) return;
+  const p = currentProject(), ep = currentEpisode();
+  if (!p || !ep) return;
+  ep.title = $('#episodeTitle').value.trim() || '제목 없는 회차';
+  ep.type = $('#episodeType').value;
+  ep.plan = $('#planEditor').value;
+  ep.body = quill ? quill.root.innerHTML : $('#bodyEditor').innerHTML;
+  ep._dirty = true;
+  // planEditor는 <textarea>라 blur 이벤트로도 동기화하지만, 사이드바의 회차
+  // 목록 같은 포커스를 안 가져가는(비focusable) 요소를 클릭해 다른 화면으로
+  // 넘어가면 blur가 아예 발생하지 않아 비트시트 동기화가 누락될 수 있다 —
+  // 에디터 상태를 저장하는 이 공용 함수에서도 항상 시도해 그 구멍을 막는다.
+  syncPlanToBeatSheet(ep);
+}
 function updateProjectStats() { const p = currentProject(); if (!p) return; const total = p.episodes.reduce((s, e) => s + stats(e.body || '').withSpaces, 0); $('#projectStats').textContent = `총 ${total.toLocaleString()}자`; $('#projectBreadcrumb').textContent = p.title; }
 function updateBodyStats() { const s = stats(quill ? quill.getText() : $('#bodyEditor').innerText || ''); $('#bodyStats').textContent = `${s.withSpaces.toLocaleString()}자 · 원고지 ${s.manuscript}매`; updateProjectStats(); }
 function setViewMode(mode, save = true) { saveEditorScroll(); const p = currentProject(); if (p) p.viewMode = mode; $('#editorColumns').className = `editor-columns mode-${mode}`; $$('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode)); if (save) queueSaveFS(); restoreEditorScroll(); }
@@ -3938,10 +3975,6 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-doc:not(:has(+ .n-doc)), .n-doc + .n-doc:not(:has(+ .n-doc)) { border-bottom-left-radius:6px; border-bottom-right-radius:6px; padding-bottom:16px; margin-bottom:20px; }' +
     '.n-noti { display:block; max-width:70%; margin:16px 0; background:#FFF9C4; border-radius:18px 18px 18px 2px; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; box-shadow:0 1px 2px rgba(0,0,0,.03); position:relative; color:#4A4011; }' +
     '.n-noti::before { content:"🔔"; position:absolute; left:14px; top:13px; font-size:14px; }' +
-    '.n-noti:has(+ .n-noti) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
-    '.n-noti + .n-noti { margin-top:0; border-top-left-radius:6px; padding-left:18px; }' +
-    '.n-noti + .n-noti:not(:has(+ .n-noti)) { border-bottom-left-radius:2px; }' +
-    '.n-noti + .n-noti::before { content:none; }' +
     '.n-status { display:block; background:#F2F7F4; border-left:4px solid #5E9C76; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; color:#384A42; line-height:1.8; text-indent:0 !important; }' +
     '.n-status::before { content:"\\25C7"; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
     '.n-status + .n-status { color:#4A5A53; }' +

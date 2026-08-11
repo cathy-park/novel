@@ -496,11 +496,9 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   color: #4A4011 !important;
 }
 .ql-editor p.n-noti::before, .n-noti::before { content: '🔔' !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
-.ql-editor p.n-noti:has(+ p.n-noti), .n-noti:has(+ .n-noti) { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; }
-.ql-editor p.n-noti + p.n-noti, .n-noti + .n-noti { margin-top: 0 !important; border-top-left-radius: 6px !important; }
-.ql-editor p.n-noti + p.n-noti:not(:has(+ p.n-noti)), .n-noti + .n-noti:not(:has(+ .n-noti)) { border-bottom-left-radius: 2px !important; }
-.ql-editor p.n-noti + p.n-noti::before, .n-noti + .n-noti::before { content: none !important; }
-.ql-editor p.n-noti + p.n-noti, .n-noti + .n-noti { padding-left: 18px !important; }
+/* 알림(n-noti)은 메시지(채팅)와 달리 한 사람이 연달아 보낸 게 아니라 각각
+   독립된 알림 카드라서, 연속으로 이어져도 병합하지 않고 항상 첫 줄과 같은
+   모양(아이콘·모서리·간격)을 유지한다. */
 
 /* ⑨ 상태창 / 선택지 (n-status) */
 .ql-editor p.n-status, .ql-editor .n-status, .n-status {
