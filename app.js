@@ -3233,13 +3233,37 @@ async function renderPodPageTree(realPageMap = null) {
 
     let lastEpForHeader = null;
     let epPageRunIndex = 0;
-    realPageMap.forEach((entry, idx) => {
+    let lastFmRanges = null;
+    let fmChunkRunIndex = 0;
+    for (let idx = 0; idx < realPageMap.length; idx++) {
+      const entry = realPageMap[idx];
       const absPage = idx + 1;
       const captPage = absPage;
 
       if (entry.kind === 'fm') {
+        const isContinuation = (entry.label === lastFmLabel);
         const block = findFmBlockForLabel(entry.label);
-        pageDescriptors[absPage - 1] = { kind: 'fm', block, absPage };
+
+        if (!isContinuation) {
+          // 새 블록 시작 — 목차처럼 여러 쪽으로 나뉠 수 있는 블록이면 실제로 몇 쪽
+          // 연속됐는지(runLength) 미리 내다보고, 그 쪽수에 맞춰 실측해서 잘라둔다.
+          if (block.type === 'toc') {
+            let runLength = 1;
+            while (realPageMap[idx + runLength] && realPageMap[idx + runLength].kind === 'fm' && realPageMap[idx + runLength].label === entry.label) runLength++;
+            lastFmRanges = await estimateTocPageRanges(block, pubSet, p, eps, runLength);
+          } else {
+            lastFmRanges = null;
+          }
+          fmChunkRunIndex = 0;
+        } else {
+          fmChunkRunIndex++;
+        }
+
+        const fmItemRange = lastFmRanges
+          ? (fmChunkRunIndex < lastFmRanges.length ? lastFmRanges[fmChunkRunIndex] : { start: lastFmRanges[lastFmRanges.length - 1].end, end: lastFmRanges[lastFmRanges.length - 1].end })
+          : null;
+
+        pageDescriptors[absPage - 1] = { kind: 'fm', block, absPage, fmItemRange };
         const thumb = mkThumb(absPage, entry.label, '실측', '#a78bfa', () => {
           showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
         }, entry.label === '여백');
@@ -3254,7 +3278,7 @@ async function renderPodPageTree(realPageMap = null) {
         lastEpForHeader = null;
       } else if (entry.kind === 'episode') {
         const ep = eps.find(e => e.id === entry.epId);
-        if (!ep) return; // 방금 삭제된 회차 등 — 안전하게 건너뜀
+        if (!ep) { pageCounter = absPage + 1; continue; } // 방금 삭제된 회차 등 — 안전하게 건너뜀
         const isFirst = ep !== lastEpForHeader;
         if (isFirst) {
           epPageRunIndex = 0;
@@ -3279,22 +3303,40 @@ async function renderPodPageTree(realPageMap = null) {
         epPageRunIndex++;
       }
       pageCounter = absPage + 1;
-    });
+    }
   } else {
     // ── 추정 모드(초벌 렌더링): 실측 데이터가 도착하기 전 빠르게 먼저 보여준다 ──
     // FM 블록: 연속 배치 (1,2,3,4,5 순서 — 강제 홀수/빈면 없음)
-    activeFmBlocks.forEach(block => {
-      const fmPage    = pageCounter;
+    // 목차는 회차 수에 따라 여러 페이지로 넘칠 수 있어(다른 FM 블록과 달리
+    // 길이가 고정돼 있지 않음) estimateEpisodePages처럼 실측해서 필요한 페이지
+    // 수만큼 슬롯을 만든다 — await가 필요해 forEach 대신 for...of를 쓴다.
+    for (const block of activeFmBlocks) {
       const label     = FM_LABELS_MAP[block.type] || block.type;
       const isBlankFm = block.type === 'blank';
-      const captPage  = fmPage;
-      pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage };
-      const thumb = mkThumb(fmPage, label, 'FM(추정)', '#a78bfa', () => {
-        showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
-      }, isBlankFm);
-      addToSpread(fmPage, thumb);
-      pageCounter++;
-    });
+      const ranges    = block.type === 'toc' ? await estimateTocPageRanges(block, pubSet, p, eps) : null;
+
+      if (ranges && ranges.length > 1) {
+        ranges.forEach((range, i) => {
+          const fmPage   = pageCounter;
+          const captPage = fmPage;
+          pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage, fmItemRange: range };
+          const thumb = mkThumb(fmPage, label, `FM(추정, ${i + 1}/${ranges.length}쪽)`, '#a78bfa', () => {
+            showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
+          }, isBlankFm);
+          addToSpread(fmPage, thumb);
+          pageCounter++;
+        });
+      } else {
+        const fmPage   = pageCounter;
+        const captPage = fmPage;
+        pageDescriptors[fmPage - 1] = { kind: 'fm', block, absPage: fmPage, fmItemRange: ranges ? ranges[0] : null };
+        const thumb = mkThumb(fmPage, label, 'FM(추정)', '#a78bfa', () => {
+          showTreeSpreadForPage(pageDescriptors, captPage, pubSet, p);
+        }, isBlankFm);
+        addToSpread(fmPage, thumb);
+        pageCounter++;
+      }
+    }
 
     // 에피소드: 각 페이지를 버퍼 기반으로 연속 배치
     // (estimateEpisodePages가 이미지 로드를 기다리는 비동기 함수라 순서를 보장하는
@@ -3612,6 +3654,102 @@ async function estimateEpisodePages(ep, pubSet) {
   }
 }
 
+/** 목차(TOC) 등 회차 수만큼 길어질 수 있는 FM 블록을 실제 <li> 높이로 실측해서
+ *  몇 페이지로 나뉘는지, 각 페이지가 항목 몇 번째~몇 번째(tocEps 인덱스 범위)를
+ *  담는지 계산한다. "페이지 구조" 탭은 Paged.js 없이 직접 그리다 보니 FM 블록을
+ *  늘 1페이지로 취급해서(estimateEpisodePages와 달리 여러 페이지로 넘칠 수 있다는
+ *  걸 감안하지 않아) 목차가 길면 뒷부분이 통째로 사라졌던 문제를 고친다.
+ *  HTML을 여기서 미리 완성해두지 않고 인덱스 범위(ranges)만 반환하는 이유 —
+ *  실제 쪽번호(episodeStartPages)는 이 목차 뒤에 오는 회차들의 절대 페이지가
+ *  전부 정해진 "다음"에야 알 수 있다. 여기서 페이지 번호까지 박아버리면 그 값이
+ *  항상 비어있게 굳어버리므로, 렌더링은 나중에(전체 pageDescriptors가 완성된 뒤)
+ *  generatePODBodyContent를 이 범위로 다시 호출해서 하게 한다. */
+async function estimateTocPageRanges(block, pubSet, p, loadedEpsForToc, targetPageCount = null) {
+  const tempPubSet = JSON.parse(JSON.stringify(pubSet));
+  tempPubSet.fmBlocks = [block];
+  const blockHtml = generatePODBodyContent(p, tempPubSet, loadedEpsForToc, 'fm');
+
+  const paper = PAPER_SIZES[pubSet.paperSize || 'A5'] || PAPER_SIZES.A5;
+  const m = {
+    top: pubSet.margins?.top || 20,
+    bottom: pubSet.margins?.bottom || 20,
+    inner: pubSet.margins?.inner || 25,
+    outer: pubSet.margins?.outer || 18
+  };
+  const contentW = paper.w - m.inner - m.outer;
+  const fontSize = parseFloat(pubSet.fontSize) || 10;
+  const lineHeightVal = parseFloat(pubSet.lineHeight) || 1.75;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed; left:-99999px; top:0; width:10px; height:10px; border:none; visibility:hidden;';
+  document.body.appendChild(iframe);
+  const idoc = iframe.contentDocument;
+
+  const fontLink = '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">';
+  idoc.open();
+  idoc.write('<!DOCTYPE html><html><head>' + fontLink + '<style>' +
+    '*{margin:0;padding:0;box-sizing:border-box;}' +
+    'body{font-family:"KoPub Batang","Noto Serif KR",serif;font-size:' + fontSize + 'pt;line-height:' + lineHeightVal + ';}' +
+    '#measure{position:absolute;left:0;top:0;width:' + contentW + 'mm;}' +
+    '</style></head><body><div id="measure">' + blockHtml + '</div></body></html>');
+  idoc.close();
+
+  try {
+    await Promise.race([idoc.fonts.ready, new Promise(r => setTimeout(r, 1500))]);
+  } catch (e) { /* 폰트 로드 실패해도 측정은 계속 진행 */ }
+
+  const measure = idoc.getElementById('measure');
+  const titleEl = measure.querySelector('h2');
+  const listEl = measure.querySelector('.toc-list');
+
+  let ranges;
+  if (!listEl) {
+    // 목차가 아닌 블록(속표지/판권지 등)은 그대로 1페이지
+    ranges = [{ start: 0, end: 0 }];
+  } else {
+    const PX_MM = 96 / 25.4;
+    const contentHeight = (paper.h - m.top - m.bottom) * PX_MM;
+
+    const outerHeight = (el) => {
+      const r = el.getBoundingClientRect();
+      const s = idoc.defaultView.getComputedStyle(el);
+      return r.height + (parseFloat(s.marginTop) || 0) + (parseFloat(s.marginBottom) || 0);
+    };
+
+    const titleHeight = titleEl ? outerHeight(titleEl) : 0;
+    const items = Array.from(listEl.children); // tocEps와 1:1 순서로 대응
+
+    const pageRanges = [];
+    let rangeStart = 0;
+    let usedHeight = titleHeight;
+    items.forEach((li, i) => {
+      const liHeight = outerHeight(li);
+      if (i > rangeStart && usedHeight + liHeight > contentHeight) {
+        pageRanges.push({ start: rangeStart, end: i });
+        rangeStart = i;
+        usedHeight = 0;
+      }
+      usedHeight += liHeight;
+    });
+    pageRanges.push({ start: rangeStart, end: items.length });
+
+    // 실측(Paged.js) 모드에서는 실제 페이지 수(targetPageCount)가 정해져 있다 —
+    // 우리 실측이 그보다 더 잘게 쪼갰다면(드묾, 폰트 실측 오차 등) 남는 범위를
+    // 마지막 슬롯에 합쳐서 항목이 유실되지 않게 한다.
+    if (targetPageCount && pageRanges.length > targetPageCount) {
+      const head = pageRanges.slice(0, targetPageCount - 1);
+      const tailEnd = pageRanges[pageRanges.length - 1].end;
+      const mergedTail = { start: pageRanges[targetPageCount - 1].start, end: tailEnd };
+      ranges = [...head, mergedTail];
+    } else {
+      ranges = pageRanges;
+    }
+  }
+
+  iframe.remove();
+  return ranges;
+}
+
 /**
  * 페이지 구조 트리: 절대 페이지 번호로 펼침면(spread) 전체를 렌더링
  * FM/에피소드 어느 쪽을 클릭해도 항상 실제 짝(좌/우 두 페이지)을 함께 보여준다.
@@ -3672,9 +3810,13 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
   const renderSideHtml = (desc) => {
     if (!desc) return '';
     if (desc.kind === 'fm') {
+      // 목차처럼 여러 페이지로 나뉜 FM 블록은 이 페이지에 해당하는 항목 범위만
+      // 그린다 — episodeStartPages(실제 쪽번호)는 이 시점(전체 pageDescriptors가
+      // 완성된 뒤)에야 정확하므로 항상 여기서 새로 렌더링한다(미리 구운 HTML을
+      // 쓰면 쪽번호가 영영 비어버린다).
       const tempPubSet = JSON.parse(JSON.stringify(pubSet));
       tempPubSet.fmBlocks = [desc.block];
-      const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm', episodeStartPages);
+      const bodyHtml = generatePODBodyContent(p, tempPubSet, loadedEps, 'fm', episodeStartPages, desc.fmItemRange || null);
       return '<div class="fm-static">' + bodyHtml + '</div>';
     }
     if (desc.kind === 'episode') {
@@ -4725,7 +4867,7 @@ async function exportPODCover() {
   link.click();
 }
 
-function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episodeStartPages = null) {
+function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episodeStartPages = null, tocSlice = null) {
   const FM_LABELS = { half_title: '속표지', title_page: '본표지', copyright: '판권지', toc: '목차', main_body: '본문', blank: '여백', preface: '머리말' };
 
   const prefaceEps = [];
@@ -4877,8 +5019,14 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
         const manualNumbers = (c.tocManual || '').split(/[\\n,]+/).map(s => s.trim());
         const tocFont = withFontSafetyNet(s.fontFamily);
         const tocColor = s.fontColor || '#1C1813';
-        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:page;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}"><h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2><ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
-        tocEps.forEach((ep, i) => {
+        // tocSlice가 있으면(목차가 여러 페이지로 나뉜 "페이지 구조" 탭 미리보기)
+        // 그 범위의 항목만 그린다 — 제목은 첫 페이지(start===0)에만 붙인다.
+        const sliceStart = tocSlice ? tocSlice.start : 0;
+        const sliceEnd   = tocSlice ? tocSlice.end   : tocEps.length;
+        const showTitle  = sliceStart === 0;
+        let tocHtml = `<div class="chapter matter-page toc-page" data-fm-label="목차" style="break-before:page;${bgPrintCss}${rel}">${bgImgHtml}<div style="${zi}${fontCss}">${showTitle ? `<h2 style="margin-bottom:30px;font-size:16pt;font-weight:700;text-align:center;font-family:${tocFont};color:${tocColor};">목차</h2>` : ''}<ul class="toc-list" style="font-family:${tocFont};color:${tocColor};list-style:none;padding:0;margin:0;">`;
+        tocEps.slice(sliceStart, sliceEnd).forEach((ep, sliceIdx) => {
+          const i = sliceStart + sliceIdx;
           let manualNum = manualNumbers[i] !== undefined && manualNumbers[i] !== '' ? manualNumbers[i] : '';
           const autoPageNum = !manualNum && episodeStartPages && episodeStartPages[ep.id] ? episodeStartPages[ep.id] : null;
           let pageRefHTML = manualNum
