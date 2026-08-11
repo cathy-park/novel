@@ -2516,7 +2516,7 @@ async function renderLivePodPreview(forceMode = null) {
   .chapter-content .n-msg, .chapter-content .n-msg-y {
     display: block; max-width: 70%; margin: 16px 0; border-radius: 18px 18px 18px 2px;
     padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
-    line-height: 1.6; text-align: left; text-indent: 0 !important; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    line-height: 1.6; text-align: left; text-indent: 0 !important;
   }
   .chapter-content .n-msg { background: #EAF4FF; }
   .chapter-content .n-msg-y { background: #FFF7DE; color: #5C5230; }
@@ -3903,7 +3903,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.page.left::after   { content:""; position:absolute; top:0; right:0; bottom:0; width:16px; background:linear-gradient(to left,rgba(0,0,0,.07),transparent); z-index:10; }' +
     '.page.right::before { content:""; position:absolute; top:0; left:0; bottom:0; width:16px; background:linear-gradient(to right,rgba(0,0,0,.07),transparent); z-index:10; }' +
     '/* ── Narrative Block CSS: 원고 편집기(style.css)와 동일한 서식/스타일 ── */' +
-    '.n-msg,.n-msg-y { display:block; max-width:70%; margin:16px 0; border-radius:18px 18px 18px 2px; padding:12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; box-shadow:0 1px 2px rgba(0,0,0,.03); word-break:keep-all; }' +
+    '.n-msg,.n-msg-y { display:block; max-width:70%; margin:16px 0; border-radius:18px 18px 18px 2px; padding:12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; word-break:keep-all; }' +
     '.n-msg { background:#EAF4FF; }' +
     '.n-msg-y { background:#FFF7DE; color:#5C5230; }' +
     '.n-msg:has(+ .n-msg) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
@@ -5226,7 +5226,11 @@ ${mainStyles}
     list-style: none;
     padding: 0;
     margin: 0 20px;
-    overflow-x: hidden;
+    /* overflow-x:hidden이 있으면 Paged.js가 이 <ul>을 h2와 같은 페이지에서
+       시작하지 못하고 통째로 다음 페이지로 밀어버린다(실측 결과 재현됨) —
+       그래서 목차 첫 페이지가 제목만 있고 내용은 다음 페이지로 넘어가 보였다.
+       가로 스크롤 방지 목적이었는데 애초에 내용이 페이지 폭을 넘칠 일이 없어
+       안전하게 제거 가능. */
   }
   .toc-list li {
     margin-bottom: 12px;
@@ -5352,7 +5356,7 @@ ${mainStyles}
   .chapter-content .n-msg, .chapter-content .n-msg-y {
     display: block; max-width: 70%; margin: 16px 0; border-radius: 18px 18px 18px 2px;
     padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
-    line-height: 1.6; text-align: left; text-indent: 0 !important; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    line-height: 1.6; text-align: left; text-indent: 0 !important;
   }
   .chapter-content .n-msg { background: #EAF4FF; }
   .chapter-content .n-msg-y { background: #FFF7DE; color: #5C5230; }
