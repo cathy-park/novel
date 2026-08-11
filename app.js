@@ -2257,7 +2257,117 @@ async function renderLivePodPreview(forceMode = null) {
       </div>`;
     }
 
-    const html = `<!DOCTYPE html>
+    const isTocBlock = block && block.type === 'toc';
+
+    // 목차는 회차가 많아지면 한 페이지에 다 안 들어갈 수 있다 — 고정 높이 1장에
+    // overflow:hidden으로 자르는 대신, 실제 렌더링된 <li> 높이를 측정해서
+    // 여러 페이지로 자동 분할하고(SHOW_PAGES 메시지로 다음/이전 페이지 이동).
+    const html = isTocBlock ? `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; height: 100%; display: flex; justify-content:center; align-items:center; }
+  .page {
+    width: ${paper.w}mm;
+    height: ${paper.h}mm;
+    background: #fff;
+    box-sizing: border-box;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    padding: ${m.top}mm ${m.outer}mm ${m.bottom}mm ${m.inner}mm;
+    overflow: hidden;
+    display: none;
+  }
+  .page.pod-toc-active { display: block; }
+  .page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
+
+  /* 생성된 HTML 기본 스타일 대응 */
+  .chapter { width: 100%; position: relative; }
+  ul.toc-list { list-style:none; padding:0; margin:0; }
+  ul.toc-list li { display:flex; margin-bottom:12px; font-size:10pt; line-height:1.5; }
+  .toc-title { background:#fff; padding-right:8px; z-index:1; }
+  .toc-dots { flex:1; border-bottom:1px dotted #ccc; margin:0 4px; position:relative; top:-6px; }
+  .toc-page-ref { background:#fff; padding-left:8px; z-index:1; }
+  .toc-page-ref::after { content:""; }
+  #pod-toc-measure { position:absolute; visibility:hidden; pointer-events:none; left:-99999px; top:0; width: calc(${paper.w}mm - ${m.inner}mm - ${m.outer}mm); }
+</style>
+</head>
+<body>
+  <div id="pod-toc-measure">${blockHtml}</div>
+  <div id="pod-toc-pages"></div>
+<script>
+(function() {
+  var guidesHtml = ${JSON.stringify(gH)};
+  function paginate() {
+    var measure = document.getElementById('pod-toc-measure');
+    var container = document.getElementById('pod-toc-pages');
+    var titleEl = measure.querySelector('h2');
+    var listEl = measure.querySelector('.toc-list');
+
+    if (!listEl) {
+      container.innerHTML = '<div class="page pod-toc-active">' + guidesHtml + measure.innerHTML + '</div>';
+      window.parent.postMessage({ type: 'fm-toc-paginated', totalPages: 1 }, '*');
+      return;
+    }
+
+    var pageHeightPx = ${paper.h} * 96 / 25.4;
+    var topPx = ${m.top} * 96 / 25.4;
+    var bottomPx = ${m.bottom} * 96 / 25.4;
+    var contentHeight = pageHeightPx - topPx - bottomPx;
+
+    function outerHeight(el) {
+      var r = el.getBoundingClientRect();
+      var s = getComputedStyle(el);
+      return r.height + (parseFloat(s.marginTop) || 0) + (parseFloat(s.marginBottom) || 0);
+    }
+
+    var titleHeight = titleEl ? outerHeight(titleEl) : 0;
+    var items = Array.from(listEl.children);
+
+    var pagesData = [];
+    var current = [];
+    var usedHeight = titleHeight;
+    items.forEach(function(li) {
+      var liHeight = outerHeight(li);
+      if (current.length > 0 && usedHeight + liHeight > contentHeight) {
+        pagesData.push(current);
+        current = [];
+        usedHeight = 0;
+      }
+      current.push(li.outerHTML);
+      usedHeight += liHeight;
+    });
+    pagesData.push(current);
+
+    container.innerHTML = '';
+    pagesData.forEach(function(pageItems, i) {
+      var pageDiv = document.createElement('div');
+      pageDiv.className = 'page' + (i === 0 ? ' pod-toc-active' : '');
+      pageDiv.setAttribute('data-toc-page', i + 1);
+      var inner = guidesHtml + '<div class="chapter">';
+      if (i === 0 && titleEl) inner += titleEl.outerHTML;
+      inner += '<ul class="toc-list">' + pageItems.join('') + '</ul></div>';
+      pageDiv.innerHTML = inner;
+      container.appendChild(pageDiv);
+    });
+
+    window.parent.postMessage({ type: 'fm-toc-paginated', totalPages: pagesData.length }, '*');
+  }
+
+  paginate();
+
+  window.addEventListener('message', function(ev) {
+    if (!ev.data || ev.data.type !== 'SHOW_PAGES') return;
+    var target = parseInt(ev.data.pageNum, 10) || 1;
+    document.querySelectorAll('#pod-toc-pages .page').forEach(function(pg) {
+      pg.classList.toggle('pod-toc-active', parseInt(pg.getAttribute('data-toc-page'), 10) === target);
+    });
+  });
+})();
+<\/script>
+</body>
+</html>` : `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -2275,7 +2385,7 @@ async function renderLivePodPreview(forceMode = null) {
     overflow: hidden;
   }
   .page::after { content:""; position:absolute; top:0; left:0; bottom:0; width:20px; background:linear-gradient(to right,rgba(0,0,0,.06),transparent); pointer-events:none; z-index:10; }
-  
+
   /* 생성된 HTML 기본 스타일 대응 */
   .chapter { height: 100%; width: 100%; position: relative; }
   ul.toc-list { list-style:none; padding:0; margin:0; }
@@ -2296,10 +2406,15 @@ async function renderLivePodPreview(forceMode = null) {
 
     iframe.removeAttribute('srcdoc');
     iframe.srcdoc = html;
-    
+
     if (st) {
       st.style.display = 'block';
-      st.textContent = `렌더링 완료 ✓ (전면부 단면 미리보기)`;
+      st.textContent = isTocBlock ? '목차 페이지 계산 중...' : `렌더링 완료 ✓ (전면부 단면 미리보기)`;
+    }
+
+    if (!isTocBlock) {
+      window.podPageMap = null;
+      if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = 'none';
     }
     return;
   }
@@ -2696,6 +2811,19 @@ window.addEventListener('message', (e) => {
     if (st) {
       st.style.display = 'block';
       st.textContent = `렌더링 완료 ✓ (${e.data.totalPages}쪽)`;
+    }
+  }
+
+  if (e.data.type === 'fm-toc-paginated') {
+    const total = e.data.totalPages || 1;
+    window.podPageMap = Array.from({ length: total }, (_, i) => ({ pageNum: i + 1 }));
+    podCurrentPreviewPage = 1;
+    if ($('#podPageInfo')) $('#podPageInfo').textContent = `1p`;
+    if ($('#podPageToggleWrap')) $('#podPageToggleWrap').style.display = total > 1 ? 'flex' : 'none';
+    const st = $('#podLiveRenderStatus');
+    if (st) {
+      st.style.display = 'block';
+      st.textContent = total > 1 ? `렌더링 완료 ✓ (목차 ${total}쪽으로 자동 분할)` : `렌더링 완료 ✓ (전면부 단면 미리보기)`;
     }
   }
 
