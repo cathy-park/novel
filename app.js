@@ -3025,6 +3025,7 @@ $('#backFromPodStudio').onclick = hidePodStudio;
 // 내지 전용 PDF: 2번째 인자 true → 표지 배제
 $('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(false, true); };
 $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
+$('#podExportWordBtn').onclick = () => { podSaveSettings(); exportPODWord(); };
 
 // 저장 버튼
 $('#podSaveSettingsBtn').onclick = podSaveSettings;
@@ -4747,6 +4748,204 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
   }
 
   return { body: div.innerHTML, hasTitle };
+}
+
+// ── Word(.docx) 내보내기 ──────────────────────────────────────────
+// Word는 Paged.js 기반 PDF(정확한 쪽수/페이지번호/장식 폰트/서사 블록 색상 박스)를
+// 그대로 재현할 수 없다 — Word는 고정 페이지가 아니라 자동 줄바꿈(reflow) 문서라서
+// 개념 자체가 다르다. 대신 실제로 서식이 남아있는 부분(굵게/기울임/밑줄/정렬)은
+// 그대로 옮기고, 서사 블록(n-msg 등 컬러 박스)은 옅은 음영 + 좌측 테두리로만
+// 표시해 "특수 블록이다"라는 것만 알아볼 수 있게 단순화한다.
+const DOCX_NARRATIVE_CLASSES = ['n-msg', 'n-msg-y', 'n-sys', 'n-log', 'n-alert', 'n-record', 'n-status', 'n-email', 'n-email-body', 'n-doc', 'n-noti', 'n-field', 'n-memo'];
+
+function docxDataUrlToUint8Array(dataUrl) {
+  const base64 = dataUrl.split(',')[1] || '';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function docxNormalizeImageFormat(dataUrl) {
+  // ImageRun은 jpg/png/gif/bmp만 지원 — 에디터 이미지는 webp 우선 저장이라 그대로면 깨진다.
+  return new Promise((resolve) => {
+    const m = /^data:image\/(\w+);base64,/.exec(dataUrl);
+    const fmt = m ? m[1].toLowerCase() : '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(fmt)) {
+      resolve({ dataUrl, type: fmt === 'jpeg' ? 'jpg' : fmt });
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement('canvas');
+      cvs.width = img.naturalWidth || 800;
+      cvs.height = img.naturalHeight || 600;
+      cvs.getContext('2d').drawImage(img, 0, 0);
+      resolve({ dataUrl: cvs.toDataURL('image/jpeg', 0.85), type: 'jpg' });
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+async function docxImgElToImageRun(imgEl, maxWidthPx = 460) {
+  const src = imgEl.getAttribute('src') || '';
+  if (!src.startsWith('data:image')) return null;
+  const converted = await docxNormalizeImageFormat(src);
+  if (!converted) return null;
+  const dims = await new Promise((resolve) => {
+    const probe = new Image();
+    probe.onload = () => resolve({ w: probe.naturalWidth || maxWidthPx, h: probe.naturalHeight || maxWidthPx });
+    probe.onerror = () => resolve({ w: maxWidthPx, h: maxWidthPx });
+    probe.src = converted.dataUrl;
+  });
+  let w = dims.w, h = dims.h;
+  if (w > maxWidthPx) { h = Math.round(h * maxWidthPx / w); w = maxWidthPx; }
+  return new docx.ImageRun({ type: converted.type, data: docxDataUrlToUint8Array(converted.dataUrl), transformation: { width: w, height: h } });
+}
+
+function docxGetAlignment(styleAttr) {
+  if (!styleAttr) return undefined;
+  if (/text-align:\s*center/.test(styleAttr)) return docx.AlignmentType.CENTER;
+  if (/text-align:\s*right/.test(styleAttr)) return docx.AlignmentType.RIGHT;
+  if (/text-align:\s*justify/.test(styleAttr)) return docx.AlignmentType.JUSTIFIED;
+  return undefined;
+}
+
+function docxIsNarrativeBlock(el) {
+  if (!el.classList) return false;
+  if (DOCX_NARRATIVE_CLASSES.some(c => el.classList.contains(c))) return true;
+  return !!(el.querySelector && DOCX_NARRATIVE_CLASSES.some(c => el.querySelector('.' + c)));
+}
+
+async function docxInlineToRuns(node, marks, runs) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    if (node.textContent) runs.push(new docx.TextRun({ text: node.textContent, bold: marks.bold, italics: marks.italic, underline: marks.underline ? {} : undefined, strike: marks.strike }));
+    return;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  const tag = node.tagName.toLowerCase();
+  if (tag === 'br') { runs.push(new docx.TextRun({ text: '', break: 1 })); return; }
+  if (tag === 'img') return; // 블록 단위에서 별도 처리
+  const nextMarks = { ...marks };
+  if (tag === 'strong' || tag === 'b') nextMarks.bold = true;
+  if (tag === 'em' || tag === 'i') nextMarks.italic = true;
+  if (tag === 'u') nextMarks.underline = true;
+  if (tag === 's' || tag === 'strike' || tag === 'del') nextMarks.strike = true;
+  for (const child of node.childNodes) await docxInlineToRuns(child, nextMarks, runs);
+}
+
+async function docxWalkBlock(el, paragraphs) {
+  if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
+  const tag = el.tagName.toLowerCase();
+
+  // 단독 이미지 문단
+  const soloImg = tag === 'img' ? el : (el.children.length === 1 && el.children[0].tagName === 'IMG' && !el.textContent.trim() ? el.children[0] : null);
+  if (soloImg) {
+    const run = await docxImgElToImageRun(soloImg);
+    if (run) paragraphs.push(new docx.Paragraph({ children: [run], alignment: docx.AlignmentType.CENTER, spacing: { after: 200 } }));
+    return;
+  }
+
+  if (tag === 'ul' || tag === 'ol') {
+    let idx = 0;
+    for (const li of Array.from(el.children)) {
+      idx++;
+      const runs = [];
+      if (tag === 'ol') runs.push(new docx.TextRun(`${idx}. `));
+      await docxInlineToRuns(li, {}, runs);
+      paragraphs.push(new docx.Paragraph({ children: runs.length ? runs : [new docx.TextRun('')], bullet: tag === 'ul' ? { level: 0 } : undefined, spacing: { after: 60 } }));
+    }
+    return;
+  }
+
+  if (/^(p|div|h1|h2|h3|h4|h5|h6|blockquote)$/.test(tag)) {
+    const runs = [];
+    await docxInlineToRuns(el, {}, runs);
+    const paraOpts = { children: runs.length ? runs : [new docx.TextRun('')], spacing: { after: 120 } };
+    const alignment = docxGetAlignment(el.getAttribute('style'));
+    if (alignment) paraOpts.alignment = alignment;
+    const headingMap = { h1: docx.HeadingLevel.HEADING_1, h2: docx.HeadingLevel.HEADING_2, h3: docx.HeadingLevel.HEADING_3, h4: docx.HeadingLevel.HEADING_4, h5: docx.HeadingLevel.HEADING_5, h6: docx.HeadingLevel.HEADING_6 };
+    if (headingMap[tag]) paraOpts.heading = headingMap[tag];
+    if (docxIsNarrativeBlock(el)) {
+      paraOpts.shading = { type: docx.ShadingType.CLEAR, fill: 'F0F0F0' };
+      paraOpts.border = { left: { color: '999999', space: 8, style: docx.BorderStyle.SINGLE, size: 12 } };
+      paraOpts.indent = { left: 200 };
+    }
+    paragraphs.push(new docx.Paragraph(paraOpts));
+    return;
+  }
+
+  // 알 수 없는 태그는 자식으로 재귀
+  if (el.children && el.children.length) {
+    for (const child of Array.from(el.children)) await docxWalkBlock(child, paragraphs);
+  } else if (el.textContent.trim()) {
+    const runs = [];
+    await docxInlineToRuns(el, {}, runs);
+    if (runs.length) paragraphs.push(new docx.Paragraph({ children: runs }));
+  }
+}
+
+async function htmlToDocxParagraphs(html) {
+  const container = document.createElement('div');
+  container.innerHTML = html || '';
+  const paragraphs = [];
+  for (const child of Array.from(container.children)) await docxWalkBlock(child, paragraphs);
+  return paragraphs;
+}
+
+async function exportPODWord() {
+  const p = currentProject();
+  if (!p) return;
+  if (typeof docx === 'undefined') { showToast('Word 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+
+  const eps = orderedEpisodes(p).filter(isPublishableEpisode);
+  if (eps.length === 0) { showToast('출판할 본문이 없습니다.'); return; }
+
+  if (p.episodes.some(e => e.body === undefined)) {
+    showToast('Word 생성을 위해 데이터를 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode);
+
+  showToast('Word 문서를 생성 중입니다...');
+
+  try {
+    const children = [];
+    for (let i = 0; i < loadedEps.length; i++) {
+      const ep = loadedEps[i];
+      const processed = processEpisodeBody(ep.body, ep.title, true);
+      const displayTitle = ep.title || (ep.type === 'prologue' ? '프롤로그' : ep.type === 'epilogue' ? '에필로그' : `${i + 1}화`);
+      const renderTitle = !processed.hasTitle && !!displayTitle;
+
+      if (i > 0) children.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
+
+      if (renderTitle) {
+        children.push(new docx.Paragraph({ text: displayTitle, heading: docx.HeadingLevel.HEADING_1, alignment: docx.AlignmentType.CENTER, spacing: { after: 400 } }));
+      }
+      const bodyParagraphs = await htmlToDocxParagraphs(processed.body);
+      children.push(...bodyParagraphs);
+    }
+
+    const doc = new docx.Document({
+      creator: '야니의 소설창고',
+      title: p.title || '원고',
+      sections: [{
+        properties: { page: { size: { width: 11906, height: 16838 } } },
+        children
+      }]
+    });
+
+    const blob = await docx.Packer.toBlob(doc);
+    const filename = `${(p.title || '원고').replace(/[\\/:*?"<>|]/g, '')}_출판용.docx`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('Word 파일이 저장되었습니다.');
+  } catch (e) {
+    console.error(e);
+    showToast('Word 생성 실패: ' + e.message);
+  }
 }
 
 async function generatePODCoverCanvas(p, set, opts) {
