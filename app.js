@@ -923,7 +923,7 @@ function renderEpisode() {
       modules: {
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
-          [{ 'narrative': [false, 'msg', 'msg-y', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc', 'field', 'memo'] }],
+          [{ 'narrative': [false, 'msg', 'msg-y', 'noti', 'sys', 'log', 'alert', 'record', 'status', 'email', 'email-body', 'doc'] }],
           ['bold', 'italic', 'underline', 'strike', 'ui', 'hideicon', 'divider', 'image'],
           ['clean']
         ]

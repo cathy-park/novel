@@ -591,17 +591,17 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 /* ==========================================
    빈 블록 Placeholder 안내 문구 (에디터 내에서만)
    ========================================== */
-.ql-editor p.n-msg:empty::after, .ql-editor p.n-msg:has(> br:only-child)::after { content: "메시지 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-msg-y:empty::after, .ql-editor p.n-msg-y:has(> br:only-child)::after { content: "메시지(노랑) 입력..." !important; color: #C4B282 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-sys:empty::after, .ql-editor p.n-sys:has(> br:only-child)::after { content: "시스템 문구 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-log:empty::after, .ql-editor p.n-log:has(> br:only-child)::after { content: "시스템 로그 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-alert:empty::after, .ql-editor p.n-alert:has(> br:only-child)::after { content: "알림/경고 내용 입력..." !important; color: #E89E9E !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-record:empty::after, .ql-editor p.n-record:has(> br:only-child)::after { content: "기록/게시물 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-msg:empty::after, .ql-editor p.n-msg:has(> br:only-child)::after { content: "문자(수신) 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-msg-y:empty::after, .ql-editor p.n-msg-y:has(> br:only-child)::after { content: "문자(발신) 입력..." !important; color: #C4B282 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-sys:empty::after, .ql-editor p.n-sys:has(> br:only-child)::after { content: "시스템 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-log:empty::after, .ql-editor p.n-log:has(> br:only-child)::after { content: "로그 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-alert:empty::after, .ql-editor p.n-alert:has(> br:only-child)::after { content: "경고 내용 입력..." !important; color: #E89E9E !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-record:empty::after, .ql-editor p.n-record:has(> br:only-child)::after { content: "기록 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
 .ql-editor p.n-email:empty::after, .ql-editor p.n-email:has(> br:only-child)::after { content: "이메일 알림 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
 .ql-editor p.n-email-body:empty::after, .ql-editor p.n-email-body:has(> br:only-child)::after { content: "이메일 본문 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-doc:empty::after, .ql-editor p.n-doc:has(> br:only-child)::after { content: "문서 내용 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-noti:empty::after, .ql-editor p.n-noti:has(> br:only-child)::after { content: "알림 내용 입력..." !important; color: #A0A0A0 !important; font-style: italic !important; pointer-events: none !important; }
-.ql-editor p.n-status:empty::after, .ql-editor p.n-status:has(> br:only-child)::after { content: "상태창 내용 입력..." !important; color: #888888 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-doc:empty::after, .ql-editor p.n-doc:has(> br:only-child)::after { content: "문서 입력..." !important; color: #A0AAB5 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-noti:empty::after, .ql-editor p.n-noti:has(> br:only-child)::after { content: "휴대폰 알림 내용 입력..." !important; color: #A0A0A0 !important; font-style: italic !important; pointer-events: none !important; }
+.ql-editor p.n-status:empty::after, .ql-editor p.n-status:has(> br:only-child)::after { content: "시스템 입력..." !important; color: #888888 !important; font-style: italic !important; pointer-events: none !important; }
 /* ==========================================
    시스템 패밀리 그룹핑 공통 로직 (log, alert, record, status)
    ========================================== */
@@ -658,34 +658,30 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .ql-snow .ql-picker.ql-narrative .ql-picker-label,
 .ql-snow .ql-picker.ql-narrative .ql-picker-item { font-family: 'Tossface', Pretendard, sans-serif !important; }
 .ql-snow .ql-picker.ql-narrative { width: 140px; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg"]::before { content: '💬 메시지'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg-y"]::before { content: '💬 메시지(노랑)'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="sys"]::before { content: '◇ 시스템 문구'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="log"]::before { content: '>_ 시스템 로그'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠️ 알림 · 경고'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg"]::before { content: '💬 문자(수신)'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="msg-y"]::before { content: '💬 문자(발신)'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="noti"]::before { content: '🔔 휴대폰'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="sys"]::before { content: '◇ 시스템'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="log"]::before { content: '>_ 로그'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="alert"]::before { content: '⚠️ 경고'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="record"]::before { content: '✎ 기록'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="status"]::before { content: '▣ 시스템'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email"]::before { content: '📧 이메일 알림'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="email-body"]::before { content: '📧 이메일 본문'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="doc"]::before { content: '📄 문서 · 서신'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="field"]::before { content: '✍️ 입력칸'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="memo"]::before { content: '📝 메모'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-label[data-value="doc"]::before { content: '📄 문서'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-label::before { content: '서사 블록 ▾'; }
 
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 메시지'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg-y"]::before { content: '💬 메시지(노랑)'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="noti"]::before { content: '🔔 휴대폰 알림'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="sys"]::before { content: '◇ 시스템 문구'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="log"]::before { content: '>_ 시스템 로그'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠️ 알림 · 경고'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="record"]::before { content: '✎ 기록 · 게시물'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 상태창 · 선택지'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg"]::before { content: '💬 문자(수신)'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="msg-y"]::before { content: '💬 문자(발신)'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="noti"]::before { content: '🔔 휴대폰'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="sys"]::before { content: '◇ 시스템'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="log"]::before { content: '>_ 로그'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="alert"]::before { content: '⚠️ 경고'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="record"]::before { content: '✎ 기록'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="status"]::before { content: '▣ 시스템'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email"]::before { content: '📧 이메일 알림'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="email-body"]::before { content: '📧 이메일 본문'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서 · 서신'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="field"]::before { content: '✍️ 입력칸'; }
-.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="memo"]::before { content: '📝 메모'; }
+.ql-snow .ql-picker.ql-narrative .ql-picker-item[data-value="doc"]::before { content: '📄 문서'; }
 .ql-snow .ql-picker.ql-narrative .ql-picker-item::before { content: '일반 문단'; }
 
 .ql-snow .ql-toolbar button.ql-hideicon::before { content: '🚫'; font-size: 14px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
