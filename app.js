@@ -2603,6 +2603,7 @@ async function renderLivePodPreview(forceMode = null) {
     padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     line-height: 1.6; text-align: left; text-indent: 0 !important; position: relative;
   }
+  .chapter-content .n-email::before { content: '✉️'; position: absolute; left: 14px; top: 13px; font-size: 14px; }
   .chapter-content .n-email-body {
     display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; background: #FAF5FF;
     border-left: 4px solid #6B5CE7; line-height: 1.7; text-indent: 0 !important; color: #333;
@@ -2625,7 +2626,7 @@ async function renderLivePodPreview(forceMode = null) {
     padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     font-size: 0.92em; color: #384A42; line-height: 1.8; text-indent: 0 !important;
   }
-  .chapter-content .n-status::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-status::before { content: none; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
   .chapter-content .n-field {
     display: block; background: #F4F5F6; border-radius: 8px; padding: 12px 16px; margin: 20px 0;
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; color: #17141F; line-height: 1.7; text-indent: 0 !important;
@@ -3594,8 +3595,8 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-noti:has(+ .n-noti) { margin-bottom:4px; }' +
       '.n-noti + .n-noti { margin-top:0; padding-left:18px; }' +
       '.n-status { display:block; border-left:4px solid transparent; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; line-height:1.8; text-indent:0 !important; }' +
-      '.n-status::before { content:"\\25C7"; display:inline-block; font-size:11px; margin-right:8px; }' +
-      '.n-status + .n-status { margin-top:0; padding-top:4px; padding-left:40px; }' +
+      '.n-status::before { content:none; display:inline-block; font-size:11px; margin-right:8px; }' +
+      '.n-status + .n-status { margin-top:0; padding-top:4px; padding-left:18px; }' +
       // n-log/n-alert/n-record/n-status "시스템 계열" 그룹도 마지막 줄(또는
       // 단독 블록)엔 padding-bottom/margin-bottom이 복원된다.
       '.n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),' +
@@ -3976,7 +3977,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-alert::before { content:"⚠️"; position:absolute; left:14px; top:14px; font-size:14px; line-height:1.8; }' +
     '.n-record { display:block; background:#F2F6FC; border-left:4px solid #6B9ED9; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; line-height:1.9; color:#505050; text-indent:0 !important; }' +
     '.n-email { display:block; max-width:70%; margin:16px 0; background:#FAF5FF; border-radius:18px 18px 18px 2px; padding: 12px 18px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; position:relative; }' +
-    '.n-email::before { content:""; position:absolute; left:14px; top:13px; font-size:14px; }' +
+    '.n-email::before { content:"✉️"; position:absolute; left:14px; top:13px; font-size:14px; }' +
     '.n-email:has(+ .n-email) { margin-bottom:4px; border-bottom-left-radius:6px; }' +
     '.n-email + .n-email { margin-top:0; border-top-left-radius:6px; padding-left:18px; }' +
     '.n-email + .n-email:not(:has(+ .n-email)) { border-bottom-left-radius:2px; }' +
@@ -3994,7 +3995,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-noti { display:block; max-width:70%; margin:16px 0; background:#FFF9C4; border-radius:18px 18px 18px 2px; padding:12px 18px 12px 38px; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; line-height:1.6; text-align:left; text-indent:0 !important; box-shadow:0 1px 2px rgba(0,0,0,.03); position:relative; color:#4A4011; }' +
     '.n-noti::before { content:"🔔"; position:absolute; left:14px; top:13px; font-size:14px; }' +
     '.n-status { display:block; background:#F2F7F4; border-left:4px solid #5E9C76; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.92em; color:#384A42; line-height:1.8; text-indent:0 !important; }' +
-    '.n-status::before { content:"\\25C7"; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
+    '.n-status::before { content:none; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
     '.n-status + .n-status { color:#4A5A53; }' +
     '.n-field { display:block; background:#F4F5F6; border-radius:8px; padding:12px 16px; margin:20px 0; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; color:#17141F; line-height:1.7; text-indent:0 !important; }' +
     '.n-memo { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; font-size:0.95em; color:#4A4A4A; padding:16px 20px; margin:20px 0; border-radius:2px; position:relative; text-indent:0 !important; background:linear-gradient(to top left,#BEEFCD 0%,#BEEFCD 50%,transparent 50%) bottom right/22px 22px no-repeat, linear-gradient(-45deg,transparent 15px,#DEFFE6 0); }' +
@@ -4005,7 +4006,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-log + .n-log, .n-alert + .n-alert, .n-record + .n-record, .n-status + .n-status { margin-top:0; margin-bottom:0; border-top-left-radius:0; border-top-right-radius:0; padding-top:4px; }' +
     '.n-alert + .n-alert::before, .n-status + .n-status::before { content:none; }' +
     '.n-alert + .n-alert { padding-left:42px; }' +
-    '.n-status + .n-status { padding-left:40px; }' +
+    '.n-status + .n-status { padding-left:18px; }' +
     '.n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),' +
     '.n-alert:not(:has(+ .n-alert)), .n-alert + .n-alert:not(:has(+ .n-alert)),' +
     '.n-record:not(:has(+ .n-record)), .n-record + .n-record:not(:has(+ .n-record)),' +
@@ -5662,7 +5663,7 @@ ${mainStyles}
     padding: 12px 18px; font-size: 0.95em; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     line-height: 1.6; text-align: left; text-indent: 0 !important; position: relative;
   }
-  .chapter-content .n-email::before { content: ""; position: absolute; left: 14px; top: 13px; font-size: 14px; }
+  .chapter-content .n-email::before { content: "✉️"; position: absolute; left: 14px; top: 13px; font-size: 14px; }
   .chapter-content .n-email-body {
     display: block; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; background: #FAF5FF;
     border-left: 4px solid #6B5CE7; line-height: 1.7; text-indent: 0 !important; color: #333;
@@ -5687,7 +5688,7 @@ ${mainStyles}
     padding: 14px 18px 4px 18px; margin: 20px 0 0 0; font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     font-size: 0.92em; color: #384A42; line-height: 1.8; text-indent: 0 !important;
   }
-  .chapter-content .n-status::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-status::before { content: none; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
   .chapter-content .n-field {
     display: block; background: #F4F5F6; border-radius: 8px; padding: 12px 16px; margin: 20px 0;
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-size: 0.95em; color: #17141F; line-height: 1.7; text-indent: 0 !important;
