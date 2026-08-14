@@ -4761,15 +4761,15 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
 const DOCX_NARRATIVE_LABELS = {
   'n-msg': '문자(수신)',
   'n-msg-y': '문자(발신)',
-  'n-sys': '시스템',
-  'n-alert': '알림',
+  'n-sys': '시스템', // n-status와 같은 장치(시스템 문구)로 쓰여 라벨을 통일함
+  'n-alert': '경고',
   'n-record': '기록',
-  'n-status': '상태창',
+  'n-status': '시스템',
   'n-log': '로그',
   'n-noti': '휴대폰',
   'n-email': '이메일 알림',
   'n-email-body': '이메일 본문',
-  'n-doc': '서신',
+  'n-doc': '문서',
   'n-field': '입력칸',
   'n-memo': '메모'
 };
