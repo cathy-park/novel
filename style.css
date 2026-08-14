@@ -316,7 +316,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-indent: 0 !important;
 }
 .ql-editor p.n-sys::before, .n-sys::before {
-  content: '\25C7' !important;
+  content: none !important;
   display: inline-block !important;
   font-size: 11px !important;
   color: #5E9C76 !important;
@@ -402,7 +402,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   background: #FAF5FF !important;
   border: none !important;
   border-radius: 18px 18px 18px 2px !important;
-  padding:  12px 18px !important;
+  padding:  12px 18px 12px 38px !important;
   font-size: 0.95em !important;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
   line-height: 1.6 !important;
@@ -410,7 +410,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   text-indent: 0 !important;
   position: relative !important;
 }
-.ql-editor p.n-email::before, .n-email::before { content: "" !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
+.ql-editor p.n-email::before, .n-email::before { content: "✉️" !important; position: absolute !important; left: 14px !important; top: 13px !important; font-size: 14px !important; }
 .ql-editor p.n-email:has(+ p.n-email), .n-email:has(+ .n-email) { margin-bottom: 4px !important; border-bottom-left-radius: 6px !important; }
 .ql-editor p.n-email + p.n-email, .n-email + .n-email { margin-top: 0 !important; border-top-left-radius: 6px !important; padding-left: 18px !important; }
 .ql-editor p.n-email + p.n-email:not(:has(+ p.n-email)), .n-email + .n-email:not(:has(+ .n-email)) { border-bottom-left-radius: 2px !important; }
@@ -518,7 +518,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
   line-height: 1.8 !important;
   text-indent: 0 !important;
 }
-.ql-editor p.n-status::before, .n-status::before { content: '\25C7' !important; display: inline-block !important; font-size: 11px !important; color: #5E9C76 !important; margin-right: 8px !important; }
+.ql-editor p.n-status::before, .n-status::before { content: none !important; display: inline-block !important; font-size: 11px !important; color: #5E9C76 !important; margin-right: 8px !important; }
 .ql-editor p.n-status + p.n-status, .n-status + .n-status { color: #4A5A53 !important; }
 
 /* ⑩ 입력칸 (n-field) */
@@ -622,7 +622,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 }
 /* 두 번째 줄 들여쓰기 보정 */
 .ql-editor p.n-alert + p.n-alert, .n-alert + .n-alert { padding-left:  42px !important; }
-.ql-editor p.n-status + p.n-status, .n-status + .n-status { padding-left: 40px !important; }
+.ql-editor p.n-status + p.n-status, .n-status + .n-status { padding-left: 18px !important; }
 
 /* 그룹 마지막 줄 둥근 모서리 및 하단 여백 복원 */
 .ql-editor p.n-log:not(:has(+ p.n-log)), .ql-editor p.n-log + p.n-log:not(:has(+ p.n-log)), .n-log:not(:has(+ .n-log)), .n-log + .n-log:not(:has(+ .n-log)),
