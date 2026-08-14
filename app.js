@@ -4754,9 +4754,26 @@ function processEpisodeBody(html, epTitle, isForPublishing = false) {
 // Word는 Paged.js 기반 PDF(정확한 쪽수/페이지번호/장식 폰트/서사 블록 색상 박스)를
 // 그대로 재현할 수 없다 — Word는 고정 페이지가 아니라 자동 줄바꿈(reflow) 문서라서
 // 개념 자체가 다르다. 대신 실제로 서식이 남아있는 부분(굵게/기울임/밑줄/정렬)은
-// 그대로 옮기고, 서사 블록(n-msg 등 컬러 박스)은 옅은 음영 + 좌측 테두리로만
-// 표시해 "특수 블록이다"라는 것만 알아볼 수 있게 단순화한다.
-const DOCX_NARRATIVE_CLASSES = ['n-msg', 'n-msg-y', 'n-sys', 'n-log', 'n-alert', 'n-record', 'n-status', 'n-email', 'n-email-body', 'n-doc', 'n-noti', 'n-field', 'n-memo'];
+// 그대로 옮기고, 서사 블록(n-msg 등 컬러 박스)은 옅은 음영 + 좌측 테두리로 표시하되
+// 색상만으로는 종류가 구분되지 않으므로 블록 앞에 라벨을 텍스트로 붙인다.
+// 라벨은 에디터 내부 UI 이름(예: "메시지(노랑)")이 아니라 편집자가 읽어도 뜻이
+// 통하는 이야기상 용도로 표기한다 — n-msg/n-msg-y는 색상이 아니라 발신·수신 여부다.
+const DOCX_NARRATIVE_LABELS = {
+  'n-msg': '문자(수신)',
+  'n-msg-y': '문자(발신)',
+  'n-sys': '시스템',
+  'n-alert': '알림',
+  'n-record': '기록',
+  'n-status': '상태창',
+  'n-log': '로그',
+  'n-noti': '휴대폰',
+  'n-email': '이메일 알림',
+  'n-email-body': '이메일 본문',
+  'n-doc': '서신',
+  'n-field': '입력칸',
+  'n-memo': '메모'
+};
+const DOCX_NARRATIVE_CLASSES = Object.keys(DOCX_NARRATIVE_LABELS);
 
 function docxDataUrlToUint8Array(dataUrl) {
   const base64 = dataUrl.split(',')[1] || '';
@@ -4812,10 +4829,13 @@ function docxGetAlignment(styleAttr) {
   return undefined;
 }
 
-function docxIsNarrativeBlock(el) {
-  if (!el.classList) return false;
-  if (DOCX_NARRATIVE_CLASSES.some(c => el.classList.contains(c))) return true;
-  return !!(el.querySelector && DOCX_NARRATIVE_CLASSES.some(c => el.querySelector('.' + c)));
+function docxGetNarrativeLabel(el) {
+  if (!el.classList) return null;
+  for (const cls of DOCX_NARRATIVE_CLASSES) {
+    if (el.classList.contains(cls)) return DOCX_NARRATIVE_LABELS[cls];
+    if (el.querySelector && el.querySelector('.' + cls)) return DOCX_NARRATIVE_LABELS[cls];
+  }
+  return null;
 }
 
 async function docxInlineToRuns(node, marks, runs) {
@@ -4867,7 +4887,9 @@ async function docxWalkBlock(el, paragraphs) {
     if (alignment) paraOpts.alignment = alignment;
     const headingMap = { h1: docx.HeadingLevel.HEADING_1, h2: docx.HeadingLevel.HEADING_2, h3: docx.HeadingLevel.HEADING_3, h4: docx.HeadingLevel.HEADING_4, h5: docx.HeadingLevel.HEADING_5, h6: docx.HeadingLevel.HEADING_6 };
     if (headingMap[tag]) paraOpts.heading = headingMap[tag];
-    if (docxIsNarrativeBlock(el)) {
+    const narrativeLabel = docxGetNarrativeLabel(el);
+    if (narrativeLabel) {
+      paraOpts.children = [new docx.TextRun({ text: `[${narrativeLabel}] `, bold: true }), ...paraOpts.children];
       paraOpts.shading = { type: docx.ShadingType.CLEAR, fill: 'F0F0F0' };
       paraOpts.border = { left: { color: '999999', space: 8, style: docx.BorderStyle.SINGLE, size: 12 } };
       paraOpts.indent = { left: 200 };
