@@ -930,6 +930,23 @@ function renderEpisode() {
       }
     });
 
+    // 서사 블록 서식 적용 시, 그 문단에 남아있던 인라인 서식(붙여넣기 등으로 딸려온
+    // 굵게/색상/폰트 등)을 먼저 지우고 나서 블록 서식을 입힌다. 예전엔 이걸 안 해서
+    // "전체 스타일 삭제 → 다시 서식 지정"을 수동으로 두 번 해야 했다.
+    quill.getModule('toolbar').addHandler('narrative', function (value) {
+      const range = quill.getSelection(true);
+      if (!range) return;
+      if (value) {
+        const lines = quill.getLines(range.index, Math.max(range.length, 1));
+        lines.forEach(line => {
+          const lineIndex = quill.getIndex(line);
+          quill.removeFormat(lineIndex, line.length(), Quill.sources.USER);
+        });
+      }
+      quill.format('narrative', value, Quill.sources.USER);
+      quill.setSelection(range.index, range.length, Quill.sources.SILENT);
+    });
+
     // Custom Image Handler for Compression and Resizing
     quill.getModule('toolbar').addHandler('image', function () {
       const input = document.createElement('input');
