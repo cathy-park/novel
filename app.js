@@ -2580,7 +2580,7 @@ async function renderLivePodPreview(forceMode = null) {
     padding: 14px 18px; margin: 20px 0; color: #4A5A53; font-size: 0.95em;
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-weight: 500; line-height: 1.8; text-indent: 0 !important;
   }
-  .chapter-content .n-sys::before { content: none; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-sys::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
   .chapter-content .n-log {
     display: block; background: #E8EAF6; border-left: 4px solid #5C6BC0;
     font-family: 'D2Coding', 'Fira Code', 'Consolas', 'Courier New', monospace;
@@ -3566,7 +3566,7 @@ async function estimateEpisodePages(ep, pubSet) {
       '.n-msg-y:has(+ .n-msg-y) { margin-bottom:4px; }' +
       '.n-msg-y + .n-msg-y { margin-top:0; }' +
       '.n-sys { display:block; border-left:4px solid transparent; padding:14px 18px; margin:20px 0; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:500; line-height:1.8; text-indent:0 !important; }' +
-      '.n-sys::before { content:none; display:inline-block; font-size:11px; margin-right:8px; }' +
+      '.n-sys::before { content:"\\25C7"; display:inline-block; font-size:11px; margin-right:8px; }' +
       '.n-log { display:block; border-left:4px solid transparent; font-family:"D2Coding","Fira Code","Consolas","Courier New",monospace; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-size:0.92em; line-height:1.8; white-space:pre-wrap; text-indent:0 !important; }' +
       '.n-log + .n-log { margin-top:0; padding-top:4px; }' +
       '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; border-left:4px solid transparent; padding:14px 18px 4px 42px; margin:20px 0 0 0; font-size:0.95em; line-height:1.8; text-indent:0 !important; }' +
@@ -3971,7 +3971,7 @@ function _buildTreeSpreadHtml(leftDesc, rightDesc, pubSet, p, pageDescriptors) {
     '.n-msg-y + .n-msg-y { margin-top:0; border-top-left-radius:6px; }' +
     '.n-msg-y + .n-msg-y:not(:has(+ .n-msg-y)) { border-bottom-left-radius:2px; }' +
     '.n-sys { display:block; background:#F2F7F4; border-left:4px solid #5E9C76; border-radius:6px; padding:14px 18px; margin:20px 0; color:#4A5A53; font-size:0.95em; font-family:"Pretendard","Noto Sans KR",sans-serif; font-weight:500; line-height:1.8; text-indent:0 !important; }' +
-    '.n-sys::before { content:none; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
+    '.n-sys::before { content:"\\25C7"; display:inline-block; font-size:11px; color:#5E9C76; margin-right:8px; }' +
     '.n-log { display:block; background:#E8EAF6; border-left:4px solid #5C6BC0; font-family:"D2Coding","Fira Code","Consolas","Courier New",monospace; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 18px; margin:20px 0 0 0; font-size:0.92em; line-height:1.8; color:#384A60; white-space:pre-wrap; text-indent:0 !important; }' +
     '.n-alert { display:block; font-family:"Pretendard","Noto Sans KR",sans-serif; background:#FEF4F4; border-left:4px solid #E06C6C; border-radius:6px; border-bottom-left-radius:0; border-bottom-right-radius:0; padding:14px 18px 4px 42px; margin:20px 0 0 0; position:relative; font-size:0.95em; color:#464646; line-height:1.8; text-indent:0 !important; }' +
     '.n-alert::before { content:"⚠️"; position:absolute; left:14px; top:14px; font-size:14px; line-height:1.8; }' +
@@ -5640,7 +5640,7 @@ ${mainStyles}
     padding: 14px 18px; margin: 20px 0; color: #4A5A53; font-size: 0.95em;
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif; font-weight: 500; line-height: 1.8; text-indent: 0 !important;
   }
-  .chapter-content .n-sys::before { content: none; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
+  .chapter-content .n-sys::before { content: '\\25C7'; display: inline-block; font-size: 11px; color: #5E9C76; margin-right: 8px; }
   .chapter-content .n-log {
     display: block; background: #E8EAF6; border-left: 4px solid #5C6BC0;
     font-family: 'D2Coding', 'Fira Code', 'Consolas', 'Courier New', monospace;
