@@ -39,6 +39,9 @@ button, input, textarea, select { font-family: inherit; }
 button { cursor: pointer; }
 textarea { resize: none; }
 .hidden { display: none !important; }
+/* 원고 본문(에디터)과 이북 뷰어는 둘 다 .ql-editor로 렌더링되므로, 여기 하나만 걸어두면
+   집필 화면과 독자가 보는 이북 화면 둘 다 이미지가 컨테이너 가로폭에 맞춰 반응형으로 나온다. */
+.ql-editor img { max-width: 100%; height: auto; display: block; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgba(107,92,231,.22); outline-offset: 2px; }
 ::selection { background: #DDD6FF; color: var(--c-ink); }
 mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 2px; }
