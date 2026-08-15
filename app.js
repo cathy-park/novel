@@ -652,10 +652,14 @@ function generateShareSlug() {
 }
 
 // ebook.ddokd.com 커스텀 도메인으로 이미 주소가 깔끔해져서 단축 링크(buly.kr 등)는 더 안 쓴다.
+// 예전 vercel.app 주소로 접속해서 링크를 만들면 그 주소 그대로 공유돼버리는 걸 막기 위해
+// window.location.origin 대신 항상 커스텀 도메인을 고정으로 쓴다.
+const SHARE_CANONICAL_ORIGIN = 'https://ebook.ddokd.com';
+
 function shareLinkFor(p) {
   // "/"는 index.html 정적 파일과 겹쳐 vercel.json의 rewrite가 무시되고 미리보기 제목이
   // 항상 앱 고정 제목으로 나왔다 — 정적 파일과 안 겹치는 /share 경로를 대신 쓴다.
-  return `${window.location.origin}/share?s=${p.shareSlug}`;
+  return `${SHARE_CANONICAL_ORIGIN}/share?s=${p.shareSlug}`;
 }
 
 function openShareModal(projectId) {
