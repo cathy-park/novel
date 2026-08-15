@@ -46,7 +46,8 @@ module.exports = async (req, res) => {
     bulyShortUrl = await tryBuly();
   } catch (e0) {
     console.error('buly.kr 단축 실패:', e0);
-    bulyErrorForDebug = String((e0 && e0.message) || e0);
+    const cause = e0 && e0.cause ? ` | cause: ${e0.cause.code || ''} ${e0.cause.message || e0.cause}` : '';
+    bulyErrorForDebug = String((e0 && e0.message) || e0) + cause;
   }
 
   if (req.query.debug) {
