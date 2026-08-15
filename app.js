@@ -353,6 +353,7 @@ async function loadStateSupabase() {
         planSections: pRow.plan_sections || [],
         isPublic: !!pRow.is_public,
         shareSlug: pRow.share_slug || null,
+        shortUrl: pRow.short_url || null,
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
         selectedEpisodeId: null,
@@ -432,6 +433,7 @@ async function saveProjectSupabase(p) {
       plan_sections: p.planSections,
       is_public: !!p.isPublic,
       share_slug: p.shareSlug || null,
+      short_url: p.shortUrl || null,
       updated_at: p.updatedAt || Date.now()
     };
     await sb.from('novel_projects').upsert(pData);
@@ -651,10 +653,15 @@ function generateShareSlug() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function shareLinkFor(p) {
+function longShareLinkFor(p) {
   // "/"는 index.html 정적 파일과 겹쳐 vercel.json의 rewrite가 무시되고 미리보기 제목이
   // 항상 앱 고정 제목으로 나왔다 — 정적 파일과 안 겹치는 /share 경로를 대신 쓴다.
   return `${window.location.origin}/share?s=${p.shareSlug}`;
+}
+
+/** 실제 도메인(vercel.app)이 안 보이게, 있으면 짧은 링크를 우선 보여준다. */
+function shareLinkFor(p) {
+  return p.shortUrl || longShareLinkFor(p);
 }
 
 function openShareModal(projectId) {
@@ -693,6 +700,21 @@ async function toggleSharePublic(checked) {
     $('#shareLinkRow').style.display = checked ? 'flex' : 'none';
     $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
     showToast(checked ? '이 작품을 링크로 공개했습니다.' : '공개를 껐습니다.');
+
+    // 실제 도메인이 노출되지 않도록 짧은 링크를 만들어둔다(없을 때만, 실패해도 공개 자체는 이미 됐으니 조용히 넘어간다).
+    if (checked && !p.shortUrl) {
+      try {
+        const r = await fetch(`/api/shorten?slug=${encodeURIComponent(newSlug)}`);
+        const { shortUrl } = await r.json();
+        if (shortUrl) {
+          await sb.from('novel_projects').update({ short_url: shortUrl }).eq('id', p.id);
+          p.shortUrl = shortUrl;
+          if (shareModalProjectId === p.id) $('#shareLinkInput').value = shareLinkFor(p);
+        }
+      } catch (e) {
+        console.error('단축 링크 생성 실패(공개 자체는 정상 처리됨):', e);
+      }
+    }
   } catch (e) {
     console.error('공개 설정 변경 실패:', e);
     $('#sharePublicToggle').checked = prevPublic;
@@ -718,6 +740,10 @@ let isPublicShareMode = false;
 async function bootPublicShare(shareSlug) {
   isPublicShareMode = true;
   $('#welcomeScreen').style.display = 'none';
+  // 서재(#libraryView)는 기본 상태가 "보임"이라, Supabase에서 작품 데이터를 불러오는
+  // 동안(await) 잠깐 서재가 노출됐다가 이북으로 넘어가는 깜빡임이 있었다. 데이터를
+  // 불러오기 전에 즉시(동기적으로) 숨겨서 공유 링크 진입 시 바로 이북부터 보이게 한다.
+  $('#libraryView').classList.add('hidden');
 
   const { data: pRow, error: pErr } = await sb.from('novel_projects').select('*').eq('share_slug', shareSlug).eq('is_public', true).maybeSingle();
   if (pErr || !pRow) {
