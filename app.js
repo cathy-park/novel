@@ -353,7 +353,6 @@ async function loadStateSupabase() {
         planSections: pRow.plan_sections || [],
         isPublic: !!pRow.is_public,
         shareSlug: pRow.share_slug || null,
-        shortUrl: pRow.short_url || null,
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
         selectedEpisodeId: null,
@@ -433,7 +432,6 @@ async function saveProjectSupabase(p) {
       plan_sections: p.planSections,
       is_public: !!p.isPublic,
       share_slug: p.shareSlug || null,
-      short_url: p.shortUrl || null,
       updated_at: p.updatedAt || Date.now()
     };
     await sb.from('novel_projects').upsert(pData);
@@ -653,30 +651,11 @@ function generateShareSlug() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function longShareLinkFor(p) {
+// ebook.ddokd.com 커스텀 도메인으로 이미 주소가 깔끔해져서 단축 링크(buly.kr 등)는 더 안 쓴다.
+function shareLinkFor(p) {
   // "/"는 index.html 정적 파일과 겹쳐 vercel.json의 rewrite가 무시되고 미리보기 제목이
   // 항상 앱 고정 제목으로 나왔다 — 정적 파일과 안 겹치는 /share 경로를 대신 쓴다.
   return `${window.location.origin}/share?s=${p.shareSlug}`;
-}
-
-/** 실제 도메인(vercel.app)이 안 보이게, 있으면 짧은 링크를 우선 보여준다. */
-function shareLinkFor(p) {
-  return p.shortUrl || longShareLinkFor(p);
-}
-
-/** 실제 도메인이 노출되지 않도록 짧은 링크를 만들어 저장한다(이미 있으면 아무것도 안 함). */
-async function ensureShortUrl(p) {
-  if (!p.shareSlug || p.shortUrl) return;
-  try {
-    const r = await fetch(`/api/shorten?slug=${encodeURIComponent(p.shareSlug)}`);
-    const { shortUrl } = await r.json();
-    if (!shortUrl) return;
-    await sb.from('novel_projects').update({ short_url: shortUrl }).eq('id', p.id);
-    p.shortUrl = shortUrl;
-    if (shareModalProjectId === p.id) $('#shareLinkInput').value = shareLinkFor(p);
-  } catch (e) {
-    console.error('단축 링크 생성 실패:', e);
-  }
 }
 
 function openShareModal(projectId) {
@@ -688,8 +667,6 @@ function openShareModal(projectId) {
   $('#shareLinkRow').style.display = p.isPublic ? 'flex' : 'none';
   $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
   openModal('shareModal');
-  // 이미 공개된 작품인데 예전에 만든 슬러그라 단축 링크가 아직 없다면 지금 만든다.
-  if (p.isPublic && p.shareSlug && !p.shortUrl) ensureShortUrl(p);
 }
 
 async function toggleSharePublic(checked) {
@@ -717,8 +694,6 @@ async function toggleSharePublic(checked) {
     $('#shareLinkRow').style.display = checked ? 'flex' : 'none';
     $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
     showToast(checked ? '이 작품을 링크로 공개했습니다.' : '공개를 껐습니다.');
-
-    if (checked) await ensureShortUrl(p);
   } catch (e) {
     console.error('공개 설정 변경 실패:', e);
     $('#sharePublicToggle').checked = prevPublic;
@@ -755,6 +730,21 @@ async function bootPublicShare(shareSlug) {
     return;
   }
 
+  // 서재와 로그인 화면은 이미 숨겼으니(위, 그리고 index.html의 share-mode CSS), 작품
+  // 정보(표지 포함)가 도착한 지금에야 로딩 오버레이를 처음부터 실제 표지로 채워서
+  // 만든다 — 공통 배경색으로 먼저 뜨는 중간 단계 없이 표지 하나로 합친다. 회차 본문을
+  // 마저 불러오는 동안 그 위에 "불러오는 중"이 겹쳐 보인다(서재 카드와 같은
+  // coverPlaceholderMarkup을 재사용해 디자인을 통일한다).
+  const __coverP = { cover: pRow.cover || '', coverColor: pRow.cover_color || DEFAULT_COVER_COLOR, title: pRow.title || '제목 없는 작품' };
+  const __coverInner = __coverP.cover
+    ? `<img src="${__coverP.cover}" alt="표지" style="width:100%;height:100%;object-fit:cover;display:block;"/>`
+    : coverPlaceholderMarkup(__coverP);
+  const __shareLoadingEl = document.createElement('div');
+  __shareLoadingEl.id = 'shareLoading';
+  __shareLoadingEl.style.cssText = `position:fixed;inset:0;z-index:9999;background:${__coverP.coverColor};`;
+  __shareLoadingEl.innerHTML = `${__coverInner}<div style="position:absolute;left:0;right:0;bottom:0;padding:24px;display:flex;justify-content:center;color:${coverTextColor(__coverP.coverColor)};font-family:'Pretendard',sans-serif;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.35);">불러오는 중...</div>`;
+  document.body.appendChild(__shareLoadingEl);
+
   const { data: epRows, error: eErr } = await sb.from('novel_episodes').select('*').eq('project_id', pRow.id).order('order_idx');
   if (eErr) console.error('공유 회차 로드 실패:', eErr);
 
@@ -782,6 +772,7 @@ async function bootPublicShare(shareSlug) {
 
   state = { schemaVersion: 6, currentProjectId: p.id, projects: [p] };
   await openEbook(p.id);
+  __shareLoadingEl.remove();
 
   // 읽기 전용: 서재가 없으니 "← 서재" 버튼은 숨긴다(눌러도 빈 화면만 보임).
   if ($('#ebookBackBtn')) $('#ebookBackBtn').style.display = 'none';

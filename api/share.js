@@ -13,13 +13,22 @@ function escapeHtml(s) {
  * <title>/og:* 태그만 읽는다. index.html은 정적 파일이라 항상 앱 고정 제목만 보여줬는데,
  * ?s=<slug> 공유 링크는 실제로는 작품마다 다른 페이지이므로 여기서 그 작품 제목으로
  * 서버에서 미리 바꿔치기해서 응답한다(사람이 브라우저로 열 때도 동일 HTML이라 문제없음).
+ *
+ * 다만 실제 사람이 쓰는 브라우저까지 이 Supabase 조회를 기다리게 하면 HTML 첫 바이트가
+ * 늦어져 체감 로딩이 오히려 느려진다(og 태그는 크롤러에게만 의미가 있고, 사람 방문자는
+ * 클라이언트 JS가 표지를 직접 그린다). 그래서 User-Agent로 링크 미리보기 크롤러일
+ * 때만 이 조회를 기다리고, 일반 브라우저는 곧바로 정적 HTML을 응답한다.
  */
+function isPreviewCrawler(userAgent) {
+  return /kakaotalk|telegrambot|facebookexternalhit|twitterbot|slackbot|whatsapp|discordbot|linkedinbot|line\/|naver/i.test(String(userAgent || ''));
+}
+
 module.exports = async (req, res) => {
   const slug = req.query.s;
   const indexPath = path.join(process.cwd(), 'index.html');
   let html = fs.readFileSync(indexPath, 'utf-8');
 
-  if (slug) {
+  if (slug && isPreviewCrawler(req.headers['user-agent'])) {
     try {
       const url = `${SUPABASE_URL}/rest/v1/novel_projects?select=title,cover&share_slug=eq.${encodeURIComponent(slug)}&is_public=eq.true`;
       const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
