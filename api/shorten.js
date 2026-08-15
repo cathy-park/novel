@@ -40,11 +40,23 @@ module.exports = async (req, res) => {
     return text;
   }
 
+  let bulyErrorForDebug = null;
+  let bulyShortUrl = null;
   try {
-    res.status(200).json({ shortUrl: await tryBuly() });
-    return;
+    bulyShortUrl = await tryBuly();
   } catch (e0) {
-    console.error('buly.kr 단축 실패, is.gd로 재시도:', e0);
+    console.error('buly.kr 단축 실패:', e0);
+    bulyErrorForDebug = String((e0 && e0.message) || e0);
+  }
+
+  if (req.query.debug) {
+    res.status(200).json({ bulyShortUrl, bulyErrorForDebug, hasCustomerId: !!process.env.BULY_CUSTOMER_ID, hasApiKey: !!process.env.BULY_API_KEY });
+    return;
+  }
+
+  if (bulyShortUrl) {
+    res.status(200).json({ shortUrl: bulyShortUrl });
+    return;
   }
 
   try {
@@ -58,6 +70,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ shortUrl: await tryPlainShortener(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`) });
   } catch (e2) {
     console.error('TinyURL도 실패:', e2);
-    res.status(200).json({ shortUrl: null, longUrl });
+    res.status(200).json({ shortUrl: null, longUrl, bulyErrorForDebug });
   }
 };
