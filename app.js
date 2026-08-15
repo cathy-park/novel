@@ -652,7 +652,9 @@ function generateShareSlug() {
 }
 
 function shareLinkFor(p) {
-  return `${window.location.origin}${window.location.pathname}?s=${p.shareSlug}`;
+  // "/"는 index.html 정적 파일과 겹쳐 vercel.json의 rewrite가 무시되고 미리보기 제목이
+  // 항상 앱 고정 제목으로 나왔다 — 정적 파일과 안 겹치는 /share 경로를 대신 쓴다.
+  return `${window.location.origin}/share?s=${p.shareSlug}`;
 }
 
 function openShareModal(projectId) {
