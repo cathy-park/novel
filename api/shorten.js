@@ -16,13 +16,24 @@ module.exports = async (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const longUrl = `https://${host}/share?s=${slug}`;
 
-  try {
-    const r = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`);
+  async function tryShorten(apiUrl) {
+    const r = await fetch(apiUrl);
     const text = (await r.text()).trim();
-    if (!r.ok || !text.startsWith('http')) throw new Error('is.gd 응답 이상: ' + text);
-    res.status(200).json({ shortUrl: text });
-  } catch (e) {
-    console.error('단축 URL 생성 실패:', e);
-    res.status(200).json({ shortUrl: null, longUrl });
+    if (!r.ok || !text.startsWith('http')) throw new Error('단축 서비스 응답 이상: ' + text);
+    return text;
+  }
+
+  // is.gd가 중간 안내 페이지 없이 바로 리다이렉트돼 1순위지만, 가끔 일시적으로 에러를
+  // 낼 때가 있어(예: "database insert failed") TinyURL을 예비로 둔다.
+  try {
+    res.status(200).json({ shortUrl: await tryShorten(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`) });
+  } catch (e1) {
+    console.error('is.gd 단축 실패, TinyURL로 재시도:', e1);
+    try {
+      res.status(200).json({ shortUrl: await tryShorten(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`) });
+    } catch (e2) {
+      console.error('TinyURL도 실패:', e2);
+      res.status(200).json({ shortUrl: null, longUrl });
+    }
   }
 };
