@@ -674,23 +674,30 @@ async function toggleSharePublic(checked) {
   if (!currentUser) { showToast('로그인 후 사용할 수 있습니다.'); $('#sharePublicToggle').checked = !p.isPublic; return; }
 
   const prevPublic = p.isPublic;
-  const prevSlug = p.shareSlug;
-  p.isPublic = checked;
-  if (checked && !p.shareSlug) p.shareSlug = generateShareSlug();
-  $('#shareLinkRow').style.display = checked ? 'flex' : 'none';
-  $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
+  const newSlug = (checked && !p.shareSlug) ? generateShareSlug() : p.shareSlug;
 
-  const { error } = await sb.from('novel_projects').update({ is_public: checked, share_slug: p.shareSlug }).eq('id', p.id);
-  if (error) {
-    console.error('공개 설정 변경 실패:', error);
-    p.isPublic = prevPublic;
-    p.shareSlug = prevSlug;
+  // 낙관적 업데이트를 하지 않는다 — Supabase는 RLS가 막아 실제로는 0개 행이
+  // 바뀌어도 error 없이 성공처럼 응답할 때가 있어서(이번에 실제로 그랬다), 화면을 먼저
+  // 바꿔놓으면 사용자에게는 켜진 것처럼 보이는데 DB엔 반영이 안 되는 상황이 벌어진다.
+  // .select()로 실제로 바뀐 행을 돌려받아 확인한 뒤에야 화면을 갱신한다.
+  try {
+    const { data, error } = await sb.from('novel_projects')
+      .update({ is_public: checked, share_slug: newSlug })
+      .eq('id', p.id)
+      .select();
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('바뀐 행이 없습니다(권한 문제일 수 있어요 — 관리자에게 RLS UPDATE 정책을 확인해달라고 하세요).');
+
+    p.isPublic = checked;
+    p.shareSlug = newSlug;
+    $('#shareLinkRow').style.display = checked ? 'flex' : 'none';
+    $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
+    showToast(checked ? '이 작품을 링크로 공개했습니다.' : '공개를 껐습니다.');
+  } catch (e) {
+    console.error('공개 설정 변경 실패:', e);
     $('#sharePublicToggle').checked = prevPublic;
-    $('#shareLinkRow').style.display = prevPublic ? 'flex' : 'none';
-    showToast('⚠️ 공개 설정 변경에 실패했습니다: ' + (error.message || ''));
-    return;
+    showToast('⚠️ 공개 설정 변경에 실패했습니다: ' + (e.message || ''));
   }
-  showToast(checked ? '이 작품을 링크로 공개했습니다.' : '공개를 껐습니다.');
 }
 
 function copyShareLink() {
