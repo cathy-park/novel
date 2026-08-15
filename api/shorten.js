@@ -3,6 +3,8 @@
  * 1순위 buly.kr(계정 보유, 중간 페이지 없이 바로 리다이렉트) → 실패 시 is.gd → TinyURL 순으로
  * 폴백한다. buly.kr 자격증명(BULY_CUSTOMER_ID, BULY_API_KEY)은 Vercel 환경변수로만 저장하고
  * 이 코드에는 절대 값을 직접 적지 않는다.
+ * vercel.json에서 함수 리전을 icn1(서울)로 고정했다 — 기본(미국) 리전에서는 buly.kr:443
+ * 접속이 10초 넘게 걸려 타임아웃 났었다.
  * 브라우저에서 직접 부르면 CORS가 막을 수 있어 서버(이 함수)에서 대신 호출한다.
  * 임의의 url을 받지 않고 slug만 받아 서버가 직접 우리 도메인 링크를 만든다 —
  * 이 엔드포인트가 아무 URL이나 줄여주는 공개 프록시로 악용되지 않게 하기 위함이다.
@@ -40,24 +42,11 @@ module.exports = async (req, res) => {
     return text;
   }
 
-  let bulyErrorForDebug = null;
-  let bulyShortUrl = null;
   try {
-    bulyShortUrl = await tryBuly();
+    res.status(200).json({ shortUrl: await tryBuly() });
+    return;
   } catch (e0) {
-    console.error('buly.kr 단축 실패:', e0);
-    const cause = e0 && e0.cause ? ` | cause: ${e0.cause.code || ''} ${e0.cause.message || e0.cause}` : '';
-    bulyErrorForDebug = String((e0 && e0.message) || e0) + cause;
-  }
-
-  if (req.query.debug) {
-    res.status(200).json({ bulyShortUrl, bulyErrorForDebug, hasCustomerId: !!process.env.BULY_CUSTOMER_ID, hasApiKey: !!process.env.BULY_API_KEY });
-    return;
-  }
-
-  if (bulyShortUrl) {
-    res.status(200).json({ shortUrl: bulyShortUrl });
-    return;
+    console.error('buly.kr 단축 실패, is.gd로 재시도:', e0);
   }
 
   try {
@@ -71,6 +60,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ shortUrl: await tryPlainShortener(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`) });
   } catch (e2) {
     console.error('TinyURL도 실패:', e2);
-    res.status(200).json({ shortUrl: null, longUrl, bulyErrorForDebug });
+    res.status(200).json({ shortUrl: null, longUrl });
   }
 };
