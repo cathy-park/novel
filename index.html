@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- 공유 링크(?s=)로 들어온 경우, 아래 무거운 라이브러리들을 다 내려받고 app.js가 실행될
+     때까지 기다리지 않고 즉시 #welcomeScreen(로그인 화면/앱 아이콘)과 #libraryView(서재 —
+     로그아웃/새 작품 버튼 포함)를 숨긴다. bootPublicShare()가 project를 불러와 이북 화면을
+     띄우기 전까지의 짧은 순간에도 서재 UI가 깜빡이며 노출되던 문제를 막는다. 일반 로그인
+     사용자는 URL에 s= 파라미터가 없으니 영향 없다. -->
+<script>
+if (location.search.indexOf('s=') !== -1) document.documentElement.classList.add('share-mode');
+</script>
+<style>html.share-mode #welcomeScreen, html.share-mode #libraryView { display: none !important; }</style>
 <title>야니의 출판 스튜디오 — 소설 집필 워크스페이스</title>
 <meta name="theme-color" content="#FBFBFC">
 <link rel="manifest" href="/manifest.json">
