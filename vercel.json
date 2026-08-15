@@ -1,4 +1,11 @@
 {
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "s" }],
+      "destination": "/api/share"
+    }
+  ],
   "headers": [
     {
       "source": "/(index\\.html|sw\\.js)",
