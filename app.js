@@ -664,6 +664,21 @@ function shareLinkFor(p) {
   return p.shortUrl || longShareLinkFor(p);
 }
 
+/** 실제 도메인이 노출되지 않도록 짧은 링크를 만들어 저장한다(이미 있으면 아무것도 안 함). */
+async function ensureShortUrl(p) {
+  if (!p.shareSlug || p.shortUrl) return;
+  try {
+    const r = await fetch(`/api/shorten?slug=${encodeURIComponent(p.shareSlug)}`);
+    const { shortUrl } = await r.json();
+    if (!shortUrl) return;
+    await sb.from('novel_projects').update({ short_url: shortUrl }).eq('id', p.id);
+    p.shortUrl = shortUrl;
+    if (shareModalProjectId === p.id) $('#shareLinkInput').value = shareLinkFor(p);
+  } catch (e) {
+    console.error('단축 링크 생성 실패:', e);
+  }
+}
+
 function openShareModal(projectId) {
   const p = state.projects.find(x => x.id === projectId);
   if (!p) return;
@@ -673,6 +688,8 @@ function openShareModal(projectId) {
   $('#shareLinkRow').style.display = p.isPublic ? 'flex' : 'none';
   $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
   openModal('shareModal');
+  // 이미 공개된 작품인데 예전에 만든 슬러그라 단축 링크가 아직 없다면 지금 만든다.
+  if (p.isPublic && p.shareSlug && !p.shortUrl) ensureShortUrl(p);
 }
 
 async function toggleSharePublic(checked) {
@@ -701,20 +718,7 @@ async function toggleSharePublic(checked) {
     $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
     showToast(checked ? '이 작품을 링크로 공개했습니다.' : '공개를 껐습니다.');
 
-    // 실제 도메인이 노출되지 않도록 짧은 링크를 만들어둔다(없을 때만, 실패해도 공개 자체는 이미 됐으니 조용히 넘어간다).
-    if (checked && !p.shortUrl) {
-      try {
-        const r = await fetch(`/api/shorten?slug=${encodeURIComponent(newSlug)}`);
-        const { shortUrl } = await r.json();
-        if (shortUrl) {
-          await sb.from('novel_projects').update({ short_url: shortUrl }).eq('id', p.id);
-          p.shortUrl = shortUrl;
-          if (shareModalProjectId === p.id) $('#shareLinkInput').value = shareLinkFor(p);
-        }
-      } catch (e) {
-        console.error('단축 링크 생성 실패(공개 자체는 정상 처리됨):', e);
-      }
-    }
+    if (checked) await ensureShortUrl(p);
   } catch (e) {
     console.error('공개 설정 변경 실패:', e);
     $('#sharePublicToggle').checked = prevPublic;
