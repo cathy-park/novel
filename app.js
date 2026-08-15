@@ -351,6 +351,7 @@ async function loadStateSupabase() {
         coverColor: pRow.cover_color || DEFAULT_COVER_COLOR,
         viewMode: pRow.view_mode || 'split',
         planSections: pRow.plan_sections || [],
+        isPublic: !!pRow.is_public,
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
         selectedEpisodeId: null,
@@ -428,6 +429,7 @@ async function saveProjectSupabase(p) {
       cover_color: p.coverColor,
       view_mode: p.viewMode,
       plan_sections: p.planSections,
+      is_public: !!p.isPublic,
       updated_at: p.updatedAt || Date.now()
     };
     await sb.from('novel_projects').upsert(pData);
@@ -587,6 +589,7 @@ function renderLibrary() {
             <div class="kebab-menu" id="kebab-${p.id}">
               <button data-kebab-cover="${p.id}">🎨 표지 꾸미기</button>
               <button data-rename-project="${p.id}">✏️ 제목 변경</button>
+              <button data-share-project="${p.id}">🔗 공유 링크</button>
               <button class="danger-item" data-delete-project="${p.id}">🗑 삭제</button>
             </div>
           </div>
@@ -609,6 +612,10 @@ function renderLibrary() {
     const nt = prompt('새 작품 제목을 입력하세요.', proj.title);
     if (nt && nt.trim()) { proj.title = nt.trim(); touchProject(); queueSaveFS(); renderLibrary(); }
   });
+  $$('[data-share-project]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show'));
+    openShareModal(b.dataset.shareProject);
+  });
   $$('[data-delete-project]').forEach(b => b.onclick = async (e) => {
     e.stopPropagation(); $$('.kebab-menu').forEach(m => m.classList.remove('show'));
     const proj = state.projects.find(x => x.id === b.dataset.deleteProject);
@@ -630,6 +637,103 @@ function renderLibrary() {
   if (!state.projects.some(p => p.status === libraryFilter) && libraryFilter !== 'all') libraryFilter = 'all';
   setTimeout(() => window.addEventListener('click', () => $$('.kebab-menu').forEach(m => m.classList.remove('show')), { once: true }), 0);
   ensureLibraryStatsLoaded();
+}
+
+// ─────────────────────────────────────────────────────────
+// 🔗  이북 뷰어 공유 링크 (로그인 없이 읽기 전용으로 공개)
+// ─────────────────────────────────────────────────────────
+let shareModalProjectId = null;
+
+function shareLinkFor(projectId) {
+  return `${window.location.origin}${window.location.pathname}?share=${projectId}`;
+}
+
+function openShareModal(projectId) {
+  const p = state.projects.find(x => x.id === projectId);
+  if (!p) return;
+  shareModalProjectId = projectId;
+  $('#shareModalTitle').textContent = p.title;
+  $('#sharePublicToggle').checked = !!p.isPublic;
+  $('#shareLinkRow').style.display = p.isPublic ? 'flex' : 'none';
+  $('#shareLinkInput').value = shareLinkFor(projectId);
+  openModal('shareModal');
+}
+
+async function toggleSharePublic(checked) {
+  const p = state.projects.find(x => x.id === shareModalProjectId);
+  if (!p) return;
+  if (!currentUser) { showToast('로그인 후 사용할 수 있습니다.'); $('#sharePublicToggle').checked = !p.isPublic; return; }
+
+  const prev = p.isPublic;
+  p.isPublic = checked;
+  $('#shareLinkRow').style.display = checked ? 'flex' : 'none';
+
+  const { error } = await sb.from('novel_projects').update({ is_public: checked }).eq('id', p.id);
+  if (error) {
+    console.error('공개 설정 변경 실패:', error);
+    p.isPublic = prev;
+    $('#sharePublicToggle').checked = prev;
+    $('#shareLinkRow').style.display = prev ? 'flex' : 'none';
+    showToast('⚠️ 공개 설정 변경에 실패했습니다: ' + (error.message || ''));
+    return;
+  }
+  showToast(checked ? '이 작품을 링크로 공개했습니다.' : '공개를 껐습니다.');
+}
+
+function copyShareLink() {
+  const input = $('#shareLinkInput');
+  input.select();
+  navigator.clipboard?.writeText(input.value).then(() => showToast('링크를 복사했습니다.')).catch(() => {
+    document.execCommand('copy');
+    showToast('링크를 복사했습니다.');
+  });
+}
+
+/**
+ * URL에 ?share=<projectId>가 있으면 로그인 없이 그 작품 하나만 읽기 전용 이북 뷰어로 연다.
+ * 일반 로그인 플로우(initApp)와 완전히 분리된 별도 경로 — 서재/편집 화면은 아예 만들지 않는다.
+ */
+let isPublicShareMode = false;
+
+async function bootPublicShare(projectId) {
+  isPublicShareMode = true;
+  $('#welcomeScreen').style.display = 'none';
+
+  const { data: pRow, error: pErr } = await sb.from('novel_projects').select('*').eq('id', projectId).eq('is_public', true).maybeSingle();
+  if (pErr || !pRow) {
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:\'Pretendard\',sans-serif;color:#888;text-align:center;padding:24px;">이 공유 링크는 더 이상 유효하지 않습니다.<br>작성자가 공개를 껐거나 삭제한 작품일 수 있어요.</div>';
+    return;
+  }
+
+  const { data: epRows, error: eErr } = await sb.from('novel_episodes').select('*').eq('project_id', projectId).order('order_idx');
+  if (eErr) console.error('공유 회차 로드 실패:', eErr);
+
+  const p = {
+    id: pRow.id,
+    title: pRow.title || '제목 없는 작품',
+    status: pRow.status || 'serializing',
+    cover: pRow.cover || '',
+    coverColor: pRow.cover_color || DEFAULT_COVER_COLOR,
+    viewMode: pRow.view_mode || 'split',
+    planSections: pRow.plan_sections || [],
+    isPublic: true,
+    updatedAt: pRow.updated_at || Date.now(),
+    episodes: (epRows || []).map(e => ({
+      id: e.id, type: e.type, title: e.title, status: e.status,
+      createdAt: e.created_at, updatedAt: e.updated_at, order: e.order_idx,
+      body: e.body || '', plan: e.plan || '',
+      comments: (() => { try { return e.comments ? JSON.parse(e.comments) : []; } catch (_) { return []; } })(),
+      _dirty: false
+    })).sort((a, b) => a.order - b.order),
+    selectedEpisodeId: null,
+    _dirty: false
+  };
+
+  state = { schemaVersion: 6, currentProjectId: p.id, projects: [p] };
+  await openEbook(p.id);
+
+  // 읽기 전용: 서재가 없으니 "← 서재" 버튼은 숨긴다(눌러도 빈 화면만 보임).
+  if ($('#ebookBackBtn')) $('#ebookBackBtn').style.display = 'none';
 }
 
 // 서재 카드의 글자수는 회차 본문(body)이 이미 메모리에 로드돼 있어야 정확히
@@ -6070,7 +6174,12 @@ if ('serviceWorker' in navigator) {
 }
 
 // Init
-initApp();
+const __shareProjectId = new URLSearchParams(window.location.search).get('share');
+if (__shareProjectId) {
+  bootPublicShare(__shareProjectId);
+} else {
+  initApp();
+}
 
 // ─────────────────────────────────────────────────────────
 // 📱  모바일 이북 뷰어
@@ -6145,8 +6254,8 @@ function renderEbookPage(eps, idx) {
   // 이북 목록 하이라이트 갱신
   $$('.ebook-ep-item').forEach((btn, i) => btn.classList.toggle('active', i === idx));
 
-  // 텍스트 선택 시 코멘트 접기 버튼 표시
-  attachEbookSelectionHandler(ep);
+  // 텍스트 선택 시 코멘트 접기 버튼 표시 (공개 공유 보기에선 저장할 계정이 없어 비활성)
+  if (!isPublicShareMode) attachEbookSelectionHandler(ep);
 }
 
 function renderEbookEpList(eps) {
