@@ -352,6 +352,7 @@ async function loadStateSupabase() {
         viewMode: pRow.view_mode || 'split',
         planSections: pRow.plan_sections || [],
         isPublic: !!pRow.is_public,
+        shareSlug: pRow.share_slug || null,
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
         selectedEpisodeId: null,
@@ -430,6 +431,7 @@ async function saveProjectSupabase(p) {
       view_mode: p.viewMode,
       plan_sections: p.planSections,
       is_public: !!p.isPublic,
+      share_slug: p.shareSlug || null,
       updated_at: p.updatedAt || Date.now()
     };
     await sb.from('novel_projects').upsert(pData);
@@ -644,8 +646,13 @@ function renderLibrary() {
 // ─────────────────────────────────────────────────────────
 let shareModalProjectId = null;
 
-function shareLinkFor(projectId) {
-  return `${window.location.origin}${window.location.pathname}?share=${projectId}`;
+/** project-1784684151635-a1b2c3 같은 긴 원본 id 대신, 공유 링크엔 짧은 랜덤 슬러그를 쓴다. */
+function generateShareSlug() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function shareLinkFor(p) {
+  return `${window.location.origin}${window.location.pathname}?s=${p.shareSlug}`;
 }
 
 function openShareModal(projectId) {
@@ -655,7 +662,7 @@ function openShareModal(projectId) {
   $('#shareModalTitle').textContent = p.title;
   $('#sharePublicToggle').checked = !!p.isPublic;
   $('#shareLinkRow').style.display = p.isPublic ? 'flex' : 'none';
-  $('#shareLinkInput').value = shareLinkFor(projectId);
+  $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
   openModal('shareModal');
 }
 
@@ -664,16 +671,20 @@ async function toggleSharePublic(checked) {
   if (!p) return;
   if (!currentUser) { showToast('로그인 후 사용할 수 있습니다.'); $('#sharePublicToggle').checked = !p.isPublic; return; }
 
-  const prev = p.isPublic;
+  const prevPublic = p.isPublic;
+  const prevSlug = p.shareSlug;
   p.isPublic = checked;
+  if (checked && !p.shareSlug) p.shareSlug = generateShareSlug();
   $('#shareLinkRow').style.display = checked ? 'flex' : 'none';
+  $('#shareLinkInput').value = p.shareSlug ? shareLinkFor(p) : '';
 
-  const { error } = await sb.from('novel_projects').update({ is_public: checked }).eq('id', p.id);
+  const { error } = await sb.from('novel_projects').update({ is_public: checked, share_slug: p.shareSlug }).eq('id', p.id);
   if (error) {
     console.error('공개 설정 변경 실패:', error);
-    p.isPublic = prev;
-    $('#sharePublicToggle').checked = prev;
-    $('#shareLinkRow').style.display = prev ? 'flex' : 'none';
+    p.isPublic = prevPublic;
+    p.shareSlug = prevSlug;
+    $('#sharePublicToggle').checked = prevPublic;
+    $('#shareLinkRow').style.display = prevPublic ? 'flex' : 'none';
     showToast('⚠️ 공개 설정 변경에 실패했습니다: ' + (error.message || ''));
     return;
   }
@@ -690,22 +701,22 @@ function copyShareLink() {
 }
 
 /**
- * URL에 ?share=<projectId>가 있으면 로그인 없이 그 작품 하나만 읽기 전용 이북 뷰어로 연다.
+ * URL에 ?s=<shareSlug>가 있으면 로그인 없이 그 작품 하나만 읽기 전용 이북 뷰어로 연다.
  * 일반 로그인 플로우(initApp)와 완전히 분리된 별도 경로 — 서재/편집 화면은 아예 만들지 않는다.
  */
 let isPublicShareMode = false;
 
-async function bootPublicShare(projectId) {
+async function bootPublicShare(shareSlug) {
   isPublicShareMode = true;
   $('#welcomeScreen').style.display = 'none';
 
-  const { data: pRow, error: pErr } = await sb.from('novel_projects').select('*').eq('id', projectId).eq('is_public', true).maybeSingle();
+  const { data: pRow, error: pErr } = await sb.from('novel_projects').select('*').eq('share_slug', shareSlug).eq('is_public', true).maybeSingle();
   if (pErr || !pRow) {
     document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:\'Pretendard\',sans-serif;color:#888;text-align:center;padding:24px;">이 공유 링크는 더 이상 유효하지 않습니다.<br>작성자가 공개를 껐거나 삭제한 작품일 수 있어요.</div>';
     return;
   }
 
-  const { data: epRows, error: eErr } = await sb.from('novel_episodes').select('*').eq('project_id', projectId).order('order_idx');
+  const { data: epRows, error: eErr } = await sb.from('novel_episodes').select('*').eq('project_id', pRow.id).order('order_idx');
   if (eErr) console.error('공유 회차 로드 실패:', eErr);
 
   const p = {
@@ -717,6 +728,7 @@ async function bootPublicShare(projectId) {
     viewMode: pRow.view_mode || 'split',
     planSections: pRow.plan_sections || [],
     isPublic: true,
+    shareSlug: pRow.share_slug,
     updatedAt: pRow.updated_at || Date.now(),
     episodes: (epRows || []).map(e => ({
       id: e.id, type: e.type, title: e.title, status: e.status,
@@ -6174,9 +6186,9 @@ if ('serviceWorker' in navigator) {
 }
 
 // Init
-const __shareProjectId = new URLSearchParams(window.location.search).get('share');
-if (__shareProjectId) {
-  bootPublicShare(__shareProjectId);
+const __shareSlug = new URLSearchParams(window.location.search).get('s');
+if (__shareSlug) {
+  bootPublicShare(__shareSlug);
 } else {
   initApp();
 }
