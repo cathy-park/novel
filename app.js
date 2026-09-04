@@ -6261,8 +6261,16 @@ async function exportSubmissionPdf(isSilent = false) {
     <div style="font-size:11pt;color:#999;">출판사 투고용 원고</div>
   </div>`;
 
-  // 본문 — fmBlocks를 main_body 하나로만 구성해 표지/목차/판권지 없이 회차만 렌더링.
-  const submissionPubSet = { ...pubSet, fmBlocks: [{ active: true, type: 'main_body', style: {}, content: {} }] };
+  // 목차 + 본문 — fmBlocks를 toc, main_body 두 개로만 구성해 판권지/반표지 없이
+  // "속표지 → 목차 → 원고" 순서로만 렌더링한다. autoTOC는 POD 설정값과 무관하게
+  // 항상 켠다(투고용은 목차가 항상 나와야 한다는 요청이라 설정 토글에 영향받지 않게 함).
+  const submissionPubSet = {
+    ...pubSet, autoTOC: true,
+    fmBlocks: [
+      { id: 'sub_toc', active: true, type: 'toc', style: {}, content: {} },
+      { id: 'sub_main_body', active: true, type: 'main_body', style: {}, content: {} },
+    ],
+  };
   html += generatePODBodyContent(p, submissionPubSet, loadedEps);
   html += buildExportFooterHtml(isSilent);
 
