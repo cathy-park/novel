@@ -354,6 +354,7 @@ async function loadStateSupabase() {
         isPublic: !!pRow.is_public,
         shareSlug: pRow.share_slug || null,
         submissions: Array.isArray(pRow.submissions) ? pRow.submissions : [],
+        submissionActive: pRow.submission_active != null ? !!pRow.submission_active : (Array.isArray(pRow.submissions) && pRow.submissions.length > 0),
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
         selectedEpisodeId: null,
@@ -434,6 +435,7 @@ async function saveProjectSupabase(p) {
       is_public: !!p.isPublic,
       share_slug: p.shareSlug || null,
       submissions: p.submissions || [],
+      submission_active: !!p.submissionActive,
       updated_at: p.updatedAt || Date.now()
     };
     await sb.from('novel_projects').upsert(pData);
@@ -559,6 +561,14 @@ function autosizePlanSection(el, min = 250) {
 
 // Cover
 function coverTextColor(hex) { const v = String(hex || '').trim().slice(1); const r = parseInt(v.slice(0, 2), 16), g = parseInt(v.slice(2, 4), 16), b = parseInt(v.slice(4, 6), 16); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.67 ? '#17141F' : '#FFFFFF'; }
+// submissionActive가 명시적으로 설정돼 있으면(체크박스로 사용자가 직접 켜고 끈 경우) 그 값을
+// 그대로 쓰고, 아직 한 번도 설정 안 된(구버전 데이터) 작품은 기존 투고 기록이 있으면 켜진
+// 것으로 간주한다 — 이 필드가 생기기 전에 이미 투고 기록을 넣어둔 작품이 목록에서
+// 갑자기 사라지지 않게 하기 위함.
+function isSubmissionActive(p) {
+  return p.submissionActive != null ? !!p.submissionActive : ((p.submissions || []).length > 0);
+}
+
 function coverPlaceholderMarkup(p) {
   const c = p.coverColor || DEFAULT_COVER_COLOR, t = coverTextColor(c);
   return `<span class="book-placeholder" style="--cover-color:${c};--cover-text:${t}"><strong>${escapeHtml(p.title)}</strong></span>`;
@@ -569,7 +579,7 @@ function renderLibrary() {
   $('#allCount').textContent = state.projects.length;
   $('#serializingCount').textContent = state.projects.filter(p => p.status === 'serializing').length;
   $('#completedCount').textContent = state.projects.filter(p => p.status === 'completed').length;
-  if ($('#submissionsCount')) $('#submissionsCount').textContent = state.projects.filter(p => (p.submissions || []).length > 0).length;
+  if ($('#submissionsCount')) $('#submissionsCount').textContent = state.projects.filter(p => isSubmissionActive(p)).length;
   $$('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === libraryFilter));
 
   if (libraryFilter === 'submissions') {
@@ -594,6 +604,9 @@ function renderLibrary() {
           <h2 title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h2>
         </div>
         <div class="book-meta"><span><strong>${p.episodes.length}</strong> 회차</span><span><strong>${total.toLocaleString()}</strong>자</span></div>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted);margin:4px 0 2px;cursor:pointer;">
+          <input type="checkbox" data-toggle-submission="${p.id}" ${p.submissionActive ? 'checked' : ''} style="cursor:pointer;"> 투고중
+        </label>
         <div class="project-book-actions">
           <button class="secondary border" data-book-cover="${p.id}" style="width:100%;">🎨 표지 꾸미기</button>
           <div style="position:relative;">
@@ -611,6 +624,14 @@ function renderLibrary() {
   }).join('') : `<div class="empty-state"><strong>작품이 없어요.</strong></div>`;
   $$('[data-open-project]').forEach(b => b.onclick = () => openProject(b.dataset.openProject));
   $$('[data-book-cover]').forEach(b => b.onclick = (e) => { e.stopPropagation(); openCoverSettings(b.dataset.bookCover); });
+  $$('[data-toggle-submission]').forEach(cb => cb.onchange = () => {
+    const proj = state.projects.find(x => x.id === cb.dataset.toggleSubmission);
+    if (!proj) return;
+    proj.submissionActive = cb.checked;
+    proj._dirty = true; proj.updatedAt = Date.now();
+    queueSaveFS();
+    if ($('#submissionsCount')) $('#submissionsCount').textContent = state.projects.filter(p => p.submissionActive).length;
+  });
   $$('[data-kebab]').forEach(b => b.onclick = (e) => {
     e.stopPropagation();
     const menu = document.getElementById('kebab-' + b.dataset.kebab);
@@ -672,37 +693,45 @@ function submissionStatusBadgeStyle(status) {
 }
 
 function renderSubmissionsView() {
-  const projects = [...state.projects].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  // #projectGrid는 원래 CSS Grid(.project-grid, 168px 다열 그리드)라서 자식 div 하나만
+  // 넣으면 그 첫 번째 열 너비로만 눌려 보인다 — grid-column:1/-1로 전체 폭을 강제로
+  // 차지하게 해야 아래 내용이 좁게 찌그러지지 않는다.
+  const projects = [...state.projects].filter(isSubmissionActive).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
-  $('#projectGrid').innerHTML = projects.length ? `<div class="submissions-view" style="display:flex;flex-direction:column;gap:16px;">` +
-    projects.map(p => {
+  $('#projectGrid').innerHTML = `<div class="submissions-view" style="grid-column:1 / -1;display:flex;flex-direction:column;gap:16px;">` +
+    (projects.length ? projects.map(p => {
       const subs = (p.submissions || []).slice().sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''));
+      const cover = p.cover ? `<img src="${p.cover}" alt="표지" style="width:100%;height:100%;object-fit:cover;display:block;">` : coverPlaceholderMarkup(p);
       const rows = subs.map(s => `
-        <div class="submission-row" style="display:grid;grid-template-columns:1fr 140px 110px 1fr 32px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--c-line);">
-          <input type="text" value="${escapeHtml(s.publisher || '')}" placeholder="출판사명" data-sub-field="${p.id}:${s.id}:publisher" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;">
-          <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;">
-          <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;${submissionStatusBadgeStyle(s.status)}">
+        <div class="submission-row" style="display:grid;grid-template-columns:1fr 150px 120px 1fr 32px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--c-line);">
+          <input type="text" value="${escapeHtml(s.publisher || '')}" placeholder="출판사명" data-sub-field="${p.id}:${s.id}:publisher" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
+          <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
+          <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;min-width:0;${submissionStatusBadgeStyle(s.status)}">
             ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'pending') ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
-          <input type="text" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;">
+          <input type="text" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button>
         </div>`).join('');
 
-      return `<div class="submission-work-card" style="background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-          <h3 style="margin:0;font-size:15px;color:var(--c-ink);">${escapeHtml(p.title)}</h3>
-          <button class="secondary" data-add-submission="${p.id}" style="font-size:12px;white-space:nowrap;">+ 출판사 추가</button>
-        </div>
-        ${subs.length ? `
-          <div style="display:grid;grid-template-columns:1fr 140px 110px 1fr 32px;gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
-            <span>출판사</span><span>투고일</span><span>상태</span><span>메모</span><span></span>
+      return `<div class="submission-work-card" style="display:flex;gap:20px;background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:20px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <h3 style="margin:0;font-size:15px;color:var(--c-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title)}</h3>
+            <button class="secondary" data-add-submission="${p.id}" style="font-size:12px;white-space:nowrap;flex-shrink:0;">+ 출판사 추가</button>
           </div>
-          ${rows}
-        ` : `<p style="margin:14px 0 0;font-size:13px;color:var(--c-muted);">아직 투고한 출판사가 없어요.</p>`}
+          ${subs.length ? `
+            <div style="display:grid;grid-template-columns:1fr 150px 120px 1fr 32px;gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
+              <span>출판사</span><span>투고일</span><span>상태</span><span>메모</span><span></span>
+            </div>
+            ${rows}
+          ` : `<p style="margin:14px 0 0;font-size:13px;color:var(--c-muted);">아직 투고한 출판사가 없어요.</p>`}
+        </div>
+        <button data-open-project="${p.id}" title="집필 화면 열기" style="flex-shrink:0;width:72px;aspect-ratio:2/3;border-radius:4px 10px 10px 4px;overflow:hidden;position:relative;border:1px solid rgba(23,20,31,.08);box-shadow:var(--shadow-book);padding:0;cursor:pointer;background:var(--c-brand-grad);">${cover}</button>
       </div>`;
-    }).join('') + `</div>`
-    : `<div class="empty-state"><strong>작품이 없어요.</strong></div>`;
+    }).join('') : `<div class="empty-state"><strong>"투고중"으로 표시된 작품이 없어요.</strong><p style="margin-top:8px;font-size:13px;color:var(--c-muted);">서재 책 카드에서 "투고중" 체크박스를 켜면 여기 목록에 나타나요.</p></div>`)
+    + `</div>`;
 
+  $$('.submissions-view [data-open-project]').forEach(b => b.onclick = () => openProject(b.dataset.openProject));
   $$('[data-add-submission]').forEach(b => b.onclick = () => addSubmissionPrompt(b.dataset.addSubmission));
   $$('[data-delete-submission]').forEach(b => b.onclick = () => {
     const [projId, subId] = b.dataset.deleteSubmission.split(':');
@@ -4428,11 +4457,17 @@ function ensureCoreFmBlocks(blocks) {
       content: defaultFmContent('main_body')
     });
   }
-  if (!blocks.find(b => b.type === 'toc')) {
+  const existingToc = blocks.find(b => b.type === 'toc');
+  if (!existingToc) {
     const mainBodyIdx = blocks.findIndex(b => b.type === 'main_body');
     const tocBlock = { id: 'fm_toc_' + Date.now(), type: 'toc', active: true, placement: 'front', style: defaultFmStyle('toc'), content: defaultFmContent('toc') };
     if (mainBodyIdx >= 0) blocks.splice(mainBodyIdx, 0, tocBlock);
     else blocks.push(tocBlock);
+  } else if (existingToc.active === false) {
+    // 목차 블록 자체는 있는데(예: 예전에 실수로 껐거나 비활성 상태로 저장됨) 꺼져 있던
+    // 경우도 켜준다 — "표지→목차→원고"를 원한다는 요청은 목차가 항상 보이길 바란다는
+    // 뜻이라, 블록만 있고 안 보이는 상태로 방치하지 않는다.
+    existingToc.active = true;
   }
   return blocks;
 }
