@@ -682,7 +682,6 @@ function renderLibrary() {
 // renderSubmissionsView가 렌더링 시점에 기존 no_response 저장값을 rejected로
 // 자동 마이그레이션한다.
 const SUBMISSION_STATUS_LABELS = {
-  unconfirmed: '🟠 미확인',
   pending: '🟡 검토중',
   accepted: '🟢 합격',
   rejected: '🔴 거절',
@@ -691,11 +690,17 @@ const SUBMISSION_STATUS_LABELS = {
 function submissionStatusBadgeStyle(status) {
   if (status === 'accepted') return 'background:var(--c-success-bg);color:var(--c-success);';
   if (status === 'rejected') return 'background:var(--c-danger-bg);color:var(--c-danger);';
-  if (status === 'pending') return 'background:var(--c-warning-bg);color:var(--c-warning);';
-  return 'background:#FFF3E0;color:#E65100;'; // unconfirmed(미확인) 기본값 — 기존 색상 토큰에 주황이 없어 직접 지정
+  return 'background:var(--c-warning-bg);color:var(--c-warning);'; // pending(검토중) 기본값
 }
 
-const SUBMISSION_ROW_COLUMNS = '1fr 1fr 150px 120px 1fr 32px'; // 출판사/투고주소/투고일/상태/메모/삭제
+const SUBMISSION_ROW_COLUMNS = '1fr 1fr 130px 110px 116px 1fr 1fr 32px'; // 출판사/투고주소/투고일/상태/기대도/이유/메모/삭제
+
+function starRatingMarkup(projectId, subId, value) {
+  const v = value || 0;
+  return `<div data-star-field="${projectId}:${subId}" style="display:flex;gap:1px;">` +
+    [1, 2, 3, 4, 5].map(n => `<span data-star="${n}" style="cursor:pointer;font-size:16px;line-height:1;color:${n <= v ? '#FFC107' : '#D9D9D9'};">★</span>`).join('') +
+    `</div>`;
+}
 
 function renderSubmissionsView() {
   // #projectGrid는 원래 CSS Grid(.project-grid, 168px 다열 그리드)라서 자식 div 하나만
@@ -709,6 +714,7 @@ function renderSubmissionsView() {
   projects.forEach(p => {
     (p.submissions || []).forEach(s => {
       if (s.status === 'no_response') { s.status = 'rejected'; p._dirty = true; migrated = true; }
+      if (s.status === 'unconfirmed') { s.status = 'pending'; p._dirty = true; migrated = true; }
     });
   });
   if (migrated) queueSaveFS();
@@ -723,8 +729,10 @@ function renderSubmissionsView() {
           <input type="text" value="${escapeHtml(s.address || '')}" placeholder="이메일/투고 URL" data-sub-field="${p.id}:${s.id}:address" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;min-width:0;${submissionStatusBadgeStyle(s.status)}">
-            ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'unconfirmed') ? 'selected' : ''}>${label}</option>`).join('')}
+            ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'pending') ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
+          ${starRatingMarkup(p.id, s.id, s.expectation)}
+          <input type="text" value="${escapeHtml(s.expectationReason || '')}" placeholder="기대 이유" data-sub-field="${p.id}:${s.id}:expectationReason" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <input type="text" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button>
         </div>`).join('');
@@ -738,7 +746,7 @@ function renderSubmissionsView() {
           </div>
           ${subs.length ? `
             <div style="display:grid;grid-template-columns:${SUBMISSION_ROW_COLUMNS};gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
-              <span>출판사</span><span>투고주소</span><span>투고일</span><span>상태</span><span>메모</span><span></span>
+              <span>출판사</span><span>투고주소</span><span>투고일</span><span>상태</span><span>기대도</span><span>이유</span><span>메모</span><span></span>
             </div>
             ${rows}
           ` : `<p style="margin:14px 0 0;font-size:13px;color:var(--c-muted);">아직 투고한 출판사가 없어요.</p>`}
@@ -760,6 +768,12 @@ function renderSubmissionsView() {
     };
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'blur', handler);
   });
+  $$('[data-star-field]').forEach(container => {
+    const [projId, subId] = container.dataset.starField.split(':');
+    container.querySelectorAll('[data-star]').forEach(starEl => {
+      starEl.onclick = () => setSubmissionExpectation(projId, subId, parseInt(starEl.dataset.star, 10));
+    });
+  });
 }
 
 function addSubmissionPrompt(projectId) {
@@ -769,7 +783,17 @@ function addSubmissionPrompt(projectId) {
   if (!proj) return;
   const today = new Date().toISOString().slice(0, 10);
   proj.submissions = proj.submissions || [];
-  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), address: '', submittedAt: today, status: 'unconfirmed', note: '' });
+  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), address: '', submittedAt: today, status: 'pending', expectation: 0, expectationReason: '', note: '' });
+  proj._dirty = true; proj.updatedAt = Date.now();
+  queueSaveFS(); renderLibrary();
+}
+
+function setSubmissionExpectation(projectId, subId, value) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+  const sub = (proj.submissions || []).find(s => s.id === subId);
+  if (!sub) return;
+  sub.expectation = sub.expectation === value ? 0 : value; // 같은 별을 다시 누르면 취소(0으로)
   proj._dirty = true; proj.updatedAt = Date.now();
   queueSaveFS(); renderLibrary();
 }
