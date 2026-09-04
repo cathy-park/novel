@@ -678,19 +678,22 @@ function renderLibrary() {
 // submissions 배열(출판사/투고일/상태/메모)을 자유롭게 추가·삭제하는 구조로 둔다.
 // ─────────────────────────────────────────────────────────
 
+// 무응답은 별도 상태로 두지 않고 거절로 취급한다(요청: "무응답도 거절이니까") —
+// renderSubmissionsView가 렌더링 시점에 기존 no_response 저장값을 rejected로
+// 자동 마이그레이션한다.
 const SUBMISSION_STATUS_LABELS = {
-  pending: '검토중',
-  accepted: '합격',
-  rejected: '거절',
-  no_response: '무응답',
+  pending: '🟡 검토중',
+  accepted: '🟢 합격',
+  rejected: '🔴 거절',
 };
 
 function submissionStatusBadgeStyle(status) {
   if (status === 'accepted') return 'background:var(--c-success-bg);color:var(--c-success);';
   if (status === 'rejected') return 'background:var(--c-danger-bg);color:var(--c-danger);';
-  if (status === 'no_response') return 'background:var(--c-surface-3);color:var(--c-muted);';
   return 'background:var(--c-warning-bg);color:var(--c-warning);'; // pending(검토중) 기본값
 }
+
+const SUBMISSION_ROW_COLUMNS = '1fr 1fr 150px 120px 1fr 32px'; // 출판사/투고주소/투고일/상태/메모/삭제
 
 function renderSubmissionsView() {
   // #projectGrid는 원래 CSS Grid(.project-grid, 168px 다열 그리드)라서 자식 div 하나만
@@ -698,13 +701,24 @@ function renderSubmissionsView() {
   // 차지하게 해야 아래 내용이 좁게 찌그러지지 않는다.
   const projects = [...state.projects].filter(isSubmissionActive).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
+  // 무응답은 별도 상태로 더 안 두고 거절로 합친다 — 렌더링 시점에 남아있는 구데이터를
+  // 한 번에 정리해서 다시 저장한다(사용자가 뭘 따로 안 눌러도 자동 정리됨).
+  let migrated = false;
+  projects.forEach(p => {
+    (p.submissions || []).forEach(s => {
+      if (s.status === 'no_response') { s.status = 'rejected'; p._dirty = true; migrated = true; }
+    });
+  });
+  if (migrated) queueSaveFS();
+
   $('#projectGrid').innerHTML = `<div class="submissions-view" style="grid-column:1 / -1;display:flex;flex-direction:column;gap:16px;">` +
     (projects.length ? projects.map(p => {
       const subs = (p.submissions || []).slice().sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''));
       const cover = p.cover ? `<img src="${p.cover}" alt="표지" style="width:100%;height:100%;object-fit:cover;display:block;">` : coverPlaceholderMarkup(p);
       const rows = subs.map(s => `
-        <div class="submission-row" style="display:grid;grid-template-columns:1fr 150px 120px 1fr 32px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--c-line);">
+        <div class="submission-row" style="display:grid;grid-template-columns:${SUBMISSION_ROW_COLUMNS};gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--c-line);">
           <input type="text" value="${escapeHtml(s.publisher || '')}" placeholder="출판사명" data-sub-field="${p.id}:${s.id}:publisher" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
+          <input type="text" value="${escapeHtml(s.address || '')}" placeholder="이메일/투고 URL" data-sub-field="${p.id}:${s.id}:address" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;min-width:0;${submissionStatusBadgeStyle(s.status)}">
             ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'pending') ? 'selected' : ''}>${label}</option>`).join('')}
@@ -721,8 +735,8 @@ function renderSubmissionsView() {
             <button class="secondary" data-add-submission="${p.id}" style="font-size:12px;white-space:nowrap;flex-shrink:0;">+ 출판사 추가</button>
           </div>
           ${subs.length ? `
-            <div style="display:grid;grid-template-columns:1fr 150px 120px 1fr 32px;gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
-              <span>출판사</span><span>투고일</span><span>상태</span><span>메모</span><span></span>
+            <div style="display:grid;grid-template-columns:${SUBMISSION_ROW_COLUMNS};gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
+              <span>출판사</span><span>투고주소</span><span>투고일</span><span>상태</span><span>메모</span><span></span>
             </div>
             ${rows}
           ` : `<p style="margin:14px 0 0;font-size:13px;color:var(--c-muted);">아직 투고한 출판사가 없어요.</p>`}
@@ -753,7 +767,7 @@ function addSubmissionPrompt(projectId) {
   if (!proj) return;
   const today = new Date().toISOString().slice(0, 10);
   proj.submissions = proj.submissions || [];
-  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), submittedAt: today, status: 'pending', note: '' });
+  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), address: '', submittedAt: today, status: 'pending', note: '' });
   proj._dirty = true; proj.updatedAt = Date.now();
   queueSaveFS(); renderLibrary();
 }
