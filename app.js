@@ -353,6 +353,7 @@ async function loadStateSupabase() {
         planSections: pRow.plan_sections || [],
         isPublic: !!pRow.is_public,
         shareSlug: pRow.share_slug || null,
+        submissions: Array.isArray(pRow.submissions) ? pRow.submissions : [],
         updatedAt: pRow.updated_at || Date.now(),
         episodes: [],
         selectedEpisodeId: null,
@@ -432,6 +433,7 @@ async function saveProjectSupabase(p) {
       plan_sections: p.planSections,
       is_public: !!p.isPublic,
       share_slug: p.shareSlug || null,
+      submissions: p.submissions || [],
       updated_at: p.updatedAt || Date.now()
     };
     await sb.from('novel_projects').upsert(pData);
@@ -567,7 +569,15 @@ function renderLibrary() {
   $('#allCount').textContent = state.projects.length;
   $('#serializingCount').textContent = state.projects.filter(p => p.status === 'serializing').length;
   $('#completedCount').textContent = state.projects.filter(p => p.status === 'completed').length;
+  if ($('#submissionsCount')) $('#submissionsCount').textContent = state.projects.filter(p => (p.submissions || []).length > 0).length;
   $$('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === libraryFilter));
+
+  if (libraryFilter === 'submissions') {
+    renderSubmissionsView();
+    ensureLibraryStatsLoaded();
+    return;
+  }
+
   const projects = (libraryFilter === 'all' ? state.projects : state.projects.filter(p => p.status === libraryFilter)).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   $('#projectGrid').innerHTML = projects.length ? projects.map(p => {
     const total = p.episodes.reduce((s, e) => s + stats(e.body || '').withSpaces, 0);
@@ -635,10 +645,109 @@ function renderLibrary() {
       renderLibrary();
     }
   });
-  // 서재 필터 기본값을 'all'로 초기화
-  if (!state.projects.some(p => p.status === libraryFilter) && libraryFilter !== 'all') libraryFilter = 'all';
+  // 서재 필터 기본값을 'all'로 초기화 (submissions는 p.status 값이 아니라 별도 뷰라 제외)
+  if (!state.projects.some(p => p.status === libraryFilter) && libraryFilter !== 'all' && libraryFilter !== 'submissions') libraryFilter = 'all';
   setTimeout(() => window.addEventListener('click', () => $$('.kebab-menu').forEach(m => m.classList.remove('show')), { once: true }), 0);
   ensureLibraryStatsLoaded();
+}
+
+// ─────────────────────────────────────────────────────────
+// 📮 투고현황 — 작품별로 어느 출판사에 언제 투고했고 결과가 어땠는지 기록.
+// 작품마다 투고할 출판사 목록이 다 다르므로 공용 출판사 목록 없이, 작품 각각에
+// submissions 배열(출판사/투고일/상태/메모)을 자유롭게 추가·삭제하는 구조로 둔다.
+// ─────────────────────────────────────────────────────────
+
+const SUBMISSION_STATUS_LABELS = {
+  pending: '검토중',
+  accepted: '합격',
+  rejected: '거절',
+  no_response: '무응답',
+};
+
+function submissionStatusBadgeStyle(status) {
+  if (status === 'accepted') return 'background:var(--c-success-bg);color:var(--c-success);';
+  if (status === 'rejected') return 'background:var(--c-danger-bg);color:var(--c-danger);';
+  if (status === 'no_response') return 'background:var(--c-surface-3);color:var(--c-muted);';
+  return 'background:var(--c-warning-bg);color:var(--c-warning);'; // pending(검토중) 기본값
+}
+
+function renderSubmissionsView() {
+  const projects = [...state.projects].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  $('#projectGrid').innerHTML = projects.length ? `<div class="submissions-view" style="display:flex;flex-direction:column;gap:16px;">` +
+    projects.map(p => {
+      const subs = (p.submissions || []).slice().sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''));
+      const rows = subs.map(s => `
+        <div class="submission-row" style="display:grid;grid-template-columns:1fr 140px 110px 1fr 32px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--c-line);">
+          <input type="text" value="${escapeHtml(s.publisher || '')}" placeholder="출판사명" data-sub-field="${p.id}:${s.id}:publisher" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;">
+          <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;">
+          <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;${submissionStatusBadgeStyle(s.status)}">
+            ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'pending') ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+          <input type="text" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;">
+          <button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button>
+        </div>`).join('');
+
+      return `<div class="submission-work-card" style="background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <h3 style="margin:0;font-size:15px;color:var(--c-ink);">${escapeHtml(p.title)}</h3>
+          <button class="secondary" data-add-submission="${p.id}" style="font-size:12px;white-space:nowrap;">+ 출판사 추가</button>
+        </div>
+        ${subs.length ? `
+          <div style="display:grid;grid-template-columns:1fr 140px 110px 1fr 32px;gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
+            <span>출판사</span><span>투고일</span><span>상태</span><span>메모</span><span></span>
+          </div>
+          ${rows}
+        ` : `<p style="margin:14px 0 0;font-size:13px;color:var(--c-muted);">아직 투고한 출판사가 없어요.</p>`}
+      </div>`;
+    }).join('') + `</div>`
+    : `<div class="empty-state"><strong>작품이 없어요.</strong></div>`;
+
+  $$('[data-add-submission]').forEach(b => b.onclick = () => addSubmissionPrompt(b.dataset.addSubmission));
+  $$('[data-delete-submission]').forEach(b => b.onclick = () => {
+    const [projId, subId] = b.dataset.deleteSubmission.split(':');
+    deleteSubmission(projId, subId);
+  });
+  $$('[data-sub-field]').forEach(el => {
+    const handler = () => {
+      const [projId, subId, field] = el.dataset.subField.split(':');
+      updateSubmissionField(projId, subId, field, el.value);
+    };
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'blur', handler);
+  });
+}
+
+function addSubmissionPrompt(projectId) {
+  const publisher = prompt('투고할 출판사명을 입력하세요.');
+  if (!publisher || !publisher.trim()) return;
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+  const today = new Date().toISOString().slice(0, 10);
+  proj.submissions = proj.submissions || [];
+  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), submittedAt: today, status: 'pending', note: '' });
+  proj._dirty = true; proj.updatedAt = Date.now();
+  queueSaveFS(); renderLibrary();
+}
+
+function updateSubmissionField(projectId, subId, field, value) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+  const sub = (proj.submissions || []).find(s => s.id === subId);
+  if (!sub) return;
+  sub[field] = value;
+  proj._dirty = true; proj.updatedAt = Date.now();
+  queueSaveFS();
+  if (field === 'status') renderLibrary(); // 배지 색상 갱신을 위해 다시 그림(다른 필드는 입력 중 포커스가 끊기지 않게 다시 그리지 않음)
+}
+
+function deleteSubmission(projectId, subId) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+  const sub = (proj.submissions || []).find(s => s.id === subId);
+  if (!confirm(`${sub ? sub.publisher + ' ' : ''}투고 기록을 삭제할까요?`)) return;
+  proj.submissions = (proj.submissions || []).filter(s => s.id !== subId);
+  proj._dirty = true; proj.updatedAt = Date.now();
+  queueSaveFS(); renderLibrary();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -2043,6 +2152,12 @@ function getPublishSettings(p) {
   if (!p.publishSettings) {
     const presetObj = POD_PRESETS['purple'] || { margins: { top: 20, bottom: 20, inner: 25, outer: 18, bleed: 3 } };
     return { preset: 'purple', paperSize: 'A5', margins: presetObj.margins, includeCover: true, autoTOC: true, showTitle: false };
+  }
+  // 'toc' 블록 타입이 생기기 전에 저장된 구작품은 fmBlocks가 이미 저장돼 있어(길이>0)
+  // 새 기본값 템플릿을 안 타서 표지→원고로 바로 넘어가버린다 — 여기서 한 번에
+  // 보정해야 미리보기/실제 내보내기(exportPODPdf)가 항상 같은 결과를 본다.
+  if (p.publishSettings.fmBlocks && p.publishSettings.fmBlocks.length > 0) {
+    ensureCoreFmBlocks(p.publishSettings.fmBlocks);
   }
   return p.publishSettings;
 }
@@ -4298,6 +4413,30 @@ function migrateFmOrder(oldOrder) {
   }));
 }
 
+// 본문/목차 블록이 빠진 fmBlocks를 보정한다. 'toc' 블록 타입이 생기기 전에
+// 저장된 구작품은 fmBlocks가 이미 저장돼 있어서(길이>0) 새 기본값 템플릿을 안 타고
+// 표지→원고로 바로 넘어가버린다 — initFmBlocks(전면/후면 설정 패널)와
+// generatePODBodyContent(실제 PDF/Word 내보내기)가 반드시 이 함수를 같이 써야
+// "설정 패널엔 목차가 보이는데 실제 PDF엔 없다" 같은 불일치가 안 생긴다.
+function ensureCoreFmBlocks(blocks) {
+  if (!blocks.find(b => b.type === 'main_body')) {
+    blocks.push({
+      id: 'fm_main_body_' + Date.now(),
+      type: 'main_body',
+      active: true,
+      style: defaultFmStyle('main_body'),
+      content: defaultFmContent('main_body')
+    });
+  }
+  if (!blocks.find(b => b.type === 'toc')) {
+    const mainBodyIdx = blocks.findIndex(b => b.type === 'main_body');
+    const tocBlock = { id: 'fm_toc_' + Date.now(), type: 'toc', active: true, placement: 'front', style: defaultFmStyle('toc'), content: defaultFmContent('toc') };
+    if (mainBodyIdx >= 0) blocks.splice(mainBodyIdx, 0, tocBlock);
+    else blocks.push(tocBlock);
+  }
+  return blocks;
+}
+
 // ── fmBlocks 초기화 ────────────────────────────────────────────
 function initFmBlocks(p) {
   const saved = p.publishSettings?.fmBlocks;
@@ -4318,17 +4457,7 @@ function initFmBlocks(p) {
   // 헌사/인용구 블록은 지원하지 않으므로 필터링 (본문은 허용)
   blocks = blocks.filter(block => !['dedication', 'epigraph'].includes(block.type));
 
-  // 본문 블록 필수 포함 (없으면 생성)
-  if (!blocks.find(b => b.type === 'main_body')) {
-    blocks.push({
-      id: 'fm_main_body_' + Date.now(),
-      type: 'main_body',
-      active: true,
-      style: defaultFmStyle('main_body'),
-      content: defaultFmContent('main_body')
-    });
-  }
-
+  blocks = ensureCoreFmBlocks(blocks);
   window.fmBlocks = blocks;
 }
 
@@ -6087,7 +6216,7 @@ async function exportSubmissionPdf(isSilent = false) {
   // 속표지 — 표지 이미지/색상 없이 텍스트만. [Image #5] 참고 레이아웃 그대로,
   // 제목/저자만 이 작품 값으로 바뀐다.
   const submissionTitle = escapeHtml(p.title || '');
-  const submissionAuthor = escapeHtml(pubSet.frontMatter?.author || '저자');
+  const submissionAuthor = '박소연'; // 투고용 속표지 저자명은 고정값(설정값에 의존하지 않음)
   html += `<div class="chapter matter-page" data-fm-label="속표지" style="break-after:page;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;font-family:'KoPub Batang','Noto Serif KR',serif;color:#1C1813;">
     <div style="font-size:13pt;color:#666;margin-bottom:28px;">장편소설</div>
     <h1 style="font-size:28pt;font-weight:700;margin:0 0 28px;">${submissionTitle}</h1>
