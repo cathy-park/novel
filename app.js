@@ -3192,6 +3192,7 @@ $('#backFromPodStudio').onclick = hidePodStudio;
 // 스튜디오 내 내보내기 버튼
 // 내지 전용 PDF: 2번째 인자 true → 표지 배제
 $('#podExportPdfBtn').onclick = () => { podSaveSettings(); exportPODPdf(false, true); };
+$('#podExportSubmissionPdfBtn').onclick = () => { podSaveSettings(); exportSubmissionPdf(); };
 $('#podExportCoverBtn').onclick = () => { podSaveSettings(); exportPODCover(); };
 $('#podExportWordBtn').onclick = () => { podSaveSettings(); exportPODWord(); };
 
@@ -5472,52 +5473,12 @@ function generatePODBodyContent(p, pubSet, loadedEps, targetEpId = null, episode
 
   return fullHtml;
 }
-async function exportPODPdf(isSilent = false) {
-  const p = currentProject();
-  if (!p) return;
-
-  const eps = orderedEpisodes(p).filter(isPublishableEpisode);
-  if (eps.length === 0) {
-    if (!isSilent) showToast('출판할 본문이 없습니다.');
-    return;
-  }
-
-  let win;
-  if (isSilent) {
-    let iframe = document.getElementById('pod-calc-iframe');
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.id = 'pod-calc-iframe';
-      iframe.style.position = 'absolute';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = 'none';
-      iframe.style.visibility = 'hidden';
-      document.body.appendChild(iframe);
-    }
-    win = iframe.contentWindow;
-  } else {
-    // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
-    win = window.open('', '_blank');
-    if (!win) {
-      showToast('팝업 차단을 해제하고 다시 시도해주세요.');
-      return;
-    }
-    win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
-  }
-
-  if (p.episodes.some(e => e.body === undefined)) {
-    if (!isSilent) showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
-    await ensureProjectBodiesLoaded(p);
-  }
-
-  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode);
-  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
-  const pubSet = getPublishSettings(p);
-
-  if (!isSilent) showToast('PDF 변환을 준비 중입니다...');
-
-  let html = `<!DOCTYPE html>
+// exportPODPdf(POD용)와 exportSubmissionPdf(투고용)가 공유하는 인쇄용 HTML <head>.
+// 원본 조판(폰트/여백/문단/서사블록 서식)을 그대로 유지해야 하므로 두 내보내기가
+// 반드시 같은 함수를 통해서만 만들어지게 한다 — 따로 복사해두면 한쪽만 고쳤을 때
+// "투고용은 조판이 다르게 나온다" 같은 회귀가 생기기 쉽다.
+function buildExportHeadHtml(p, pubSet, mainStyles) {
+  return `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -5903,7 +5864,7 @@ ${mainStyles}
     border-bottom-left-radius: 6px !important;
     padding-bottom: 10px !important;
   }
-  
+
   .chapter-content p.pdf-group-middle,
   .chapter-content p.pdf-group-last,
   .chapter-content .pdf-group-middle,
@@ -5937,21 +5898,11 @@ ${mainStyles}
 </head>
 <body>
 `;
+}
 
-  // ⚠️ 핵심 수정: isSilent(정밀계산용) 또는 coverExcluded(내지 전용 내보내기) 시 표지 완전 배제
-  //    내지 PDF 내보내기 버튼은 exportPODPdf(false, true)로 호출 → 표지 없이 내지만 출력
-  const coverExcluded = arguments[1] === true; // 2번째 인자가 true이면 내지 전용
-  if (!isSilent && !coverExcluded && pubSet.includeCover !== false) {
-    try {
-      const coverB64 = await generateCoverPreview(p, pubSet);
-      if (coverB64) {
-        html += `<div class="cover-page" style="page: cover; break-after: right; margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #2c2c2c;"><img src="${coverB64}" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
-      }
-    } catch (err) { console.warn('Cover rendering skipped:', err); }
-  }
-
-  html += generatePODBodyContent(p, pubSet, loadedEps);
-  html += `
+// exportPODPdf/exportSubmissionPdf가 공유하는 Paged.js 완료 후 인쇄 트리거 스크립트.
+function buildExportFooterHtml(isSilent) {
+  return `
   <script>
     class PrintHandler extends window.Paged.Handler {
       afterRendered(pages) {
@@ -5998,14 +5949,162 @@ ${mainStyles}
   </${'script'}>
 </body>
 </html>`;
+}
 
+async function exportPODPdf(isSilent = false) {
+  const p = currentProject();
+  if (!p) return;
+
+  const eps = orderedEpisodes(p).filter(isPublishableEpisode);
+  if (eps.length === 0) {
+    if (!isSilent) showToast('출판할 본문이 없습니다.');
+    return;
+  }
+
+  let win;
+  if (isSilent) {
+    let iframe = document.getElementById('pod-calc-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'pod-calc-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      iframe.style.visibility = 'hidden';
+      document.body.appendChild(iframe);
+    }
+    win = iframe.contentWindow;
+  } else {
+    // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
+    win = window.open('', '_blank');
+    if (!win) {
+      showToast('팝업 차단을 해제하고 다시 시도해주세요.');
+      return;
+    }
+    win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
+  }
+
+  if (p.episodes.some(e => e.body === undefined)) {
+    if (!isSilent) showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+
+  const loadedEps = orderedEpisodes(p).filter(isPublishableEpisode);
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  const pubSet = getPublishSettings(p);
+
+  if (!isSilent) showToast('PDF 변환을 준비 중입니다...');
+
+  let html = buildExportHeadHtml(p, pubSet, mainStyles);
+
+  // ⚠️ 핵심 수정: isSilent(정밀계산용) 또는 coverExcluded(내지 전용 내보내기) 시 표지 완전 배제
+  //    내지 PDF 내보내기 버튼은 exportPODPdf(false, true)로 호출 → 표지 없이 내지만 출력
+  const coverExcluded = arguments[1] === true; // 2번째 인자가 true이면 내지 전용
+  if (!isSilent && !coverExcluded && pubSet.includeCover !== false) {
+    try {
+      const coverB64 = await generateCoverPreview(p, pubSet);
+      if (coverB64) {
+        html += `<div class="cover-page" style="page: cover; break-after: right; margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #2c2c2c;"><img src="${coverB64}" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
+      }
+    } catch (err) { console.warn('Cover rendering skipped:', err); }
+  }
+
+  html += generatePODBodyContent(p, pubSet, loadedEps);
+  html += buildExportFooterHtml(isSilent);
 
   win.document.open();
   win.document.write(html);
   win.document.close();
 }
 
+// ── 투고용 PDF 내보내기 ──────────────────────────────────────────────
+// exportPODPdf(POD/자가출판용: 표지·목차·판권지 등 전면부 블록 포함)와 별개로,
+// 출판사 투고 시 쓰는 훨씬 단순한 버전 — 표지/목차 없이 "장편소설/제목/저자/
+// 출판사 투고용 원고"만 적힌 속표지 한 장 + 프롤로그부터 시작하는 본문. 조판
+// (폰트·여백·문단 서식)은 buildExportHeadHtml을 그대로 공유해 POD판과 동일하게
+// 유지한다("원본조판유지").
+async function exportSubmissionPdf(isSilent = false) {
+  const p = currentProject();
+  if (!p) return;
 
+  const allEps = orderedEpisodes(p).filter(isPublishableEpisode);
+  // 프롤로그부터 시작 — 프롤로그보다 앞에 오는 앞부속(frontmatter/blank_front,
+  // 예: 머리말·서문)은 투고용에서는 제외한다. 프롤로그가 없는 작품은 앞부속만
+  // 걷어내고 첫 회차부터 시작한다.
+  const prologueIdx = allEps.findIndex(e => e.type === 'prologue');
+  const bodyEps = prologueIdx >= 0
+    ? allEps.slice(prologueIdx)
+    : allEps.filter(e => e.type !== 'frontmatter' && e.type !== 'blank_front');
+
+  if (bodyEps.length === 0) {
+    if (!isSilent) showToast('출판할 본문이 없습니다.');
+    return;
+  }
+
+  let win;
+  if (isSilent) {
+    let iframe = document.getElementById('pod-calc-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'pod-calc-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      iframe.style.visibility = 'hidden';
+      document.body.appendChild(iframe);
+    }
+    win = iframe.contentWindow;
+  } else {
+    // 브라우저 팝업 차단 우회를 위해 await 전에 창을 띄웁니다.
+    win = window.open('', '_blank');
+    if (!win) {
+      showToast('팝업 차단을 해제하고 다시 시도해주세요.');
+      return;
+    }
+    win.document.write('<div style="text-align:center; padding:50px; font-family:sans-serif;">PDF 변환을 준비 중입니다. 잠시만 기다려주세요...<br><br><small>본문 데이터가 많을 경우 수 초가 소요될 수 있습니다.</small></div>');
+  }
+
+  if (p.episodes.some(e => e.body === undefined)) {
+    if (!isSilent) showToast('PDF 생성을 위해 데이터를 불러오는 중입니다...');
+    await ensureProjectBodiesLoaded(p);
+  }
+
+  const loadedAll = orderedEpisodes(p).filter(isPublishableEpisode);
+  const loadedPrologueIdx = loadedAll.findIndex(e => e.type === 'prologue');
+  const loadedEps = loadedPrologueIdx >= 0
+    ? loadedAll.slice(loadedPrologueIdx)
+    : loadedAll.filter(e => e.type !== 'frontmatter' && e.type !== 'blank_front');
+
+  const mainStyles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  const pubSet = getPublishSettings(p);
+
+  if (!isSilent) showToast('PDF 변환을 준비 중입니다...');
+
+  let html = buildExportHeadHtml(p, pubSet, mainStyles);
+
+  // 속표지 — 표지 이미지/색상 없이 텍스트만. [Image #5] 참고 레이아웃 그대로,
+  // 제목/저자만 이 작품 값으로 바뀐다.
+  const submissionTitle = escapeHtml(p.title || '');
+  const submissionAuthor = escapeHtml(pubSet.frontMatter?.author || '저자');
+  html += `<div class="chapter matter-page" data-fm-label="속표지" style="break-after:page;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;font-family:'KoPub Batang','Noto Serif KR',serif;color:#1C1813;">
+    <div style="font-size:13pt;color:#666;margin-bottom:28px;">장편소설</div>
+    <h1 style="font-size:28pt;font-weight:700;margin:0 0 28px;">${submissionTitle}</h1>
+    <div style="width:56px;border-top:1px solid #999;margin-bottom:28px;"></div>
+    <div style="font-size:14pt;margin-bottom:70px;">${submissionAuthor}</div>
+    <div style="font-size:11pt;color:#999;">출판사 투고용 원고</div>
+  </div>`;
+
+  // 본문 — fmBlocks를 main_body 하나로만 구성해 표지/목차/판권지 없이 회차만 렌더링.
+  const submissionPubSet = { ...pubSet, fmBlocks: [{ active: true, type: 'main_body', style: {}, content: {} }] };
+  html += generatePODBodyContent(p, submissionPubSet, loadedEps);
+  html += buildExportFooterHtml(isSilent);
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
 
 // Export/Import
 $('#exportBackupBtn').onclick = exportBackup;
