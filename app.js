@@ -719,33 +719,38 @@ function renderSubmissionsView() {
   });
   if (migrated) queueSaveFS();
 
-  $('#projectGrid').innerHTML = `<div class="submissions-view" style="grid-column:1 / -1;display:flex;flex-direction:column;gap:16px;">` +
+  // 컬럼 너비는 SUBMISSION_ROW_COLUMNS 한 곳에서만 정의하고, CSS 커스텀 프로퍼티로
+  // .submission-row/.submissions-header-row(style.css)에 그대로 물려준다. 모바일
+  // 미디어쿼리는 이 프로퍼티와 무관하게 grid-template-columns를 직접 1fr 1fr로
+  // 덮어써서 스택형 레이아웃으로 바꾼다(각 입력 위에 라벨을 붙여서 가독성 유지).
+  $('#projectGrid').innerHTML = `<div class="submissions-view" style="grid-column:1 / -1;display:flex;flex-direction:column;gap:16px;--sub-row-cols:${SUBMISSION_ROW_COLUMNS};">` +
     (projects.length ? projects.map(p => {
       const subs = (p.submissions || []).slice().sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''));
       const cover = p.cover ? `<img src="${p.cover}" alt="표지" style="width:100%;height:100%;object-fit:cover;display:block;">` : coverPlaceholderMarkup(p);
+      const field = (cls, label, inputHtml) => `<div class="sub-field ${cls}"><span class="sub-field-label">${label}</span>${inputHtml}</div>`;
       const rows = subs.map(s => `
-        <div class="submission-row" style="display:grid;grid-template-columns:${SUBMISSION_ROW_COLUMNS};gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--c-line);">
-          <input type="text" value="${escapeHtml(s.publisher || '')}" placeholder="출판사명" data-sub-field="${p.id}:${s.id}:publisher" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
-          <input type="text" value="${escapeHtml(s.address || '')}" placeholder="이메일/투고 URL" data-sub-field="${p.id}:${s.id}:address" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
-          <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
-          <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;min-width:0;${submissionStatusBadgeStyle(s.status)}">
+        <div class="submission-row">
+          ${field('sub-field-publisher', '출판사', `<input type="text" class="sub-input" value="${escapeHtml(s.publisher || '')}" placeholder="출판사명" data-sub-field="${p.id}:${s.id}:publisher">`)}
+          ${field('sub-field-address', '투고주소', `<input type="text" class="sub-input" value="${escapeHtml(s.address || '')}" placeholder="이메일/투고 URL" data-sub-field="${p.id}:${s.id}:address">`)}
+          ${field('sub-field-date', '투고일', `<input type="date" class="sub-input" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt">`)}
+          ${field('sub-field-status', '상태', `<select class="sub-input" style="font-weight:600;${submissionStatusBadgeStyle(s.status)}" data-sub-field="${p.id}:${s.id}:status">
             ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'pending') ? 'selected' : ''}>${label}</option>`).join('')}
-          </select>
-          ${starRatingMarkup(p.id, s.id, s.expectation)}
-          <input type="text" value="${escapeHtml(s.expectationReason || '')}" placeholder="기대 이유" data-sub-field="${p.id}:${s.id}:expectationReason" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
-          <input type="text" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
-          <button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button>
+          </select>`)}
+          ${field('sub-field-expectation', '기대도', starRatingMarkup(p.id, s.id, s.expectation))}
+          ${field('sub-field-reason', '이유', `<input type="text" class="sub-input" value="${escapeHtml(s.expectationReason || '')}" placeholder="기대 이유" data-sub-field="${p.id}:${s.id}:expectationReason">`)}
+          ${field('sub-field-note', '메모', `<input type="text" class="sub-input" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note">`)}
+          <div class="sub-field sub-field-delete"><button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button></div>
         </div>`).join('');
 
-      return `<div class="submission-work-card" style="display:flex;align-items:flex-start;gap:20px;background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:20px;">
-        <button data-open-project="${p.id}" title="집필 화면 열기" style="flex:0 0 130px;width:130px;aspect-ratio:2/3;border-radius:4px 10px 10px 4px;overflow:hidden;position:relative;border:1px solid rgba(23,20,31,.08);box-shadow:var(--shadow-book);padding:0;cursor:pointer;background:var(--c-brand-grad);">${cover}</button>
+      return `<div class="submission-work-card">
+        <button class="submission-cover-btn" data-open-project="${p.id}" title="집필 화면 열기">${cover}</button>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
             <h3 style="margin:0;font-size:15px;color:var(--c-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title)}</h3>
             <button class="secondary" data-add-submission="${p.id}" style="font-size:12px;white-space:nowrap;flex-shrink:0;">+ 출판사 추가</button>
           </div>
           ${subs.length ? `
-            <div style="display:grid;grid-template-columns:${SUBMISSION_ROW_COLUMNS};gap:8px;margin-top:14px;font-size:11px;color:var(--c-muted);">
+            <div class="submissions-header-row">
               <span>출판사</span><span>투고주소</span><span>투고일</span><span>상태</span><span>기대도</span><span>이유</span><span>메모</span><span></span>
             </div>
             ${rows}

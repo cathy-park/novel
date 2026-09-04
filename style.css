@@ -75,7 +75,7 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .library-shell { height: 100vh; overflow-y: auto; background: linear-gradient(180deg,#fff 0,#fff 78px,var(--c-bg) 78px); }
 .library-top { height: 78px; border-bottom: 1px solid var(--c-line); background: rgba(255,255,255,.9); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: space-between; padding: 0 max(28px,calc((100vw - 1180px)/2)); position: sticky; top: 0; z-index: 8; }
 .library-main { max-width: 1180px; margin: 0 auto; padding: 62px 28px 90px; }
-.library-filters { display: flex; gap: 8px; margin-bottom: 30px; }
+.library-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
 .filter-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--c-line); background: #fff; color: var(--c-sub); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; box-shadow: var(--shadow-xs); transition: .16s; }
 .filter-btn:hover { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent-dk); }
 .filter-btn span { display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 6px; border-radius: 999px; background: var(--c-surface-3); font-size: 10px; }
@@ -113,6 +113,31 @@ mark { background: #FFF1AA; color: var(--c-ink); border-radius: 2px; padding: 0 
 .empty-state { grid-column: 1/-1; padding: 72px 24px; border: 1px dashed var(--c-line-mid); border-radius: var(--r-lg); text-align: center; background: rgba(255,255,255,.6); }
 .empty-state strong { display: block; font-size: 17px; margin-bottom: 8px; }
 .empty-state p { color: var(--c-sub); font-size: 13px; margin: 0; }
+
+/* 투고현황(서재의 별도 탭) */
+.submission-work-card { display: flex; align-items: flex-start; gap: 20px; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 12px; padding: 20px; }
+.submission-cover-btn { flex: 0 0 130px; width: 130px; aspect-ratio: 2/3; border-radius: 4px 10px 10px 4px; overflow: hidden; position: relative; border: 1px solid rgba(23,20,31,.08); box-shadow: var(--shadow-book); padding: 0; cursor: pointer; background: var(--c-brand-grad); }
+.submissions-header-row { display: grid; grid-template-columns: var(--sub-row-cols); gap: 8px; margin-top: 14px; font-size: 11px; color: var(--c-muted); }
+.submission-row { display: grid; grid-template-columns: var(--sub-row-cols); gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--c-line); }
+.sub-field { min-width: 0; }
+.sub-field-label { display: none; } /* 데스크톱에서는 위 헤더 행이 라벨 역할을 함 */
+.sub-input { width: 100%; box-sizing: border-box; border: 1px solid var(--c-line); border-radius: 6px; padding: 6px 8px; font-size: 13px; min-width: 0; }
+.sub-field-delete { display: flex; justify-content: center; }
+
+@media (max-width: 640px) {
+  .library-top { padding: 0 14px; }
+  .library-main { padding: 40px 14px 60px; }
+  .project-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 22px 12px; }
+  .filter-btn { padding: 7px 10px; font-size: 11px; }
+
+  .submission-work-card { flex-wrap: wrap; gap: 12px; padding: 14px; }
+  .submission-cover-btn { flex: 0 0 68px; width: 68px; }
+  .submissions-header-row { display: none; } /* 모바일은 각 필드 위에 라벨을 직접 붙이므로 헤더 줄 불필요 */
+  .submission-row { grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 14px 0; }
+  .sub-field-label { display: block; font-size: 11px; color: var(--c-muted); margin-bottom: 3px; }
+  .sub-field-publisher, .sub-field-address, .sub-field-reason, .sub-field-note { grid-column: 1 / -1; }
+  .sub-field-delete { grid-column: 1 / -1; justify-content: flex-end; }
+}
 
 /* Workspace Shell & Editor */
 .workspace-shell { display: grid; grid-template-columns: var(--sidebar) 1fr; height: 100vh; overflow: hidden; }
