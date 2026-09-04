@@ -713,7 +713,8 @@ function renderSubmissionsView() {
           <button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button>
         </div>`).join('');
 
-      return `<div class="submission-work-card" style="display:flex;gap:20px;background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:20px;">
+      return `<div class="submission-work-card" style="display:flex;align-items:flex-start;gap:20px;background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:20px;">
+        <button data-open-project="${p.id}" title="집필 화면 열기" style="flex:0 0 130px;width:130px;aspect-ratio:2/3;border-radius:4px 10px 10px 4px;overflow:hidden;position:relative;border:1px solid rgba(23,20,31,.08);box-shadow:var(--shadow-book);padding:0;cursor:pointer;background:var(--c-brand-grad);">${cover}</button>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
             <h3 style="margin:0;font-size:15px;color:var(--c-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title)}</h3>
@@ -726,7 +727,6 @@ function renderSubmissionsView() {
             ${rows}
           ` : `<p style="margin:14px 0 0;font-size:13px;color:var(--c-muted);">아직 투고한 출판사가 없어요.</p>`}
         </div>
-        <button data-open-project="${p.id}" title="집필 화면 열기" style="flex-shrink:0;width:72px;aspect-ratio:2/3;border-radius:4px 10px 10px 4px;overflow:hidden;position:relative;border:1px solid rgba(23,20,31,.08);box-shadow:var(--shadow-book);padding:0;cursor:pointer;background:var(--c-brand-grad);">${cover}</button>
       </div>`;
     }).join('') : `<div class="empty-state"><strong>"투고중"으로 표시된 작품이 없어요.</strong><p style="margin-top:8px;font-size:13px;color:var(--c-muted);">서재 책 카드에서 "투고중" 체크박스를 켜면 여기 목록에 나타나요.</p></div>`)
     + `</div>`;
@@ -2182,10 +2182,11 @@ function getPublishSettings(p) {
     const presetObj = POD_PRESETS['purple'] || { margins: { top: 20, bottom: 20, inner: 25, outer: 18, bleed: 3 } };
     return { preset: 'purple', paperSize: 'A5', margins: presetObj.margins, includeCover: true, autoTOC: true, showTitle: false };
   }
-  // 'toc' 블록 타입이 생기기 전에 저장된 구작품은 fmBlocks가 이미 저장돼 있어(길이>0)
+  // 'toc' 블록 타입이 생기기 전에 저장된 구작품은 fmBlocks가 이미 저장돼 있어서
   // 새 기본값 템플릿을 안 타서 표지→원고로 바로 넘어가버린다 — 여기서 한 번에
-  // 보정해야 미리보기/실제 내보내기(exportPODPdf)가 항상 같은 결과를 본다.
-  if (p.publishSettings.fmBlocks && p.publishSettings.fmBlocks.length > 0) {
+  // 보정해야 미리보기/실제 내보내기(exportPODPdf)가 항상 같은 결과를 본다. 배열이
+  // 비어 있는 경우([])도 "설정 안 함"과 마찬가지라 length 조건 없이 항상 보정한다.
+  if (Array.isArray(p.publishSettings.fmBlocks)) {
     ensureCoreFmBlocks(p.publishSettings.fmBlocks);
   }
   return p.publishSettings;
