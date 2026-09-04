@@ -682,6 +682,7 @@ function renderLibrary() {
 // renderSubmissionsView가 렌더링 시점에 기존 no_response 저장값을 rejected로
 // 자동 마이그레이션한다.
 const SUBMISSION_STATUS_LABELS = {
+  unconfirmed: '🟠 미확인',
   pending: '🟡 검토중',
   accepted: '🟢 합격',
   rejected: '🔴 거절',
@@ -690,7 +691,8 @@ const SUBMISSION_STATUS_LABELS = {
 function submissionStatusBadgeStyle(status) {
   if (status === 'accepted') return 'background:var(--c-success-bg);color:var(--c-success);';
   if (status === 'rejected') return 'background:var(--c-danger-bg);color:var(--c-danger);';
-  return 'background:var(--c-warning-bg);color:var(--c-warning);'; // pending(검토중) 기본값
+  if (status === 'pending') return 'background:var(--c-warning-bg);color:var(--c-warning);';
+  return 'background:#FFF3E0;color:#E65100;'; // unconfirmed(미확인) 기본값 — 기존 색상 토큰에 주황이 없어 직접 지정
 }
 
 const SUBMISSION_ROW_COLUMNS = '1fr 1fr 150px 120px 1fr 32px'; // 출판사/투고주소/투고일/상태/메모/삭제
@@ -721,7 +723,7 @@ function renderSubmissionsView() {
           <input type="text" value="${escapeHtml(s.address || '')}" placeholder="이메일/투고 URL" data-sub-field="${p.id}:${s.id}:address" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <input type="date" value="${escapeHtml(s.submittedAt || '')}" data-sub-field="${p.id}:${s.id}:submittedAt" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <select data-sub-field="${p.id}:${s.id}:status" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;min-width:0;${submissionStatusBadgeStyle(s.status)}">
-            ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'pending') ? 'selected' : ''}>${label}</option>`).join('')}
+            ${Object.entries(SUBMISSION_STATUS_LABELS).map(([v, label]) => `<option value="${v}" ${s.status === v || (!s.status && v === 'unconfirmed') ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
           <input type="text" value="${escapeHtml(s.note || '')}" placeholder="메모" data-sub-field="${p.id}:${s.id}:note" style="border:1px solid var(--c-line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0;">
           <button data-delete-submission="${p.id}:${s.id}" title="삭제" style="background:none;border:none;color:var(--c-muted);cursor:pointer;font-size:14px;">🗑</button>
@@ -767,7 +769,7 @@ function addSubmissionPrompt(projectId) {
   if (!proj) return;
   const today = new Date().toISOString().slice(0, 10);
   proj.submissions = proj.submissions || [];
-  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), address: '', submittedAt: today, status: 'pending', note: '' });
+  proj.submissions.push({ id: uid('sub'), publisher: publisher.trim(), address: '', submittedAt: today, status: 'unconfirmed', note: '' });
   proj._dirty = true; proj.updatedAt = Date.now();
   queueSaveFS(); renderLibrary();
 }
